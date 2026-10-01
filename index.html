@@ -1,32 +1,282 @@
-<!DOCTYPE html>
-<html lang="en">
-
+<!doctype html>
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>SimonLO926</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Simon Lo 的個人網站，收錄網頁實驗、課堂作品與旅行紀錄。">
+  <title>Simon Lo — Web playground</title>
+  <style>
+    :root {
+      --ink: #17211b;
+      --paper: #f3f0e7;
+      --acid: #dfff45;
+      --orange: #ff6b3d;
+      --line: rgba(23, 33, 27, .25);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: Arial, "Noto Sans TC", sans-serif;
+    }
+
+    a { color: inherit; }
+
+    .shell {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 84px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      letter-spacing: -.03em;
+      text-decoration: none;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      background: var(--ink);
+      color: var(--paper);
+      border-radius: 50%;
+      font-size: 12px;
+    }
+
+    nav { display: flex; gap: 28px; }
+    nav a { font-size: 13px; font-weight: 700; text-decoration: none; }
+    nav a:hover { text-decoration: underline; text-underline-offset: 5px; }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 56px;
+      align-items: end;
+      padding: 92px 0 76px;
+    }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 24px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      width: 9px;
+      height: 9px;
+      background: var(--orange);
+      border-radius: 50%;
+      content: "";
+    }
+
+    h1 {
+      max-width: 800px;
+      margin: 0;
+      font-size: clamp(60px, 10.2vw, 138px);
+      line-height: .83;
+      letter-spacing: -.075em;
+    }
+
+    h1 span {
+      display: inline-block;
+      margin-left: .34em;
+      padding: .04em .12em .1em .06em;
+      background: var(--acid);
+      transform: rotate(-2deg);
+    }
+
+    .intro {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.65;
+    }
+
+    .intro strong { font-weight: 800; }
+
+    .scroll-note {
+      display: inline-flex;
+      gap: 12px;
+      align-items: center;
+      margin-top: 30px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .scroll-note::after { content: "↓"; font-size: 19px; }
+
+    .projects { padding: 24px 0 110px; }
+
+    .section-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 22px;
+      padding-bottom: 13px;
+      border-bottom: 2px solid var(--ink);
+    }
+
+    h2 { margin: 0; font-size: 17px; letter-spacing: -.02em; }
+    .section-heading span { font: 12px monospace; }
+
+    .project-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      border-left: 1px solid var(--line);
+      border-top: 1px solid var(--line);
+    }
+
+    .project {
+      position: relative;
+      min-height: 250px;
+      padding: 28px;
+      overflow: hidden;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      text-decoration: none;
+      transition: background .25s ease, color .25s ease;
+    }
+
+    .project::after {
+      position: absolute;
+      right: 26px;
+      top: 20px;
+      content: "↗";
+      font-size: 30px;
+      transition: transform .25s ease;
+    }
+
+    .project:hover { background: var(--ink); color: var(--paper); }
+    .project:hover::after { transform: translate(5px, -5px); }
+
+    .project-no { font: 11px monospace; opacity: .65; }
+
+    .project h3 {
+      max-width: 80%;
+      margin: 82px 0 9px;
+      font-size: clamp(28px, 4vw, 48px);
+      line-height: .95;
+      letter-spacing: -.055em;
+    }
+
+    .project p { margin: 0; opacity: .68; font-size: 13px; }
+    .project.featured { background: var(--orange); }
+    .project.featured:hover { background: var(--ink); }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 28px 0 40px;
+      border-top: 1px solid var(--line);
+      font-size: 12px;
+    }
+
+    footer p { margin: 0; }
+    footer a { font-weight: 800; text-underline-offset: 3px; }
+
+    @media (max-width: 760px) {
+      .shell { width: min(100% - 24px, 1180px); }
+      header { min-height: 68px; }
+      nav { gap: 16px; }
+      .hero { grid-template-columns: 1fr; gap: 40px; padding: 72px 0 68px; }
+      h1 { font-size: clamp(58px, 22vw, 94px); }
+      h1 span { margin-left: .12em; }
+      .intro { max-width: 430px; }
+      .project-grid { grid-template-columns: 1fr; }
+      .project { min-height: 220px; }
+      .project h3 { margin-top: 65px; }
+      footer { flex-direction: column; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .project, .project::after { transition: none; }
+    }
+  </style>
 </head>
-
-<!-- ./目前資料夾 -->
-<!-- ../上一層資料夾 -->
-<!-- /根目錄 -->
-
-
 <body>
-    <h1>Helle World! By Simon Lo</h1>
+  <div class="shell">
+    <header>
+      <a class="brand" href="#top" aria-label="回到頁首">
+        <span class="brand-mark">SL</span>
+        Simon Lo
+      </a>
+      <nav aria-label="主要導覽">
+        <a href="#projects">作品</a>
+        <a href="https://twitter.com" target="_blank" rel="noreferrer">Twitter ↗</a>
+      </nav>
+    </header>
 
-    <a href="http://nintendo.com"><img src="./img/01.jpg" alt="bowsette" width="200" height="300"></a>
-    <br>
-    <a href="./q1.html">exercise 1 </a>
-    <br>
-    <a href="./b06209018.html">Simons's 107-1 timetable</a>
-    <br>
-    <a href="http://twitter.com">WAI KIN's portfolio</a>
-    <br>
-    <a href="./filter.html">Filter demo website</a>
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <div>
+          <p class="eyebrow">Hello, internet</p>
+          <h1 id="hero-title">Simon’s<br><span>playground.</span></h1>
+        </div>
+        <div>
+          <p class="intro">嗨，我是 <strong>Simon Lo</strong>。這裡收藏我的網頁練習、小工具，還有一些旅途中的靈感。</p>
+          <a class="scroll-note" href="#projects">看看我的作品</a>
+        </div>
+      </section>
 
+      <section class="projects" id="projects" aria-labelledby="projects-title">
+        <div class="section-heading">
+          <h2 id="projects-title">Selected works / 精選作品</h2>
+          <span>2018—2026</span>
+        </div>
+        <div class="project-grid">
+          <a class="project featured" href="./tokyo/tokyo_index.html">
+            <span class="project-no">PROJECT / 01</span>
+            <h3>Tokyo 2026</h3>
+            <p>七天東京聖地巡禮</p>
+          </a>
+          <a class="project" href="./filter.html">
+            <span class="project-no">EXPERIMENT / 02</span>
+            <h3>Image Filter</h3>
+            <p>瀏覽器裡的影像濾鏡實驗</p>
+          </a>
+          <a class="project" href="./b06209018.html">
+            <span class="project-no">ARCHIVE / 03</span>
+            <h3>My Timetable</h3>
+            <p>107-1 學期課表</p>
+          </a>
+          <a class="project" href="./q1.html">
+            <span class="project-no">EXERCISE / 04</span>
+            <h3>HTML Basics</h3>
+            <p>早期網頁課堂練習</p>
+          </a>
+        </div>
+      </section>
+    </main>
 
+    <footer>
+      <p>© 2026 Simon Lo. Built with curiosity.</p>
+      <p>Hosted on <a href="https://pages.github.com/" target="_blank" rel="noreferrer">GitHub Pages ↗</a></p>
+    </footer>
+  </div>
 </body>
-
 </html>
