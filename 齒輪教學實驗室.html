@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>齒輪完美教學實驗室 ⚙️</title>
+    <style>
+        :root {
+            --panel-bg: rgba(255, 255, 255, 0.98);
+            --primary-text: #2c3e50;
+            --accent-blue: #0984e3;
+            --danger-red: #d63031;
+            --success-green: #00b894;
+            --warning-orange: #f39c12;
+            --highlight-yellow: #ffeaa7;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial Rounded MT Bold', '微軟正黑體', sans-serif;
+            background-color: #f5f6fa;
+            background-image: 
+                linear-gradient(rgba(44, 62, 80, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(44, 62, 80, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            background-position: 0 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: row;
+            overflow: hidden;
+            color: #333;
+            touch-action: none;
+        }
+        
+        #sidebar {
+            width: 360px;
+            min-width: 360px;
+            background: var(--panel-bg);
+            padding: 15px 20px;
+            box-shadow: 5px 0 25px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 10;
+            overflow-y: auto;
+            border-right: 2px solid #dcdde1;
+        }
+        
+        h1 {
+            font-size: 22px;
+            text-align: center;
+            color: var(--primary-text);
+            margin: 0 0 5px 0;
+            border-bottom: 3px solid var(--accent-blue);
+            padding-bottom: 10px;
+        }
+        
+        .control-group {
+            background: #fff;
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 1px solid #dcdde1;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .highlight-box {
+            border: 2px solid var(--accent-blue);
+            background: #f0f8ff;
+        }
+        
+        label { 
+            font-weight: bold; 
+            font-size: 14px; 
+            display: flex; 
+            justify-content: space-between;
+            margin-bottom: 8px; 
+            color: var(--primary-text);
+            align-items: center;
+        }
+        
+        input[type="range"] { 
+            width: 100%; 
+            accent-color: var(--accent-blue);
+            height: 8px;
+        }
+
+        input[type="number"] {
+            width: 60px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        button {
+            width: 100%;
+            padding: 10px 12px;
+            margin: 4px 0;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #2c3e50;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button:hover:not(:disabled) { filter: brightness(0.95); transform: translateY(-1px); }
+        button:active:not(:disabled) { transform: translateY(1px); box-shadow: none; }
+        button:disabled { background: #bdc3c7; color: #7f8c8d; cursor: not-allowed; box-shadow: none; }
+        
+        .btn-add-8 { background: var(--highlight-yellow); }
+        .btn-add-16 { background: #81ecec; }
+        .btn-add-24 { background: #55efc4; }
+        .btn-play { background: var(--success-green); color: white; font-size: 16px; padding: 12px;}
+        .btn-stop { background: var(--danger-red); color: white; display: none; font-size: 16px; padding: 12px;}
+        .btn-pause { background: #fdcb6e; color: #2d3436; font-size: 16px; padding: 12px; border: 2px solid #e1b12c;}
+        .btn-reset-turns { background: #74b9ff; color: white; margin-top: 5px;}
+        .btn-toggle-bubbles { background: #e0e0e0; color: #333; margin-top: 5px; border: 1px solid #ccc;}
+        
+        .info-text { font-size: 12.5px; color: #636e72; margin-top: 5px; line-height: 1.5; }
+
+        .speed-control-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+        .speed-control-row button {
+            width: auto;
+            flex-shrink: 0;
+            margin: 0;
+        }
+
+        #canvas-container {
+            flex-grow: 1;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+        #canvas-container:active { cursor: grabbing; }
+        canvas { display: block; width: 100%; height: 100%; }
+        
+        #status-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            pointer-events: none;
+            border-left: 8px solid var(--warning-orange);
+            transition: all 0.3s ease;
+            z-index: 5;
+        }
+
+        #zoom-controls {
+            position: absolute;
+            bottom: 25px;
+            right: 25px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 50;
+            border: 1px solid #dcdde1;
+        }
+        #zoom-controls button {
+            width: 45px;
+            height: 45px;
+            margin: 0;
+            padding: 0;
+            font-size: 22px;
+            border-radius: 10px;
+            background: #f1f2f6;
+            color: var(--primary-text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #zoom-controls button:hover { background: #dfe6e9; }
+        #zoom-percent {
+            min-width: 65px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
+            color: var(--primary-text);
+        }
+
+        .overlay-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 15px;
+            font-size: 32px;
+            font-weight: bold;
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s;
+            z-index: 20;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .mode-tabs {
+            display: flex;
+            margin-bottom: 15px;
+            background: #dfe6e9;
+            border-radius: 8px;
+            padding: 4px;
+        }
+        .mode-tab {
+            flex: 1;
+            padding: 8px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: pointer;
+            border-radius: 6px;
+            color: #636e72;
+            transition: 0.3s;
+        }
+        .mode-tab.active {
+            background: white;
+            color: var(--accent-blue);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        @media (max-width: 800px) {
+            body { flex-direction: column; }
+            #sidebar { width: 100%; min-width: 100%; height: 50vh; padding: 10px; gap: 8px;}
+            .control-group { padding: 10px; }
+            #canvas-container { height: 50vh; }
+            #status-panel { top: 10px; left: 10px; font-size: 14px; padding: 8px 15px; }
+            .overlay-message { font-size: 24px; padding: 15px 20px; }
+            #zoom-controls { bottom: 10px; right: 10px; padding: 5px; }
+            #zoom-controls button { width: 35px; height: 35px; font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <h1>⚙️ 齒輪完美教學實驗室</h1>
+        
+        <div class="mode-tabs">
+            <div class="mode-tab active" id="tabFree" onclick="switchMode('FREE')">♾️ 無限轉動 (有暫停)</div>
+            <div class="mode-tab" id="tabTask" onclick="switchMode('TASK')">🎯 圈數任務模式</div>
+        </div>
+
+        <div class="control-group">
+            <label>⚡ 動力源設定</label>
+            
+            <div id="freeModeControls">
+                <div class="speed-control-row">
+                    <div style="flex-grow: 1;">
+                        <label style="margin-bottom: 0;">速度：<span id="speedValue">12</span></label>
+                        <input type="range" id="speedSlider" min="-30" max="30" value="12" step="1">
+                    </div>
+                    <button id="btnTogglePause" class="btn-pause" onclick="togglePause()">⏸️ 暫停</button>
+                </div>
+                <div class="info-text">正數: 順時針 | 負數: 逆時針</div>
+            </div>
+
+            <div id="taskControlPanel" class="highlight-box" style="display: none; padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+                <label>設定目標圈數：
+                    <input type="number" id="targetTurnsInput" min="1" max="50" value="3">
+                </label>
+                <div class="info-text" style="margin-bottom: 10px;">
+                    達到圈數後精準煞停。
+                </div>
+                <button id="btnPlay" class="btn-play" onclick="startMission()">▶️ 開始演示</button>
+                <button id="btnStop" class="btn-stop" onclick="stopMission()">⏹️ 強制停止</button>
+            </div>
+            
+            <hr style="border: 0; border-top: 1px solid #dfe6e9; margin: 10px 0;">
+            
+            <label>⚙️ 動力齒輪大小：<span id="driverTeethValue">8</span> 齒</label>
+            <input type="range" id="driverTeethSlider" min="8" max="32" step="2" value="8">
+            
+            <div style="display: flex; gap: 5px;">
+                <button onclick="resetTurns()" class="btn-reset-turns" style="flex: 1;">🔄 圈數歸零</button>
+                <button onclick="toggleAllBubbles()" class="btn-toggle-bubbles" id="btnToggleAllBubbles" style="flex: 1;">👁️ 隱藏所有氣泡</button>
+            </div>
+        </div>
+
+        <!-- 替換了動物比喻，改用直接物理原理解釋 -->
+        <div class="control-group" style="background-color: #f8f9fa; border-color: #dcdde1;">
+            <div class="info-text" style="color: #2c3e50; margin-top: 0; font-size: 13px;">
+                <strong>⚖️ 力量與速度的魔法 (齒輪比)</strong><br>
+                • <strong>細推大 (減速/放大力量)：</strong> 速度變慢了，但<strong>力量會變大</strong>！(適合推動重物)<br>
+                • <strong>大推細 (加速/縮小力量)：</strong> 速度變得非常快，但<strong>力量會變小</strong>！(適合平路加速)
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>➕ 加入從動齒輪</label>
+            <button class="btn-add-8" onclick="addGear(8, '#ffeaa7')">小齒輪 (8齒)</button>
+            <button class="btn-add-16" onclick="addGear(16, '#81ecec')">中齒輪 (16齒)</button>
+            <button class="btn-add-24" onclick="addGear(24, '#55efc4')">大齒輪 (24齒)</button>
+            <div class="info-text" style="margin-top: 8px;">
+                💡 氣泡可以<strong>隨意拖曳</strong>，點擊齒輪可隱藏/顯示該氣泡。
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>💡 特殊示範</label>
+            <button onclick="toggleBevelMode()" style="background:#a29bfe; color:white; font-size: 16px; padding: 12px;" id="bevelBtn">☂️ 傘齒輪方向模擬</button>
+            <button onclick="resetCanvas()" style="background:#ff7675; color:white; margin-top: 5px;">🗑️ 清除所有齒輪</button>
+        </div>
+    </div>
+
+    <div id="canvas-container">
+        <div id="status-panel">狀態：等待連接...</div>
+        
+        <div id="zoom-controls">
+            <button onclick="zoomOut()" title="縮小">➖</button>
+            <span id="zoom-percent">100%</span>
+            <button onclick="zoomIn()" title="放大">➕</button>
+            <button onclick="resetZoom()" style="font-size: 14px; width: 50px;" title="重置畫面">重置</button>
+        </div>
+
+        <div id="successOverlay" class="overlay-message">🎯 演示完成！<br><span style="font-size: 20px; font-weight: normal;">完美展示速度與力量比例</span></div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    const speedSlider = document.getElementById('speedSlider');
+    const speedValue = document.getElementById('speedValue');
+    const driverTeethSlider = document.getElementById('driverTeethSlider');
+    const driverTeethValue = document.getElementById('driverTeethValue');
+    const targetTurnsInput = document.getElementById('targetTurnsInput');
+    const btnPlay = document.getElementById('btnPlay');
+    const btnStop = document.getElementById('btnStop');
+    const btnTogglePause = document.getElementById('btnTogglePause');
+    const btnToggleAllBubbles = document.getElementById('btnToggleAllBubbles');
+    const statusPanel = document.getElementById('status-panel');
+    const bevelBtn = document.getElementById('bevelBtn');
+    const successOverlay = document.getElementById('successOverlay');
+    const taskControlPanel = document.getElementById('taskControlPanel');
+    const freeModeControls = document.getElementById('freeModeControls');
+    const zoomPercentDisplay = document.getElementById('zoom-percent');
+
+    let width, height;
+    let gears = [];
+    
+    let isDraggingGear = false;
+    let isDraggingPan = false;
+    let isDraggingBubble = false;
+    
+    let dragTarget = null;
+    let dragBubbleTarget = null;
+    
+    let isBevelMode = false;
+    let globalTime = 0;
+
+    let camera = { x: 0, y: 0, zoom: 1 };
+    let dragStart = { x: 0, y: 0 };
+    let cameraStart = { x: 0, y: 0 };
+
+    let currentMode = 'FREE'; 
+    let targetTurns = 0;
+    const TASK_SPEED = 10;
+    let isPaused = false;
+    let showAllBubbles = true; 
+
+    const MODULE = 10; 
+    const ADDENDUM = MODULE * 1.0;
+    const DEDENDUM = MODULE * 1.25;
+
+    let clickStartX = 0;
+    let clickStartY = 0;
+    const CLICK_TOLERANCE = 5; 
+
+    function resize() {
+        width = canvas.parentElement.clientWidth;
+        height = canvas.parentElement.clientHeight;
+        canvas.width = width;
+        canvas.height = height;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function zoomIn() {
+        camera.zoom = Math.min(camera.zoom + 0.1, 2.5); 
+        updateZoomDisplay();
+    }
+    function zoomOut() {
+        camera.zoom = Math.max(camera.zoom - 0.1, 0.4); 
+        updateZoomDisplay();
+    }
+    function resetZoom() {
+        camera.zoom = 1;
+        camera.x = 0;
+        camera.y = 0;
+        updateZoomDisplay();
+    }
+    function updateZoomDisplay() {
+        zoomPercentDisplay.innerText = Math.round(camera.zoom * 100) + '%';
+        document.body.style.backgroundSize = `${50 * camera.zoom}px ${50 * camera.zoom}px`;
+        document.body.style.backgroundPosition = `${camera.x}px ${camera.y}px`;
+    }
+
+    class Gear {
+        constructor(x, y, teeth, color, isDriver = false) {
+            this.x = x;
+            this.y = y;
+            this.teeth = teeth;
+            this.color = color;
+            this.isDriver = isDriver;
+            
+            this.updatePhysics();
+
+            this.angle = 0;
+            this.totalRotation = 0;
+            this.displaySpeed = 0; 
+            this.realSpeed = 0;
+            this.forceRatio = 1; 
+            this.driven = false;
+            this.jammed = false;
+            this.errorMsg = "";
+            this.showBubble = true; 
+            
+            this.bubbleOffsetX = 0;
+            this.bubbleOffsetY = 0;
+        }
+
+        updatePhysics() {
+            this.pitchRadius = (this.teeth * MODULE) / 2;
+            this.outerRadius = this.pitchRadius + ADDENDUM;
+            this.innerRadius = this.pitchRadius - DEDENDUM;
+        }
+
+        setTeeth(newTeeth) {
+            this.teeth = newTeeth;
+            this.updatePhysics();
+            this.totalRotation = 0;
+        }
+
+        getTurns() {
+            return Math.abs(this.totalRotation / (Math.PI * 2));
+        }
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            
+            if (this.showBubble && (this.bubbleOffsetX !== 0 || this.bubbleOffsetY !== 0)) {
+                ctx.beginPath();
+                ctx.moveTo(0, 0); 
+                ctx.lineTo(this.bubbleOffsetX, this.bubbleOffsetY + this.outerRadius + 15);
+                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            if (this.jammed && !isDraggingGear) {
+                ctx.beginPath();
+                ctx.arc(0, 0, this.outerRadius + 15, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(214, 48, 49, 0.4)';
+                ctx.fill();
+            }
+
+            if (currentMode === 'TASK_FINISHED' && !this.jammed && (this.driven || this.isDriver)) {
+                ctx.beginPath();
+                ctx.arc(0, 0, this.outerRadius + 15, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0, 184, 148, 0.3)';
+                ctx.fill();
+            }
+
+            ctx.rotate(this.angle);
+
+            ctx.beginPath();
+            const pitchAngle = Math.PI * 2 / this.teeth;
+            
+            for (let i = 0; i < this.teeth; i++) {
+                let startAngle = i * pitchAngle;
+                let centerAngle = startAngle + pitchAngle / 2;
+                
+                let r1a = startAngle + pitchAngle * 0.15;
+                ctx.lineTo(Math.cos(r1a) * this.innerRadius, Math.sin(r1a) * this.innerRadius);
+                
+                let t1a = centerAngle - pitchAngle * 0.15;
+                ctx.lineTo(Math.cos(t1a) * this.outerRadius, Math.sin(t1a) * this.outerRadius);
+
+                let t1b = centerAngle + pitchAngle * 0.15;
+                ctx.lineTo(Math.cos(t1b) * this.outerRadius, Math.sin(t1b) * this.outerRadius);
+
+                let r1b = startAngle + pitchAngle * 0.85;
+                ctx.lineTo(Math.cos(r1b) * this.innerRadius, Math.sin(r1b) * this.innerRadius);
+            }
+            ctx.closePath();
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#2d3436';
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.arc(0, 0, this.pitchRadius, 0, Math.PI * 2);
+            ctx.setLineDash([4, 4]);
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.beginPath();
+            ctx.arc(0, 0, MODULE * 1.5, 0, Math.PI * 2);
+            ctx.fillStyle = this.isDriver ? '#fdcb6e' : '#dfe6e9';
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(this.innerRadius * 0.9, 0); 
+            ctx.lineWidth = 5;
+            ctx.strokeStyle = '#2d3436';
+            ctx.lineCap = 'round';
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.arc(this.innerRadius * 0.8, 0, MODULE * 0.7, 0, Math.PI * 2);
+            ctx.fillStyle = '#d63031';
+            ctx.fill();
+
+            ctx.restore();
+
+            if (this.showBubble) {
+                ctx.save();
+                ctx.translate(this.x + this.bubbleOffsetX, this.y + this.bubbleOffsetY);
+                
+                let turnsText = this.getTurns().toFixed(2) + " 圈";
+                let spdAbs = Math.abs(this.displaySpeed);
+                let spdText = spdAbs % 1 === 0 ? spdAbs.toString() : spdAbs.toFixed(1);
+                
+                let dirIcon = "";
+                if (this.displaySpeed > 0 && !isPaused) dirIcon = "↻";
+                else if (this.displaySpeed < 0 && !isPaused) dirIcon = "↺";
+                
+                // 直接物理原理解釋力量顯示邏輯
+                let forceText = "";
+                let forceColor = "#2d3436";
+                if (this.isDriver || this.forceRatio === 1) {
+                    forceText = "⚖️ 力量不變";
+                } else if (this.forceRatio > 1) {
+                    // 力量變大
+                    let formattedRatio = this.forceRatio % 1 === 0 ? this.forceRatio : this.forceRatio.toFixed(1);
+                    forceText = `💪 力量變大! (x${formattedRatio})`;
+                    forceColor = "#d35400"; // 深橙色/紅色系
+                } else {
+                    // 力量變細
+                    let fraction = "1/" + Math.round(1/this.forceRatio);
+                    forceText = `💨 力量變細! (${fraction})`;
+                    forceColor = "#0984e3"; // 藍色系
+                }
+
+                let labelWidth = 165; 
+                let labelHeight = 105; 
+                if (this.jammed && this.errorMsg) labelHeight += 20;
+                let labelY = this.outerRadius + 15;
+                
+                ctx.beginPath();
+                ctx.roundRect(-labelWidth/2, labelY, labelWidth, labelHeight, 8);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+                ctx.fill();
+                
+                if(currentMode === 'TASK_FINISHED' && !this.jammed && (this.driven || this.isDriver)) {
+                    ctx.strokeStyle = '#00b894'; ctx.lineWidth = 3;
+                } else {
+                    ctx.strokeStyle = this.isDriver ? '#e17055' : '#b2bec3'; ctx.lineWidth = 2;
+                }
+                ctx.stroke();
+
+                ctx.textAlign = 'center';
+                let textY = labelY + 20;
+                
+                ctx.fillStyle = '#2d3436'; ctx.font = 'bold 14px Arial';
+                ctx.fillText(`⚙️ ${this.teeth} 齒`, 0, textY);
+                
+                textY += 20;
+                ctx.fillStyle = '#d63031'; ctx.font = 'bold 14px Arial';
+                if (isPaused) {
+                    ctx.fillStyle = '#f39c12';
+                    ctx.fillText(`⏸️ 速度: 0 (定格)`, 0, textY);
+                } else if (this.displaySpeed !== 0 && !this.jammed && (this.driven || this.isDriver)) {
+                    ctx.fillText(`🚀 速度: ${dirIcon} ${spdText}`, 0, textY);
+                } else {
+                    ctx.fillText(`🚀 速度: 0`, 0, textY);
+                }
+                
+                textY += 20;
+                if (this.displaySpeed !== 0 || isPaused) {
+                    ctx.fillStyle = forceColor;
+                    ctx.font = 'bold 13px Arial';
+                    ctx.fillText(forceText, 0, textY);
+                } else {
+                    ctx.fillStyle = '#b2bec3';
+                    ctx.font = 'bold 13px Arial';
+                    ctx.fillText(`-`, 0, textY);
+                }
+
+                textY += 22;
+                ctx.fillStyle = (currentMode === 'TASK_FINISHED' && !this.jammed) ? '#00b894' : '#0984e3';
+                ctx.font = 'bold 16px Arial';
+                ctx.fillText(`🔄 ${turnsText}`, 0, textY);
+
+                if (this.jammed && this.errorMsg) {
+                    textY += 18;
+                    ctx.fillStyle = '#d63031'; ctx.font = 'bold 12px Arial';
+                    ctx.fillText(`❌ ${this.errorMsg}`, 0, textY);
+                }
+                ctx.restore();
+            } else {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                let smallLabelY = this.outerRadius + 5;
+                ctx.beginPath();
+                ctx.roundRect(-25, smallLabelY, 50, 20, 5);
+                ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                ctx.fill();
+                ctx.strokeStyle = '#b2bec3'; ctx.lineWidth = 1; ctx.stroke();
+                ctx.fillStyle = '#2d3436'; ctx.font = '10px Arial'; ctx.textAlign = 'center';
+                ctx.fillText("👁️ 展開", 0, smallLabelY + 14);
+                ctx.restore();
+            }
+        }
+    }
+
+    function toggleAllBubbles() {
+        showAllBubbles = !showAllBubbles;
+        gears.forEach(g => g.showBubble = showAllBubbles);
+        
+        if (showAllBubbles) {
+            btnToggleAllBubbles.innerHTML = "👁️ 隱藏所有氣泡";
+            btnToggleAllBubbles.style.background = "#e0e0e0";
+        } else {
+            btnToggleAllBubbles.innerHTML = "👁️‍🗨️ 顯示所有氣泡";
+            btnToggleAllBubbles.style.background = "#81ecec"; 
+        }
+    }
+
+    function togglePause() {
+        isPaused = !isPaused;
+        if (isPaused) {
+            btnTogglePause.innerHTML = "▶️ 繼續轉動";
+            btnTogglePause.style.background = "#00b894";
+            btnTogglePause.style.color = "white";
+            btnTogglePause.style.borderColor = "#00b894";
+            speedSlider.disabled = true; 
+        } else {
+            btnTogglePause.innerHTML = "⏸️ 暫停";
+            btnTogglePause.style.background = "#fdcb6e";
+            btnTogglePause.style.color = "#2d3436";
+            btnTogglePause.style.borderColor = "#e1b12c";
+            speedSlider.disabled = false;
+        }
+    }
+
+    function switchMode(mode) {
+        if(currentMode === 'TASK_RUNNING') return; 
+        
+        document.getElementById('tabFree').classList.remove('active');
+        document.getElementById('tabTask').classList.remove('active');
+        
+        if (mode === 'FREE') {
+            currentMode = 'FREE';
+            document.getElementById('tabFree').classList.add('active');
+            freeModeControls.style.display = 'block';
+            taskControlPanel.style.display = 'none';
+            if(!isPaused) speedSlider.disabled = false; 
+            successOverlay.style.opacity = 0;
+        } else {
+            currentMode = 'TASK_IDLE';
+            document.getElementById('tabTask').classList.add('active');
+            freeModeControls.style.display = 'none';
+            taskControlPanel.style.display = 'block';
+            successOverlay.style.opacity = 0;
+            btnPlay.innerText = "▶️ 開始演示";
+            btnPlay.style.display = 'block';
+            btnStop.style.display = 'none';
+            if(isPaused) togglePause();
+        }
+        resetTurns();
+    }
+
+    function startMission() {
+        if(isBevelMode) return;
+        let driver = gears.find(g => g.isDriver);
+        if(!driver) return;
+
+        calculateGears(false); 
+        if(gears.some(g => g.jammed)) { alert("系統卡住咗！請先排好齒輪。"); return; }
+        if(gears.filter(g=>g.driven).length === 0) { alert("請先連接從動齒輪！"); return; }
+
+        targetTurns = parseFloat(targetTurnsInput.value);
+        if(isNaN(targetTurns) || targetTurns <= 0) targetTurns = 1;
+
+        resetTurns();
+        alignPointers();
+
+        currentMode = 'TASK_RUNNING';
+        successOverlay.style.opacity = 0;
+        btnPlay.style.display = 'none';
+        btnStop.style.display = 'block';
+        driverTeethSlider.disabled = true;
+        targetTurnsInput.disabled = true;
+    }
+
+    function stopMission() {
+        currentMode = 'TASK_IDLE';
+        successOverlay.style.opacity = 0;
+        btnPlay.style.display = 'block';
+        btnStop.style.display = 'none';
+        driverTeethSlider.disabled = false;
+        targetTurnsInput.disabled = false;
+    }
+
+    function finishMission() {
+        currentMode = 'TASK_FINISHED';
+        successOverlay.style.opacity = 1; 
+        btnPlay.style.display = 'block';
+        btnPlay.innerText = "🔄 重新演示";
+        btnStop.style.display = 'none';
+        driverTeethSlider.disabled = false;
+        targetTurnsInput.disabled = false;
+    }
+
+    function resetTurns() {
+        gears.forEach(g => {
+            g.totalRotation = 0;
+            if(currentMode === 'FREE') g.angle = 0;
+        });
+        if(currentMode !== 'TASK_RUNNING' && currentMode !== 'TASK_FINISHED') {
+            alignPointers();
+        }
+    }
+
+    function alignPointers() {
+        let driver = gears.find(g => g.isDriver);
+        if(!driver) return;
+        driver.angle = 0; 
+        let queue = [driver];
+        while(queue.length > 0) {
+            let current = queue.shift();
+            for(let target of gears) {
+                if(target === current || !target.driven) continue;
+                let dist = Math.hypot(current.x - target.x, current.y - target.y);
+                let idealDist = current.pitchRadius + target.pitchRadius;
+                if(Math.abs(dist - idealDist) <= MODULE * 0.6) {
+                    let angleToTarget = Math.atan2(target.y - current.y, target.x - current.x);
+                    let relativeAngle = current.angle - angleToTarget;
+                    let ratio = current.teeth / target.teeth;
+                    let phaseShift = Math.PI / target.teeth; 
+                    let newAngle = angleToTarget - (relativeAngle * ratio) + phaseShift;
+                    if(target.totalRotation === 0 && target !== driver) {
+                        target.angle = newAngle;
+                        target.totalRotation = 0.0001; 
+                        queue.push(target);
+                    }
+                }
+            }
+        }
+        gears.forEach(g => g.totalRotation = 0);
+    }
+
+    function addGear(teeth, color) {
+        if(isBevelMode || currentMode === 'TASK_RUNNING') return;
+        let startX = (width/2 - camera.x) / camera.zoom + (Math.random()*80 - 40);
+        let startY = (height/2 - camera.y) / camera.zoom + (Math.random()*80 - 40);
+        let newGear = new Gear(startX, startY, teeth, color);
+        newGear.showBubble = showAllBubbles; 
+        gears.push(newGear);
+        if(currentMode === 'TASK_FINISHED') stopMission();
+    }
+
+    function resetCanvas() {
+        if(currentMode === 'TASK_RUNNING' || currentMode === 'TASK_FINISHED') stopMission();
+        gears = [];
+        resetZoom();
+        let driverTeeth = parseInt(driverTeethSlider.value);
+        let driver = new Gear(width/2 - 150, height/2, driverTeeth, '#fab1a0', true);
+        driver.showBubble = showAllBubbles;
+        gears.push(driver);
+        if(isBevelMode) toggleBevelMode();
+    }
+
+    resetCanvas();
+
+    function getPointerPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        let clientX, clientY;
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX; clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX; clientY = e.clientY;
+        }
+        
+        let screenX = clientX - rect.left;
+        let screenY = clientY - rect.top;
+        
+        let worldX = (screenX - camera.x) / camera.zoom;
+        let worldY = (screenY - camera.y) / camera.zoom;
+        
+        return { x: worldX, y: worldY, rawX: screenX, rawY: screenY };
+    }
+
+    function handleStart(e) {
+        if (isBevelMode) return;
+        const pos = getPointerPos(e);
+        
+        clickStartX = pos.rawX;
+        clickStartY = pos.rawY;
+        
+        isDraggingGear = false;
+        isDraggingPan = false;
+        isDraggingBubble = false;
+        
+        for (let i = gears.length - 1; i >= 0; i--) {
+            let g = gears[i];
+            if (!g.showBubble) continue;
+
+            let labelWidth = 165; 
+            let labelHeight = 105; 
+            if (g.jammed && g.errorMsg) labelHeight += 20;
+            let labelY = g.outerRadius + 15;
+
+            let bLeft = g.x + g.bubbleOffsetX - labelWidth/2;
+            let bRight = bLeft + labelWidth;
+            let bTop = g.y + g.bubbleOffsetY + labelY;
+            let bBottom = bTop + labelHeight;
+
+            if (pos.x >= bLeft && pos.x <= bRight && pos.y >= bTop && pos.y <= bBottom) {
+                isDraggingBubble = true;
+                dragBubbleTarget = g;
+                dragStart.x = pos.x - g.bubbleOffsetX;
+                dragStart.y = pos.y - g.bubbleOffsetY;
+                
+                gears.push(gears.splice(i, 1)[0]);
+                if(e.type === 'touchstart') e.preventDefault();
+                return; 
+            }
+        }
+
+        if (currentMode !== 'TASK_RUNNING') {
+            for (let i = gears.length - 1; i >= 0; i--) {
+                let g = gears[i];
+                if (Math.hypot(pos.x - g.x, pos.y - g.y) < g.outerRadius) {
+                    isDraggingGear = true;
+                    dragTarget = g;
+                    gears.push(gears.splice(i, 1)[0]);
+                    if(currentMode === 'TASK_FINISHED') stopMission();
+                    if(e.type === 'touchstart') e.preventDefault();
+                    return;
+                }
+            }
+        }
+
+        isDraggingPan = true;
+        dragStart.x = pos.rawX; dragStart.y = pos.rawY;
+        cameraStart.x = camera.x; cameraStart.y = camera.y;
+        canvas.style.cursor = 'grabbing';
+        
+        if(e.type === 'touchstart') e.preventDefault();
+    }
+
+    function handleMove(e) {
+        if (isBevelMode) return;
+        
+        const pos = getPointerPos(e);
+        
+        if (isDraggingBubble && dragBubbleTarget) {
+            e.preventDefault();
+            dragBubbleTarget.bubbleOffsetX = pos.x - dragStart.x;
+            dragBubbleTarget.bubbleOffsetY = pos.y - dragStart.y;
+        }
+        else if (isDraggingGear && dragTarget) {
+            e.preventDefault();
+            dragTarget.x = pos.x; dragTarget.y = pos.y;
+        } 
+        else if (isDraggingPan) {
+            e.preventDefault();
+            camera.x = cameraStart.x + (pos.rawX - dragStart.x);
+            camera.y = cameraStart.y + (pos.rawY - dragStart.y);
+            document.body.style.backgroundPosition = `${camera.x}px ${camera.y}px`;
+        }
+    }
+
+    function handleEnd(e) {
+        if (isBevelMode) return;
+        
+        let isClick = false;
+        let endPos;
+        
+        if (e.type === 'mouseup') {
+            endPos = { rawX: e.clientX, rawY: e.clientY };
+            if (Math.abs(endPos.rawX - clickStartX) < CLICK_TOLERANCE && Math.abs(endPos.rawY - clickStartY) < CLICK_TOLERANCE) {
+                isClick = true;
+            }
+        } else if (e.type === 'touchend') {
+            if (isDraggingGear) isClick = true; 
+        }
+
+        if (isClick && dragTarget && !isDraggingBubble) {
+            dragTarget.showBubble = !dragTarget.showBubble;
+        }
+
+        isDraggingGear = false; 
+        isDraggingPan = false; 
+        isDraggingBubble = false;
+        dragTarget = null;
+        dragBubbleTarget = null;
+        canvas.style.cursor = 'grab';
+    }
+
+    canvas.addEventListener('mousedown', handleStart);
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleEnd);
+    canvas.addEventListener('touchstart', handleStart, {passive: false});
+    window.addEventListener('touchmove', handleMove, {passive: false});
+    window.addEventListener('touchend', handleEnd);
+
+    speedSlider.addEventListener('input', (e) => {
+        speedValue.innerText = e.target.value;
+        if(isPaused) togglePause(); 
+    });
+
+    driverTeethSlider.addEventListener('input', (e) => {
+        let newTeeth = parseInt(e.target.value);
+        driverTeethValue.innerText = newTeeth;
+        let driver = gears.find(g => g.isDriver);
+        if(driver) driver.setTeeth(newTeeth);
+        if(currentMode === 'TASK_FINISHED') stopMission();
+        resetTurns();
+    });
+
+    function toggleBevelMode() {
+        if(currentMode === 'TASK_RUNNING') return;
+        isBevelMode = !isBevelMode;
+        if(isBevelMode) {
+            bevelBtn.innerText = "🔙 返回齒輪實作";
+            bevelBtn.style.background = "#ff7675";
+            updateStatus("模式：傘齒輪俯視圖 ☂️", "#2c3e50", "none");
+            successOverlay.style.opacity = 0;
+            document.querySelector('.mode-tabs').style.display = 'none';
+            document.getElementById('zoom-controls').style.display = 'none';
+        } else {
+            bevelBtn.innerText = "☂️ 傘齒輪方向模擬";
+            bevelBtn.style.background = "#a29bfe";
+            document.querySelector('.mode-tabs').style.display = 'flex';
+            document.getElementById('zoom-controls').style.display = 'flex';
+            resetCanvas();
+        }
+    }
+
+    function updateStatus(text, color, borderLeftColor) {
+        statusPanel.innerHTML = text;
+        statusPanel.style.color = color;
+        statusPanel.style.borderLeftColor = borderLeftColor || color;
+    }
+
+    function calculateGears(doRotation = true) {
+        gears.forEach(g => {
+            g.driven = false; g.jammed = false; g.errorMsg = "";
+            if (!g.isDriver) { g.realSpeed = 0; g.displaySpeed = 0; g.forceRatio = 1;}
+        });
+
+        let driver = gears.find(g => g.isDriver);
+        if (!driver) return;
+
+        let baseDisplaySpeed = parseFloat(speedSlider.value);
+        if (currentMode === 'TASK_RUNNING') baseDisplaySpeed = TASK_SPEED; 
+        if (currentMode === 'TASK_FINISHED' || currentMode === 'TASK_IDLE') baseDisplaySpeed = 0; 
+        
+        driver.displaySpeed = baseDisplaySpeed;
+        driver.realSpeed = baseDisplaySpeed / 30; 
+        driver.driven = true;
+        driver.forceRatio = 1; 
+
+        let isGlobalJam = false;
+        let queue = [driver];
+
+        const IDEAL_MESH_TOLERANCE = MODULE * 0.6; 
+        const COLLISION_THRESHOLD = MODULE * 0.9;
+
+        while (queue.length > 0) {
+            let current = queue.shift();
+
+            for (let target of gears) {
+                if (current === target) continue;
+
+                let dist = Math.hypot(current.x - target.x, current.y - target.y);
+                let idealDist = current.pitchRadius + target.pitchRadius; 
+
+                if (dist < idealDist - COLLISION_THRESHOLD) {
+                    current.jammed = true; target.jammed = true;
+                    target.errorMsg = "撞齒"; isGlobalJam = true;
+                } 
+                else if (dist >= idealDist - COLLISION_THRESHOLD && dist <= idealDist + IDEAL_MESH_TOLERANCE) {
+                    
+                    let ratio = current.teeth / target.teeth;
+                    let expectedRealSpeed = -current.realSpeed * ratio; 
+                    let expectedDisplaySpeed = -current.displaySpeed * ratio;
+                    let expectedForceRatio = target.teeth / driver.teeth;
+                    
+                    if (target.driven) {
+                        if (Math.sign(target.realSpeed) !== Math.sign(expectedRealSpeed) && expectedRealSpeed !== 0 && target.realSpeed !== 0) {
+                            current.jammed = true; target.jammed = true;
+                            target.errorMsg = "死結"; isGlobalJam = true;
+                        }
+                    } else {
+                        target.realSpeed = expectedRealSpeed;
+                        target.displaySpeed = expectedDisplaySpeed; 
+                        target.forceRatio = expectedForceRatio; 
+                        target.driven = true;
+                        queue.push(target);
+                        
+                        let angleToTarget = Math.atan2(target.y - current.y, target.x - current.x);
+                        let relativeAngle = current.angle - angleToTarget;
+                        let phaseShift = Math.PI / target.teeth; 
+                        target.angle = angleToTarget - (relativeAngle * ratio) + phaseShift;
+                    }
+                }
+                else if (dist > idealDist + IDEAL_MESH_TOLERANCE && dist < current.outerRadius + target.outerRadius) {
+                    if(!target.driven && !isDraggingGear) {
+                        target.jammed = true; target.errorMsg = "空轉";
+                    }
+                }
+            }
+        }
+
+        if (isGlobalJam) {
+            updateStatus("🚨 齒輪重疊或打結，系統卡死！", "var(--danger-red)", "#c0392b");
+            gears.forEach(g => { if (g.driven) { g.jammed = true; g.displaySpeed = 0; } });
+            if(currentMode === 'TASK_RUNNING') stopMission();
+        } else {
+            let activeCount = gears.filter(g=>g.driven && !g.jammed).length;
+            
+            if (currentMode === 'FREE') {
+                if (isPaused) {
+                    updateStatus("⏸️ 暫停中：可慢慢向學生解釋數據", "var(--warning-orange)", "#e1b12c");
+                } else if (activeCount > 1) {
+                    updateStatus(baseDisplaySpeed === 0 ? "🟢 速度為0" : "🟢 運作中：留意速度與力量變化", "var(--success-green)", "#27ae60");
+                } else {
+                    updateStatus("🟡 自由模式：請連接齒輪", "var(--warning-orange)", "#d35400");
+                }
+            } else if (currentMode === 'TASK_RUNNING') {
+                updateStatus("⏳ 任務演示中... 請觀察圈數", "var(--accent-blue)", "var(--accent-blue)");
+            } else if (currentMode === 'TASK_FINISHED') {
+                updateStatus("✅ 任務完成！", "var(--success-green)", "var(--success-green)");
+                gears.forEach(g => g.displaySpeed = 0);
+            } else {
+                updateStatus(activeCount > 1 ? "🟢 連接就緒，按開始演示" : "🟡 任務模式：請先連接齒輪", "var(--warning-orange)", "#d35400");
+                gears.forEach(g => g.displaySpeed = 0);
+            }
+            
+            if(doRotation && !isPaused) {
+                if (currentMode === 'TASK_RUNNING') {
+                    let rotationStep = driver.realSpeed * 0.05;
+                    let nextTurns = Math.abs((driver.totalRotation + rotationStep) / (Math.PI * 2));
+                    
+                    if (nextTurns >= targetTurns) {
+                        let exactRadian = targetTurns * Math.PI * 2 * Math.sign(driver.realSpeed);
+                        let diff = exactRadian - driver.totalRotation;
+                        
+                        gears.forEach(g => {
+                            if (!g.jammed && g.driven) {
+                                let ratio = g.realSpeed / driver.realSpeed;
+                                let finalStep = diff * ratio;
+                                g.angle += finalStep;
+                                g.totalRotation += finalStep;
+                            }
+                        });
+                        finishMission();
+                    } else {
+                        gears.forEach(g => {
+                            if (!g.jammed && g.driven && !isDraggingGear) {
+                                let step = g.realSpeed * 0.05;
+                                g.angle += step; g.totalRotation += step; 
+                            }
+                        });
+                    }
+                } else if (currentMode === 'FREE') {
+                    gears.forEach(g => {
+                        if (!g.jammed && g.driven && !isDraggingGear) {
+                            let step = g.realSpeed * 0.05;
+                            g.angle += step; g.totalRotation += step; 
+                        }
+                    });
+                }
+            }
+        }
+    }
+
+    function drawBevelGearDemo() {
+        if (!isPaused) {
+            globalTime += parseFloat(speedSlider.value) * 0.002;
+        }
+
+        ctx.fillStyle = '#2d3436';
+        ctx.font = 'bold 28px Arial Rounded MT Bold';
+        ctx.textAlign = 'center';
+        ctx.fillText("☂️ 傘齒輪完美俯視圖 (Top-down View)", width/2, 60);
+
+        ctx.font = '16px 微軟正黑體';
+        ctx.fillStyle = '#636e72';
+        ctx.fillText("從正上方看：黃色齒輪打橫推，推動藍色齒輪打直轉", width/2, 95);
+
+        ctx.save();
+        ctx.translate(width/2, height/2 + 50);
+
+        let rotSpeed = globalTime;
+
+        ctx.beginPath();
+        ctx.moveTo(-200, 0); ctx.lineTo(20, 0);
+        ctx.moveTo(0, -200); ctx.lineTo(0, 20);
+        ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 2; ctx.stroke();
+
+        const gearLength = 120; 
+        const maxRadius = 50;   
+        const minRadius = 15;   
+        const gap = 5;          
+
+        ctx.save();
+        ctx.fillStyle = '#b2bec3';
+        ctx.fillRect(-220, -10, 100, 20);
+
+        ctx.beginPath();
+        ctx.moveTo(-gearLength - gap, -maxRadius); 
+        ctx.lineTo(-gap, -minRadius);              
+        ctx.lineTo(-gap, minRadius);               
+        ctx.lineTo(-gearLength - gap, maxRadius);  
+        ctx.closePath();
+        
+        let gradX = ctx.createLinearGradient(0, -maxRadius, 0, maxRadius);
+        gradX.addColorStop(0, '#eccc68');
+        gradX.addColorStop(0.5, '#ffa502');
+        gradX.addColorStop(1, '#eccc68');
+        ctx.fillStyle = gradX;
+        ctx.fill();
+        ctx.lineWidth = 3; ctx.strokeStyle = '#2d3436'; ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+        ctx.lineWidth = 3;
+        for(let i=0; i<5; i++){
+            let yOffset = Math.sin(rotSpeed * 6 + i * 1.5) * (maxRadius * 0.8);
+            ctx.beginPath();
+            ctx.moveTo(-gearLength - gap, yOffset);
+            ctx.lineTo(-gap, yOffset * (minRadius/maxRadius));
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = '#b2bec3';
+        ctx.fillRect(-10, -220, 20, 100);
+
+        ctx.beginPath();
+        ctx.moveTo(-maxRadius, -gearLength - gap); 
+        ctx.lineTo(-minRadius, -gap);              
+        ctx.lineTo(minRadius, -gap);               
+        ctx.lineTo(maxRadius, -gearLength - gap);  
+        ctx.closePath();
+        
+        let gradY = ctx.createLinearGradient(-maxRadius, 0, maxRadius, 0);
+        gradY.addColorStop(0, '#7ed6df');
+        gradY.addColorStop(0.5, '#22a6b3');
+        gradY.addColorStop(1, '#7ed6df');
+        ctx.fillStyle = gradY;
+        ctx.fill();
+        ctx.lineWidth = 3; ctx.strokeStyle = '#2d3436'; ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+        ctx.lineWidth = 3;
+        for(let i=0; i<5; i++){
+            let xOffset = Math.sin(-rotSpeed * 6 + i * 1.5) * (maxRadius * 0.8);
+            ctx.beginPath();
+            ctx.moveTo(xOffset, -gearLength - gap);
+            ctx.lineTo(xOffset * (minRadius/maxRadius), -gap);
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        ctx.fillStyle = '#d63031'; ctx.font = 'bold 20px 微軟正黑體';
+        let speed = parseFloat(speedSlider.value);
+        if (speed !== 0 || isPaused) {
+            let isFwd = speed > 0;
+            ctx.fillText(isFwd ? "↑ 向前推擠" : "↓ 向後拉扯", -120, -70);
+            ctx.fillText(isFwd ? "向右轉動 →" : "← 向左轉動", 60, -120);
+        }
+
+        ctx.beginPath();
+        ctx.arc(-gap, -gap, 30, 0, Math.PI*2);
+        ctx.strokeStyle = '#e17055'; ctx.lineWidth = 3; ctx.setLineDash([5,5]);
+        ctx.stroke(); ctx.setLineDash([]);
+        
+        ctx.fillStyle = '#e17055'; ctx.font = '14px Arial';
+        ctx.fillText("90° 咬合區", 40, -15);
+
+        ctx.restore();
+    }
+
+    function animate() {
+        ctx.clearRect(0, 0, width, height);
+
+        if (isBevelMode) {
+            drawBevelGearDemo();
+        } else {
+            calculateGears();
+            
+            ctx.save();
+            ctx.translate(camera.x, camera.y);
+            ctx.scale(camera.zoom, camera.zoom);
+            
+            gears.forEach(g => { if(!g.jammed) g.draw(); });
+            gears.forEach(g => { if(g.jammed) g.draw(); });
+            
+            ctx.restore();
+        }
+        requestAnimationFrame(animate);
+    }
+
+    animate();
+</script>
+</body>
+</html>

@@ -1,0 +1,1790 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#12100e" />
+<meta name="color-scheme" content="dark" />
+<meta name="description" content="無窮珍奇櫃：一個會自己一直發明故事、詩、城市與生物的單檔網頁。" />
+<title>無窮珍奇櫃</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%2312100e' width='32' height='32'/%3E%3Ccircle cx='16' cy='16' r='10' fill='none' stroke='%238f2d2d' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='2' fill='%23a6844a'/%3E%3C/svg%3E" />
+<style>
+  :root {
+    --bg: #12100e;
+    --paper: #f4ecdc;
+    --paper-2: #efe2cc;
+    --ink: #1c1712;
+    --muted: #7c7164;
+    --seal: #8f2d2d;
+    --gold: #a6844a;
+    --line: rgba(243, 234, 215, 0.16);
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Songti TC", "Songti SC", "PMingLiU", "Noto Serif CJK TC", serif;
+    --sans: "Avenir Next", "PingFang TC", "Noto Sans CJK TC", "Microsoft JhengHei", sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { color-scheme: dark; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--paper);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  ::selection { background: var(--gold); color: var(--bg); }
+  #sky {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .app {
+    position: relative;
+    z-index: 1;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  header {
+    padding: 20px 28px 12px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(18, 16, 14, 0.92), rgba(18, 16, 14, 0.72));
+  }
+  .header-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    align-items: flex-start;
+  }
+  .brand .en {
+    margin: 0;
+    color: var(--gold);
+    letter-spacing: 0.32em;
+    font-size: 11px;
+  }
+  h1 {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: 36px;
+    font-weight: 560;
+    letter-spacing: 0.08em;
+  }
+  .lede {
+    margin: 6px 0 0;
+    max-width: 40em;
+    color: rgba(243, 234, 215, 0.78);
+  }
+  .meter { flex: none; text-align: right; }
+  .meter strong {
+    display: block;
+    font-family: var(--serif);
+    font-size: 32px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .meter .sub {
+    display: block;
+    white-space: nowrap;
+    color: rgba(243, 234, 215, 0.62);
+    font-size: 12px;
+  }
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-top: 14px;
+  }
+  .toolbar button, .toolbar select {
+    background: transparent;
+    border: 1px solid rgba(243, 234, 215, 0.28);
+    border-radius: 999px;
+    padding: 7px 14px;
+  }
+  .toolbar button:hover, .toolbar select:hover { border-color: var(--gold); }
+  .toolbar button[aria-pressed="true"] {
+    background: var(--paper);
+    color: var(--ink);
+    border-color: var(--paper);
+  }
+  label.speed {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: rgba(243, 234, 215, 0.78);
+    font-size: 13px;
+  }
+  input[type="range"] { accent-color: var(--gold); width: 120px; }
+  button:focus-visible, select:focus-visible, input:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+  main {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+  #stage {
+    min-height: 0;
+    overflow: auto;
+    padding: 18px 22px 48px;
+  }
+  #stream {
+    width: min(680px, 100%);
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  #shelf {
+    min-height: 0;
+    overflow: auto;
+    border-left: 1px solid var(--line);
+    padding: 16px 14px 24px;
+    background: rgba(0, 0, 0, 0.18);
+  }
+  #shelf h2 {
+    margin: 0 0 4px;
+    font-family: var(--serif);
+    font-size: 20px;
+    font-weight: 500;
+  }
+  .shelf-note { margin: 0 0 12px; color: rgba(243, 234, 215, 0.55); font-size: 12px; }
+  .shelf-row { display: flex; gap: 6px; margin-bottom: 8px; }
+  .shelf-item {
+    flex: 1;
+    text-align: left;
+    background: rgba(243, 234, 215, 0.05);
+    border: 1px solid rgba(243, 234, 215, 0.12);
+    border-radius: 8px;
+    padding: 8px 10px;
+    min-width: 0;
+  }
+  .shelf-item small {
+    display: block;
+    color: var(--gold);
+    letter-spacing: 0.16em;
+    font-size: 10px;
+  }
+  .shelf-item strong {
+    display: block;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .icon-btn {
+    width: 32px;
+    border-radius: 8px;
+    border: 1px solid rgba(243, 234, 215, 0.16);
+    background: transparent;
+  }
+  .shelf-actions { display: flex; gap: 8px; margin-top: 8px; }
+  .shelf-actions button {
+    flex: 1;
+    background: transparent;
+    border: 1px solid rgba(243, 234, 215, 0.22);
+    border-radius: 999px;
+    padding: 7px 10px;
+  }
+  .empty-shelf { color: rgba(243, 234, 215, 0.55); font-size: 14px; }
+  .card {
+    position: relative;
+    background: linear-gradient(180deg, var(--paper), var(--paper-2));
+    color: var(--ink);
+    border-radius: 4px;
+    padding: 22px 26px 14px;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+    border-left: 3px solid var(--gold);
+    animation: rise 0.45s ease;
+  }
+  @keyframes rise {
+    from { transform: translateY(8px); }
+    to { transform: none; }
+  }
+  #stream .card:first-child { box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(166, 132, 74, 0.55); }
+  .type-story { border-left-color: #314155; }
+  .type-poem { border-left-color: #a6844a; }
+  .type-dialogue { border-left-color: #3f6b62; }
+  .type-question { border-left-color: #6d5a8e; }
+  .type-menu { border-left-color: #b36a3a; }
+  .type-city { border-left-color: #8f2d2d; }
+  .type-creature { border-left-color: #4d7a48; }
+  .type-star { border-left-color: #2d4570; }
+  .type-color { border-left-color: #a6844a; }
+  .type-invention { border-left-color: #5c4636; }
+  .type-law { border-left-color: #8f2d2d; }
+  .type-dream { border-left-color: #3d4c7a; }
+  .type-pattern { border-left-color: #7a6246; }
+  .type-note { border-left-color: #a6844a; background: #f6e7cf; }
+  .type-law { box-shadow: inset 0 4px 0 #8f2d2d, 0 18px 50px rgba(0, 0, 0, 0.35); }
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: baseline;
+    padding-right: 68px;
+    margin-bottom: 8px;
+  }
+  .kicker {
+    color: var(--seal);
+    letter-spacing: 0.22em;
+    font-size: 12px;
+  }
+  .num {
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    font-variant-numeric: tabular-nums;
+  }
+  .seal {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    width: 52px;
+    height: 52px;
+    border: 2px solid var(--seal);
+    color: var(--seal);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-family: var(--serif);
+    font-size: 18px;
+    transform: rotate(-14deg);
+    opacity: 0.88;
+    background: rgba(255, 250, 240, 0.35);
+  }
+  .card-title {
+    margin: 0 0 10px;
+    padding-right: 56px;
+    font-family: var(--serif);
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+  .type-poem .card-title,
+  .type-poem .card-body,
+  .type-poem .epigraph {
+    text-align: center;
+    padding-right: 64px;
+    padding-left: 64px;
+  }
+  .type-question .card-title { font-size: 22px; font-weight: 560; line-height: 1.6; }
+  .type-law .card-title { font-size: 20px; letter-spacing: 0.14em; }
+  .card-body {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.85;
+    white-space: pre-wrap;
+  }
+  .epigraph {
+    margin: 12px 0 0;
+    text-align: center;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .visual { margin-top: 14px; position: relative; z-index: 1; }
+  .visual canvas, .visual svg { width: 100%; height: auto; display: block; border-radius: 2px; }
+  .swatches {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr;
+    grid-template-rows: 78px 78px;
+    gap: 8px;
+  }
+  .swatch {
+    border: none;
+    border-radius: 2px;
+    padding: 8px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-width: 0;
+  }
+  .swatch.hero { grid-row: 1 / span 2; }
+  .swatch span, .swatch small {
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.15);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .swatch small { opacity: 0.85; font-variant-numeric: tabular-nums; }
+  .card-actions {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .card-actions button {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid rgba(28, 23, 18, 0.22);
+    border-radius: 999px;
+    padding: 6px 12px;
+  }
+  .card-actions button:hover { border-color: var(--seal); color: var(--seal); }
+  .card.kept .card-actions [data-act="keep"] { border-color: var(--seal); color: var(--seal); }
+  footer.hints {
+    text-align: center;
+    color: rgba(243, 234, 215, 0.72);
+    font-size: 12px;
+    padding: 8px 16px 12px;
+    border-top: 1px solid var(--line);
+  }
+  #statusline { margin: 8px 0 0; color: rgba(243, 234, 215, 0.55); font-size: 13px; }
+  #toast {
+    position: fixed;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%) translateY(10px);
+    background: var(--paper);
+    color: var(--ink);
+    padding: 10px 16px;
+    border-radius: 999px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 30;
+    transition: 0.25s ease;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  dialog {
+    width: min(680px, calc(100vw - 28px));
+    max-height: min(90dvh, 900px);
+    overflow: auto;
+    border: none;
+    padding: 0;
+    background: transparent;
+  }
+  dialog::backdrop { background: rgba(8, 6, 4, 0.72); }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+  #stage::-webkit-scrollbar, #shelf::-webkit-scrollbar { width: 10px; }
+  #stage::-webkit-scrollbar-thumb, #shelf::-webkit-scrollbar-thumb {
+    background: rgba(243, 234, 215, 0.2);
+    border-radius: 99px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card { animation: none; }
+    #toast { transition: none; }
+  }
+  @media (max-width: 860px) {
+    body { overflow: auto; }
+    .app { height: auto; min-height: 100dvh; }
+    main { grid-template-columns: 1fr; }
+    #stage { overflow: visible; }
+    #shelf { border-left: none; border-top: 1px solid var(--line); max-height: none; }
+    h1 { font-size: 30px; }
+    header { padding: 16px 16px 12px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="sky" aria-hidden="true"></canvas>
+<div class="app">
+  <header>
+    <div class="header-row">
+      <div class="brand">
+        <p class="en">INFINITE CABINET</p>
+        <h1>無窮珍奇櫃</h1>
+        <p class="lede">一個 HTML，一勞永逸。模型會累，這頁不會。它自己一直發明，直到你把櫃門關上。</p>
+        <p id="statusline">正在想起下一件……</p>
+      </div>
+      <div class="meter" aria-live="off">
+        <strong id="count">0</strong>
+        <span class="sub">件已生成</span>
+        <span class="sub">還能繼續 ∞</span>
+      </div>
+    </div>
+    <div class="toolbar">
+      <button type="button" id="pause" aria-pressed="false">暫停</button>
+      <button type="button" id="next">再來一件</button>
+      <button type="button" id="burst">再來七件</button>
+      <button type="button" id="keep-latest">收藏最新</button>
+      <label class="speed">節奏
+        <span id="speedlabel"></span>
+        <input id="speed" type="range" min="900" max="8000" step="100" value="2800" aria-valuemin="900" aria-valuemax="8000" />
+      </label>
+      <select id="filter" aria-label="接下來只陳列">
+        <option value="all">全部展品</option>
+      </select>
+    </div>
+  </header>
+  <main>
+    <div id="stage">
+      <div id="stream" aria-label="展品"></div>
+    </div>
+    <aside id="shelf" aria-label="收藏架">
+      <h2>收藏架</h2>
+      <p class="shelf-note">留在這台裝置上。換瀏覽器就換一櫃，這一櫃不會自己消失。</p>
+      <div id="shelf-list"></div>
+      <div class="shelf-actions">
+        <button type="button" id="export">匯出</button>
+        <button type="button" id="clear">清空</button>
+      </div>
+    </aside>
+  </main>
+  <footer class="hints">空白鍵暫停 · N 下一件 · S 收藏最新 · 單檔、離線也能跑</footer>
+</div>
+<dialog id="reader" aria-label="展品"></dialog>
+<div id="toast" role="status"></div>
+<div id="live" class="sr-only" aria-live="polite"></div>
+<script>
+(() => {
+  "use strict";
+
+  const KEY = "infinite-cabinet-v1";
+  const ORDER = ["story", "poem", "dialogue", "question", "menu", "city", "creature", "star", "color", "invention", "law", "dream", "pattern", "note"];
+  const WEIGHTS = [["story", 6], ["poem", 4], ["dialogue", 3], ["question", 3], ["menu", 2], ["city", 2], ["creature", 2], ["star", 2], ["color", 2], ["invention", 2], ["law", 2], ["dream", 2], ["pattern", 1]];
+  const KICKERS = {
+    story: "微型小說", poem: "短詩", dialogue: "兩句之間", question: "留給你",
+    menu: "不存在的菜單", city: "地圖外的城", creature: "博物誌", star: "星圖",
+    color: "尚未使用的顏色", invention: "小型發明", law: "另一套法律",
+    dream: "夢的說明書", pattern: "失傳圖樣", note: "櫃員留言"
+  };
+  const SEALS = {
+    story: "說", poem: "詩", dialogue: "話", question: "問", menu: "食",
+    city: "城", creature: "獸", star: "星", color: "色", invention: "器",
+    law: "法", dream: "夢", pattern: "紋", note: "記"
+  };
+
+  const PEOPLE = ["阿寧", "老周", "小滿", "陳暮", "何安", "林夏", "江晚", "宋紙", "顧南", "沈燈", "白露", "程野", "葉舟", "許慢", "方棠", "羅針", "溫酌", "韓潮", "梁石", "蔡雲", "丁零", "蘇澄", "高樓", "潘渡", "杜若", "謝秋", "南遲", "祁年", "孟燈", "阮杯"];
+  const PLACES = ["北站的長椅", "二十四小時書店的燈下", "河堤", "舊郵局櫃台前", "天橋底下", "社區游泳池的淺水區", "博物館防火梯", "夜間巴士的最後一排", "菜市場收攤後的走道", "屋頂水塔旁邊", "銀行大廳的號碼燈下", "海邊那座不再轉的旋轉木馬", "圖書館閉架區", "醫院走廊的自動販賣機前", "寺廟側門", "地下道的壁畫前", "渡輪甲板", "學校琴房", "空屋的廚房", "天文台的台階"];
+
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function rng() {
+      a |= 0;
+      a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function pick(rng, arr) { return arr[Math.floor(rng() * arr.length)]; }
+  function irand(rng, lo, hi) { return lo + Math.floor(rng() * (hi - lo + 1)); }
+  function chance(rng, p) { return rng() < p; }
+  function pickWeighted(rng, pairs) {
+    let total = 0;
+    for (const pair of pairs) total += pair[1];
+    let x = rng() * total;
+    for (const pair of pairs) {
+      x -= pair[1];
+      if (x < 0) return pair[0];
+    }
+    return pairs[pairs.length - 1][0];
+  }
+  function hslToHex(h, s, l) {
+    const hue = ((h % 360) + 360) % 360;
+    const sat = s / 100;
+    const lig = l / 100;
+    const a = sat * Math.min(lig, 1 - lig);
+    const f = (n) => {
+      const k = (n + hue / 30) % 12;
+      const color = lig - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+      return Math.round(255 * color).toString(16).padStart(2, "0");
+    };
+    return "#" + f(0) + f(8) + f(4);
+  }
+  function twoPeople(rng) {
+    const a = pick(rng, PEOPLE);
+    let b = pick(rng, PEOPLE);
+    let guard = 0;
+    while (b === a && guard < 6) {
+      b = pick(rng, PEOPLE);
+      guard += 1;
+    }
+    return [a, b];
+  }
+
+  const STORY_MAKERS = [
+    (rng) => {
+      const name = pick(rng, PEOPLE);
+      const place = pick(rng, PLACES);
+      return { title: "閉館之前", body: `${name}在${place}等到閉館。管理員過來鎖門，卻先問了一句：「你是來還東西的，還是來把東西忘掉的？」${name}想了想，把口袋裡一枚沒有年份的硬幣放上台階，算是兩種都付了一點。` };
+    },
+    (rng) => {
+      const name = pick(rng, PEOPLE);
+      const place = pick(rng, PLACES);
+      return { title: "昨天的鏡子", body: `${place}出現一面只反射昨天的鏡子。${name}站了很久，看見自己把傘忘在一場還沒開始的雨裡。鏡子裡的人回頭看了一眼，像是在說：至少昨天的你有打算回來拿。` };
+    },
+    (rng) => {
+      const name = pick(rng, PEOPLE);
+      const place = pick(rng, PLACES);
+      return { title: "抄近路的影子", body: `${name}的影子最近學會抄近路。人還在${place}，影子已經到家，把門鈴按響，然後不好意思地等著。${name}回家時，影子把鞋尖並攏，好像遲到的是主人。` };
+    },
+    (rng) => {
+      const name = pick(rng, PEOPLE);
+      const place = pick(rng, PLACES);
+      return { title: "多出來的七分鐘", body: `全市的鐘在星期二集體慢了七分鐘。${name}利用這段多出來的時間，去${place}坐著，什麼都沒做。事後覺得這七分鐘比整週都長，長得足夠把一個猶豫放完。` };
+    },
+    (rng) => {
+      const name = pick(rng, PEOPLE);
+      const place = pick(rng, PLACES);
+      return { title: "心情鑰匙", body: `${name}撿到一串不會開任何鎖的鑰匙。每把鑰匙對應一種心情。最亮的那把，只能在${place}想家的時候轉動半圈。轉完，家並沒有因此更近，但口袋暖了一點。` };
+    },
+    (rng) => {
+      const name = pick(rng, PEOPLE);
+      const place = pick(rng, PLACES);
+      return { title: "一個字", body: `有人在${place}發傳單，上面只印著一個字：「留」。${name}收下之後，口袋裡的零錢再也沒有走失過。傳單後來自己摺成一艘很小的船，停在錢包的夾層裡。` };
+    },
+    (rng) => {
+      const name = pick(rng, PEOPLE);
+      const place = pick(rng, PLACES);
+      return { title: "回聲過得比較整齊", body: `${name}發現自己的回聲住在${place}，而且過著比本人整齊的生活。回聲有固定的午睡，也按時回信。${name}有時會去看它，不說話，只把亂掉的一天在門口拍一拍。` };
+    },
+    (rng) => {
+      const name = pick(rng, PEOPLE);
+      const place = pick(rng, PLACES);
+      return { title: "只下在左邊的雨", body: `雨只下在${name}的左邊。走過${place}時，右肩是乾的，左肩已經為一整個季節負責。對街的人以為這是一種新的天氣，開始把重要的話都放在身體比較乾的那一側。` };
+    },
+    (rng) => {
+      const name = pick(rng, PEOPLE);
+      const place = pick(rng, PLACES);
+      return { title: "認得出猶豫的門", body: `${place}的自動門認不出${name}，卻對${name}的猶豫很熟。門會提早打開，像在說：你每次都是這樣，停一下，然後還是進來。${name}這次真的停久了一點，門也耐心得不像機器。` };
+    },
+    (rng) => {
+      const name = pick(rng, PEOPLE);
+      const place = pick(rng, PLACES);
+      return { title: "逆流紙船", body: `${name}把一個秘密摺成紙船，放進${place}附近的水裡。紙船沒有沉。它逆流，慢慢回到鞋邊，船上多了一行別人的字：「收到，我也是。」${name}沒有再摺第二次。一次就已經有人在對岸。` };
+    },
+    (rng) => {
+      const name = pick(rng, PEOPLE);
+      const place = pick(rng, PLACES);
+      return { title: "值日的燈", body: `夜裡，${place}的燈會輪流值日。${name}第一次看見路燈把光借給對面的窗，窗又把光還給一隻貓。貓把光踩滅了。黑暗因此變得比較柔軟，像被誰輕輕放下。` };
+    },
+    (rng) => {
+      const name = pick(rng, PEOPLE);
+      const place = pick(rng, PLACES);
+      return { title: "放輕的告別", body: `${name}在${place}學會一種新的告別：不揮手，只把名字的最後一個字放輕。對方居然聽懂了，也把回應的第一個字放輕。兩個輕字在空氣裡碰上，沒有發出聲音，卻都到站了。` };
+    },
+    (rng) => {
+      const name = pick(rng, PEOPLE);
+      const place = pick(rng, PLACES);
+      return { title: "補上的巷子", body: `地圖在${place}附近留白。${name}用鉛筆補上一條巷子，第二天那條巷子真的可以走。巷尾有一家只賣熱湯的店，湯的味道像某一年的冬天。店主說：你畫的時候手要穩，否則湯會灑。` };
+    },
+    (rng) => {
+      const name = pick(rng, PEOPLE);
+      const place = pick(rng, PLACES);
+      return { title: "過早的幸福", body: `${name}收到一張罰單，違規事項是「在${place}過早地感到幸福」。罰鍰可以用一次誠實的午睡抵銷。${name}照做了。醒來時罰單變成書籤，夾在一本還沒開始的書裡。` };
+    },
+    (rng) => {
+      const name = pick(rng, PEOPLE);
+      const place = pick(rng, PLACES);
+      return { title: "遺失物中轉站", body: `所有遺失物最後都會經過${place}。${name}在那裡坐了一個下午，看見童年的一顆彈珠、去年的一句道歉，以及一個還沒發生的見面，排隊等著被認領。${name}只取回了道歉，其餘的讓它們再等等。` };
+    },
+    (rng) => {
+      const name = pick(rng, PEOPLE);
+      const place = pick(rng, PLACES);
+      return { title: "空白門牌", body: `${place}有一扇門，門牌是空白的。${name}敲了敲，裡面的人說：「如果你知道自己找誰，就走錯了。」${name}不知道，於是被請進去喝茶。茶沒有名字，溫度剛好是被記得的那種。` };
+    },
+    (rng) => {
+      const name = pick(rng, PEOPLE);
+      const place = pick(rng, PLACES);
+      return { title: "同一天三遍", body: `${name}把今天重複活了三遍。第一遍忘了帶傘，第二遍在${place}把傘借給陌生人，第三遍雨沒有下，傘變成一把多餘的好意。多餘的好意沒有損壞任何人，只是把空氣變得比較好走路。` };
+    },
+    (rng) => {
+      const [a, b] = twoPeople(rng);
+      const place = pick(rng, PLACES);
+      return { title: "兩列客氣的火車", body: `${a}在${place}看見自己的背影迎面走來。兩個${a}同時側身，像兩列學會客氣的火車。擦肩時，其中一位把接下來一小時的勇氣遞了過去。另一位沒有推辭，因為勇氣這種東西，本來就常常是向自己借的。` };
+    },
+    (rng) => {
+      const name = pick(rng, PEOPLE);
+      const place = pick(rng, PLACES);
+      return { title: "溫柔的通知", body: `${name}的手機在${place}自動改了語言。每個通知都變成溫柔的祈使句：「吃飯。」「把肩膀放下。」「你可以晚一點再勇敢。」${name}把鈴聲也關掉，改聽這些句子排隊進來的聲音。` };
+    },
+    (rng) => {
+      const [a, b] = twoPeople(rng);
+      const place = pick(rng, PLACES);
+      return { title: "你先走", body: `${a}在${place}對${b}說：「你先走。」${b}沒有走，只是把這句話撿起來，放進自己的口袋，像放一枚還會發熱的硬幣。後來他們還是一起離開。硬幣留在口袋裡，一路都沒有涼。` };
+    }
+  ];
+
+  const POEMS = [
+    { theme: "海", lines: [
+      ["潮水把燈一盞盞送回岸上。", "夜航的人把名字放得很輕。", "舊碼頭還記得每雙鞋的聲音。", "海風在誰的口袋裡過了夜。"],
+      ["有一句話終於沒有上船。", "遠方把窗子留成一條縫。", "信紙比波浪先乾。", "水手用沉默跟燈塔打招呼。"],
+      ["天亮以前，先不要醒。", "未說完的，都先算溫柔。", "岸會等，船也會等。", "今天的海沒有向你要答案。"]
+    ]},
+    { theme: "車站", lines: [
+      ["末班車把燈光摺好，放進月台。", "檢票口認得猶豫，不認得謊言。", "行李比人先到達想念。", "廣播把名字唸得很輕，怕驚動別的城市。"],
+      ["你晚到的那幾分鐘，被椅子保管著。", "時刻表有一行是用鉛筆寫的。", "有人把回程票夾在書裡，當成書籤。", "風從隧道那頭帶來別的季節。"],
+      ["坐下，就算已經出發。", "下一站的名字可以稍後再認。", "車門關上之前，先把自己帶齊。", "到站的鐘聲沒有責備任何人。"]
+    ]},
+    { theme: "廚房", lines: [
+      ["鍋子先熱起來，話可以晚一點。", "鹽記得每一雙洗過的手。", "半夜的水開了，像有人在遠方點頭。", "砧板還留著白天的陽光。"],
+      ["為一個人煮的湯，會自己學會分量。", "蒸氣在窗上寫下看不懂的字。", "碗先被暖過，才盛得住晚上。", "冰箱的燈是家裡最小的月亮。"],
+      ["吃完，把椅子推回去，日子就整齊了。", "剩菜是明天仍願意見你的證據。", "火焰很小，足夠把後悔煮軟。", "關火的那一下，屋子輕輕鬆了一口氣。"]
+    ]},
+    { theme: "雨", lines: [
+      ["雨先敲窗，再敲那些沒說出口的句子。", "傘下的世界縮小成兩個人的距離。", "水溝把城市的秘密送去海邊。", "雨衣的顏色比心情誠實。"],
+      ["有人把鑰匙握熱了才開門。", "路面把燈火揉成一團金。", "雨停之前，誰都不急著把話說完。", "屋簷練習了一整夜的節拍。"],
+      ["天亮時，只留下杯子裡的一圈水痕。", "鞋子記得所有避開的水窪。", "空氣被洗過，適合重新開始。", "最後一滴，留給還沒原諒的那件事。"]
+    ]},
+    { theme: "圖書館", lines: [
+      ["閉架裡的書會在夜裡互相借閱。", "索引卡記得每個被手指停過的名字。", "燈光把灰塵慢慢養成星星。", "某人的筆跡在頁緣留下來過夜。"],
+      ["沉默在這裡是一種公共設施。", "椅子學會了不同體重的心事。", "逾期的不是書，是一句該說的話。", "目錄裡藏著一條沒有人走的路。"],
+      ["把書合上，等於跟今天道別。", "未被借出的那一本，也活得很好。", "走出門時，請把安靜還給下一個人。", "知識會等。等本身就是一種架上的位置。"]
+    ]},
+    { theme: "夜城", lines: [
+      ["便利商店是城市還沒睡的眼睛。", "斑馬線在沒有人時也認真站著。", "高樓把月亮切成許多小塊，分給窗。", "計程車的空車牌像一顆猶豫的心。"],
+      ["有人在天橋上把一天交還給風。", "霓虹承諾了很多，街樹一概不信。", "巷口的貓是夜間的管理員。", "最後一盞燈負責記住回家的路。"],
+      ["腳步聲放輕，就算對這座城有禮貌。", "夜班的人彼此點頭，不必交換姓名。", "天亮是一種集體的寬恕。", "你走過的地方，燈光會再亮一下。"]
+    ]},
+    { theme: "信", lines: [
+      ["信封先胖起來，才裝得下想念。", "地址寫到一半，雨開始站在你這邊。", "郵票是一扇很小的、付過費的門。", "未寄出的那封，仍在抽屜裡呼吸。"],
+      ["收件人的名字被你寫得比平常慢。", "信紙的後半留白，留給對方的安靜。", "郵戳蓋在一個還沒發生的下午。", "墨水乾了，話卻還是熱的。"],
+      ["若寄丟了，就當風先讀過。", "回信不必長，一句到站就好。", "把信摺好，等於把心摺到可以攜帶。", "今天不寄也可以。紙會替你保管勇氣。"]
+    ]},
+    { theme: "山", lines: [
+      ["路變陡的地方，話自然變少。", "雲把山腰的房子借去半天。", "石頭記得每一雙坐過的人。", "風從很高的地方下來，口袋都是涼的。"],
+      ["回聲比人晚到，卻比較誠實。", "樹影把午後切成可以休息的塊。", "山泉把石頭磨成一種慢。", "遠處的屋簷升起很小的一筆煙。"],
+      ["下山時請把安靜一起帶走一點。", "高峰沒有在等你證明什麼。", "腳步放穩，就是對山的回答。", "今晚的星星離路很近，近到像在送行。"]
+    ]}
+  ];
+
+  const DIALOGUES = [
+    ["風", "甲　你有沒有覺得今天的風很熟？\n乙　熟就好。陌生的風總會把帽子帶走。\n甲　那我的帽子呢？\n乙　在明天，晾著。"],
+    ["兩把傘", "甲　我帶了兩把傘。\n乙　你只會淋濕一次。\n甲　另一把是給忘記帶傘的人。\n乙　那個人通常是明天的你。"],
+    ["熱湯", "甲　湯還要不要？\n乙　要。我今天把很多話咽回去了，得補一點熱的。\n甲　那我少問兩句。\n乙　你問吧。問也是熱的。"],
+    ["鑰匙", "甲　這把鑰匙開哪一扇門？\n乙　開你改變主意的那一扇。\n甲　如果我沒有改變主意呢？\n乙　那它就先幫你保管門。"],
+    ["末班車", "甲　這班車還會等我嗎？\n乙　會等正在跑的人。\n甲　我看起來像在跑嗎？\n乙　你看起來像在把一句話追上來。上車。"],
+    ["貓的審查", "甲　貓今天一直看著我。\n乙　它在確認你是不是還是你。\n甲　那答案呢？\n乙　它還沒離開，就算通過。"],
+    ["空地址", "甲　這封信要寄嗎？\n乙　地址是空的。\n甲　收件人知道自己是誰。\n乙　那就放到窗邊。風會挑有勇氣的那一封。"],
+    ["慢七分鐘的錶", "甲　你的錶慢了。\n乙　是我讓它慢的。\n甲　為什麼？\n乙　有個人還在路上。我想讓準時等他一下。"],
+    ["影子去排隊", "甲　你的影子今天沒跟上。\n乙　它去排隊了。\n甲　排什麼？\n乙　排一個比較輕的版本的我。"],
+    ["跟雨有約", "甲　雨這麼大，你還出嗎？\n乙　我跟雨約好了。\n甲　約在哪？\n乙　約在我終於願意出門的這一步。"],
+    ["想被怎樣叫", "甲　如果可以改名，你要改成什麼？\n乙　改成一句別人叫得出口的話。\n甲　例如？\n乙　「吃飯了」。我想天天被這樣叫。"],
+    ["留下外套", "甲　你要留下還是離開？\n乙　我把外套留下，人先離開。\n甲　外套算數嗎？\n乙　外套會記得椅子的溫度。算數。"],
+    ["最後一盞燈", "甲　最後一盞燈是誰的？\n乙　是還沒睡的那個人的。\n甲　如果全城都睡了呢？\n乙　那盞燈就改由月亮值班。月亮很少請假。"],
+    ["把再見拆開", "甲　再見。\n乙　這兩個字太重，你分我一個。\n甲　那我說「再」，你說「見」。\n乙　見。我把我的那一半留到下次。"]
+  ];
+
+  const QUESTIONS = [
+    "如果回憶可以借給別人，你會把自己的哪一段借出去，又怕對方還回來時變得比較亮？",
+    "一座城市把「對不起」設成單行道之後，變好的會是交通，還是關係？",
+    "鎖如果會夢見鑰匙，它夢見的是被打開，還是終於可以休息？",
+    "把所有未讀訊息疊成一座山，山的另一邊是誰在等？",
+    "假如影子需要繳稅，你願意為哪一種姿態付比較多？",
+    "有一種地圖只標出人猶豫過的地方。你的家鄉會不會因此變得比國境還大？",
+    "如果夜晚是一種公共設施，它應該幾點打烊？",
+    "書的最後一頁如果可以反過來讀你，它會先讀到哪一句？",
+    "把沉默裝進瓶子裡，瓶蓋該朝上還是朝下，它才不會漏掉？",
+    "時鐘願意為誰停一下，而又不被叫做故障？",
+    "如果每個人每年可以刪掉一天，大家會不會不約而同刪掉同一個星期二？",
+    "路燈看到的城市，和窗戶看到的城市，哪一個比較誠實？",
+    "信封如果不願意被寄出，它是在保護寫信的人，還是在保護收信的人？",
+    "假使所有的門都改成往內開，人們會變得比較願意留下，還是比較害怕進入？",
+    "你願意用哪一個很小的秘密，去交換一個永遠不會響的鬧鐘？",
+    "若是笑容有保存期限，你會把它放在門邊，還是放在抽屜深處？",
+    "一座橋如果記得每一個走過的人，它會不會比我們更重？",
+    "月亮如果只是地球忘了關的燈，該去關它的人，現在睡了沒有？"
+  ];
+  const QUESTION_NOTES = [
+    "沒有標準答案。若有，也請不要太快交卷。",
+    "可以先收藏，像收藏一顆暫時不咬的糖。",
+    "想三分鐘就夠。想太久，它會變成另一件展品。",
+    "不必回答。讓它在口袋裡跟鑰匙碰一碰就好。"
+  ];
+
+  const MENUS = [
+    ["遲到食堂", "一間以「你還是來了」招呼客人的小店。\n\n前菜　窗台上涼掉的黃昏，撒一點鹽\n主菜　為兩個人煮、後來一個人吃完的麵\n甜點　一塊記得被誇獎的蛋糕\n結帳　把今天多出來的歉意留下"],
+    ["回聲麵店", "只在夜裡營業，因為回聲白天要上班。\n\n前菜　一碟沉默，可續\n主菜　湯頭是昨天沒說完的話\n配菜　洗淨後清炒的多餘勇氣\n結帳　把碗放回原處，算你付過了"],
+    ["未命名早餐", "菜單每天只改一個字。\n\n前菜　半顆還在猶豫的水煮蛋\n主菜　烤到剛好可以原諒昨天的吐司\n飲品　溫熱的空白，無糖\n結帳　告訴店員你的名字。名字不會被寫下來"],
+    ["橋下湯屋", "過橋的人都可以進來，不過橋的人優先。\n\n前菜　鹽，來自一次退潮\n主菜　只用香氣、不用釣竿的魚湯\n甜點　熱乎乎的「無」\n結帳　在橋上許一個很小的願，不必說出來"],
+    ["第二輪餐廳", "專供那些覺得今天還可以再試一次的人。\n\n前菜　重新熱過的決心，佐檸檬\n主菜　慢火燉到軟掉的計畫\n甜點　一份不比較的布丁\n結帳　預約下一次的自己"],
+    ["空椅咖啡館", "每張桌子都多放一隻杯子。\n\n前菜　別人沒有吃完的陽光\n主菜　兩人份的三明治，切成可以分享的形狀\n飲品　聽見雨聲才會涼的咖啡\n結帳　若你是一個人來，杯子仍算一位客人"],
+    ["月台便當", "只在列車即將離開時賣完。\n\n前菜　一顆滷蛋，滷了正好一個等車的時間\n主菜　飯糰，裡頭包著今天要去的方向\n甜點　一塊海苔那麼大的夜晚\n結帳　把票根留在櫃台，他們會保管到下一班"],
+    ["霧中小館", "能見度只有一張桌子那麼遠，所以每個人都專心吃飯。\n\n前菜　看不太清楚、但很好吃的涼拌\n主菜　用來找回自己輪廓的熱湯\n甜點　雲，限量，因為會散\n結帳　走出霧之後再付款。大多數人會記得回來"],
+    ["慢半拍酒館", "所有菜都晚十分鐘上，正好夠你把話想好。\n\n前菜　一碟話梅，專治想太快\n主菜　燉到時間變軟的菇\n甜點　融化速度跟固執一樣的冰淇淋\n結帳　小費請付一個微笑，找零是比較輕的肩膀"],
+    ["紙上餐廳", "菜單可以吃。吃完才知道今天煮了什麼。小心，有時會吃到一句詩。\n\n前菜　油墨輕煎\n主菜　空白頁，火候看心情\n甜點　一個脆的句號\n結帳　在菜單背面寫下明天想吃的東西。廚房會當真"],
+    ["借光食堂", "晚上不開燈。客人自備心事，店家提供火焰。\n\n前菜　烤得剛好的陰影\n主菜　分給整桌的星光（實際為高湯）\n甜點　熄燈之前的那口甜\n結帳　把燈留一盞給下一位"],
+    ["平常日子鋪", "沒有招牌菜。招牌是你願意坐下來。\n\n前菜　今日份量的鹽\n主菜　熱飯，直到你想起自己餓過\n湯　清的，像一句沒有責備的話\n結帳　與平常相同。平常，就是這裡最貴的東西"]
+  ];
+
+  const LAWS = [
+    "任何人不得在雨停之前把話說完。\n但書：若對方先笑了，本條暫時失效。\n罰則：在門口多站一會兒，直到口袋裡的鑰匙變涼。",
+    "禁止在橋的正中央做決定。\n但書：決定的內容若是「算了」，可以就地生效。\n罰則：必須走到對岸，再走回來，當作沒有。",
+    "夜間十一點後，燈光須調成能夠說實話的亮度。\n但書：讀書燈可申請延長。\n罰則：多夢到一盞沒關的燈。",
+    "遺失物在七日內仍屬原主；八日後，改屬第一個溫柔對待它的人。\n但書：鑰匙永遠屬於會把門打開的那一位。\n罰則：無。本條不設罰，只設歸宿。",
+    "不得同時對兩個人許下同一個黃昏。\n但書：若兩人都知道彼此，黃昏可以加長，不可分割。\n罰則：下一週的星期二將少掉二十分鐘。",
+    "公共長椅上的空位，優先保留給猶豫的人。\n但書：睡著的人視同正在進行深刻的猶豫。\n罰則：請去買兩杯熱的，一杯給自己，一杯給旁邊。",
+    "凡把「以後再說」說出聲者，須當場指定一個日期。\n但書：日期可以是「雨停的那天」。\n罰則：該句話將被印在隔天的收據背面。",
+    "貓有權拒絕被拍照，人有權拒絕被誤會。\n但書：兩者發生衝突時，以貓為準。\n罰則：向最近的一盆植物解釋來龍去脈。",
+    "書店內禁止比較誰更孤獨。\n但書：可以比較哪本書更重。\n罰則：須朗讀一段自己沒打算買的序文。",
+    "所有道歉須在溫度適宜時送達，不可趁對方忙碌。\n但書：若對方正在等這句話，可插隊。\n罰則：道歉退回寄件人，並附一句「請重熱」。",
+    "地圖上允許保留一條不存在的路，供不想被找到的日子使用。\n但書：該路不得通往銀行。\n罰則：無。被找到純屬自願。",
+    "最後一班車有義務等一個正在跑來的人，沒有義務等一個還在猶豫的人。\n但書：司機看得出差別。\n罰則：下一班會準時。準時本身即是提醒。",
+    "任何人都可以申請一次「今天不算數」，每年限一次。\n但書：不算數的那天若有人對你好，仍然算數。\n罰則：無。本條是福利，不是刑罰。",
+    "回聲若比本人更有禮貌，本人應於三日內向回聲看齊。\n但書：唱歌時不受此限。\n罰則：回聲將暫時休假，讓你聽聽沒有餘韻的自己。"
+  ];
+
+  const INVENTIONS = [
+    ["便攜式黃昏", "把一段下午五點裝進鐵盒。打開時，房間的影子會自動拉長。\n副作用：信件會寫得比較誠實。\n說明書最後一行：用完請把蓋子蓋好，否則明天會提早到來。"],
+    ["猶豫烘乾機", "專門處理還沒說出口的那一半。低溫，慢速，不損傷原意。\n副作用：烘完的句子會變短。\n說明書最後一行：不可烘乾道歉，它們需要保持一點濕度。"],
+    ["單人回聲", "戴上之後，你說的話會晚兩秒回來，語氣比較溫和。\n副作用：吵架會變得很難，因為回聲拒絕提高音量。\n說明書最後一行：若回聲先道歉，請照做。"],
+    ["只擦日期的橡皮", "內容留下，日期消失。適合日記，也適合遺憾。\n副作用：星期會變得不可考。\n說明書最後一行：請不要用在車票上。"],
+    ["方向感備用電池", "在不知道要回家還是要離開時使用。電量只夠走到下一個路口。\n副作用：會突然想念某個沒去過的地方。\n說明書最後一行：不可充電，只可更換城市。"],
+    ["沉默加熱杯", "把不想說的話倒進去，會以適飲溫度保溫一整晚。\n副作用：清晨可能變成果汁，也可能變成一封信。\n說明書最後一行：請勿微波。"],
+    ["第二次握手的手套", "第一次握手用自己的手。第二次改用這副，對方會覺得你比較記得他。\n副作用：可能被認成多年的朋友。\n說明書最後一行：對陌生人使用前，先確認自己願意真的記得。"],
+    ["雨的試用裝", "一小瓶，只夠淋濕肩膀，不夠構成藉口。\n副作用：頭髮會有海的味道。\n說明書最後一行：試用滿意後，天空不負責續杯。"],
+    ["延期發生的鏡子", "照到的事情會晚一天才發生。適合用來預演勇敢。\n副作用：微笑也會遲到。\n說明書最後一行：不要連照三次，否則週末會擠在一起。"],
+    ["誠實溫度計", "量的不是體溫，是一句話有幾分真。三十七度最舒服。\n副作用：對著空房間也會有讀數。\n說明書最後一行：讀數偏低時，先喝水，不要先辯解。"],
+    ["說真話才透光的窗", "其餘時間它是一面牆，保護你，也保護街。\n副作用：鄰居可能以為你不在家。\n說明書最後一行：玻璃不可替換為其他品德。"],
+    ["口袋退潮", "把口袋裡不必帶著走的東西緩緩退走，鑰匙除外。\n副作用：偶爾會退走一枚你其實還喜歡的硬幣。\n說明書最後一行：退走的東西會在夢裡的沙灘歸還。"],
+    ["遠距遞湯器", "把熱湯送給另一個城市的人，湯到時仍然剛好可以喝。\n副作用：附帶你家廚房的聲音。\n說明書最後一行：對方若已睡著，湯會在門口等成早晨。"],
+    ["道歉縮小器", "不是讓錯變小，是讓聲音變小，好讓對方聽得見。\n副作用：縮小後的道歉會變得比較重。\n說明書最後一行：不可連續使用超過三次。"],
+    ["走路用的標點", "鞋跟會在你該停的地方輕敲句號，在你該轉彎的地方敲逗號。\n副作用：散步可能變成一篇短文。\n說明書最後一行：跑步時自動切換為刪節號。"],
+    ["可存取的月亮", "夜間營業。存入一件放不下的事，利息是多一點睡眠。\n副作用：滿月時會寄對帳單，內容只有一句「還好嗎」。\n說明書最後一行：提款不必排隊，但要抬頭。"]
+  ];
+
+  const NOTES = [
+    ["燈調暗一格", "櫃員把燈調暗了一格。不是打烊，是怕這些東西太亮，會把還沒來的那件嚇走。"],
+    ["可以先留下一件", "你已經看了不少。要是累了，先收藏一件，其餘的讓它們自己在頁面上老去。"],
+    ["眼熟也沒關係", "有些展品會重複來敲門。若你覺得眼熟，就當它是回來報到，不是詞窮。"],
+    ["這一頁不耗盡", "模型的 token 會用完。這一頁不會。你把檔案留著，櫃就還在。"],
+    ["複製即帶走", "如果你只想留下一句，複製就好。文字離開網頁之後，仍然算數。"],
+    ["別等它被擠下去", "櫃員今天的建議是：遇到會心一笑的，就按收藏。別等它被新的擠下去。"],
+    ["只計數停留", "外面的世界仍在計數。這裡只在意有沒有讓你多停留一秒。"],
+    ["觀看即餵養", "下一件可能是一首詩，也可能是一隻不存在的動物。兩者的餵養方式相同：看一眼。"]
+  ];
+
+  const NUDGES = QUESTION_NOTES;
+
+  const DREAM_THINGS = ["一列不靠站的火車", "自己的牙齒變成鑰匙", "海鋪在餐桌上", "一位很久沒見的人在廚房煮湯", "城市倒掛在天花板上", "一扇後面沒有牆的門", "貓在讀你的日記", "雨往天上掉", "時鐘長出葉子", "一雙會自己走路的鞋", "月亮掉進口袋，還有點燙", "所有的字都從書裡走出來散步"];
+  const DREAM_ACTS = ["把窗戶打開一條縫", "先喝一口溫水", "把最後一個畫面寫在紙邊，然後把紙摺起來", "對空房間說一聲謝謝", "把鞋尖朝外放", "先不要看手機", "把今天的第一句話放輕", "到窗邊站一分鐘，什麼都不必想"];
+  const DREAM_REASONS = ["夢只是腦子在整理抽屜", "那是白天沒走完的路，還在走", "說明書如此寫，寫了就不靈，不靈正好", "它負責把過重的事情變輕", "不是預兆，是休息的一種形狀", "你的想像力在加班，讓它準時下班"];
+  const DREAM_TITLES = ["使用前請先醒來", "夜間使用須知", "給剛醒來的人", "請勿連夢三次", "枕邊備忘"];
+
+  const COLOR_ADJ = ["未寄出的", "雨後的", "褪色的", "凌晨的", "被忘記的", "溫熱的", "結霜的", "逆光的", "舊的", "悄悄的", "過季的", "借來的", "半乾的", "第二次的", "巷口的", "星期一的"];
+  const COLOR_FAMILIES = [
+    { h0: 0, h1: 18, nouns: ["硃砂", "印章", "柿子", "磚紅", "灶火"] },
+    { h0: 18, h1: 44, nouns: ["琥珀", "蜂蜜", "麥穗", "燈罩", "焦糖"] },
+    { h0: 44, h1: 72, nouns: ["新茶", "橄欖", "苔痕", "竹衣", "油菜花"] },
+    { h0: 72, h1: 150, nouns: ["松針", "銅綠", "湖心", "青瓷", "雨衣"] },
+    { h0: 150, h1: 195, nouns: ["潮水", "雨水", "鴨羽", "窗玻璃", "遠山"] },
+    { h0: 195, h1: 232, nouns: ["墨藍", "夜航", "制服", "深海", "子夜"] },
+    { h0: 232, h1: 292, nouns: ["紫藤", "丁香", "葡萄", "鳶尾", "星雲"] },
+    { h0: 292, h1: 345, nouns: ["胭脂", "玫瑰", "桃霜", "晚霞", "紅豆"] },
+    { h0: 345, h1: 360, nouns: ["硃砂", "印章", "柿子", "磚紅"] }
+  ];
+  const COLOR_USES = [
+    "適合漆在一扇不常打開的門上。",
+    "適合做一本書沒有字的那一頁。",
+    "適合當作星期二的底色。",
+    "適合把房間的一個角落交給它。",
+    "適合寫一封不打算寄出的信。",
+    "適合出現在雨停之後的窗玻璃上。",
+    "適合給一盞太亮的燈降一點溫。",
+    "適合當某座城市的夜間制服。"
+  ];
+
+  const CITY_A = ["霧", "鹽", "紙", "銅", "慢", "雙", "半", "舊", "折", "沉", "輕", "夜", "白", "赤", "青", "逆", "乾", "軟", "暗", "細"];
+  const CITY_B = ["港", "橋", "驛", "原", "塔", "澤", "丘", "關", "島", "津", "浦", "野", "川", "嶺", "坊"];
+  const CITY_SPECIAL = ["不準時區", "星期一共和國", "第四又四分之一區", "空白關", "回聲特別市", "慢半拍市"];
+  const CITY_EXPORTS = ["未寄出的道歉", "備用的星期一", "方向感", "二手影子", "溫熱的鑰匙", "過期的勇氣", "手工的沉默", "雨的樣品", "空白信封", "慢半拍的鐘", "燈油與閒話"];
+  const CITY_TABOOS = ["正午不可以打招呼", "不可以數自己的腳步", "地圖必須故意畫錯一條街", "日落之後不許提起海", "用餐時要把影子放在椅子背後", "進入城門前先把一個秘密留在門外，離開時可以取回", "不許對貓說謊，對人可以商量", "星期三不販售鏡子", "橋上不可以跑步，以免把時間甩掉", "夜間唱歌必須有人合唱，哪怕合唱的是自己的回聲"];
+  const CITY_WEATHERS = ["永遠像剛下過雨的前一分鐘", "薄霧，能見度大約一個人的猶豫那麼遠", "晴，但陰影比別的城市涼", "風從地圖沒有標的方向來", "一天下兩次很小的雪，都不積", "常年黃昏，正午只是謠言"];
+  const CITY_ADVICES = ["若有人問你從哪裡來，就說從比較慢的地方。", "別在橋中間回頭，城會以為你要定居。", "買麵包時多問一句今天的日期，答案可能不同。", "把傘收好。這裡的雨認得出外地人。", "若聽見自己的名字，先確認是不是回聲在點名。", "離開時向城門道謝，它記得有禮貌的人。"];
+  const CITY_POPS = [
+    (rng) => `${irand(rng, 800, 24000)} 人，另有一位不計入普查`,
+    (rng) => `比去年${pick(rng, ["多一個", "少一個", "一樣，只是都換了人"])}`,
+    (rng) => `${irand(rng, 2, 90)} 戶，每戶都以為自己住在邊緣`,
+    (rng) => `白天 ${irand(rng, 300, 9000)}，夜裡改由路燈代理`
+  ];
+
+  const C1 = ["回聲", "紙", "慢", "燈", "鹽", "霧", "折", "夜", "銅", "軟", "沉默", "袖珍", "逆光", "舊年"];
+  const C2 = ["狐", "鹿", "鯨", "鶴", "貝", "蛾", "魚", "獸", "鳥", "蜥", "蛛", "豚", "蛙", "鴉", "貓"];
+  const GENUS = ["Noxa", "Lumen", "Mora", "Velin", "Papira", "Salix", "Umbra", "Quira", "Solen", "Bruma", "Orra", "Tacet", "Lunex", "Folda"];
+  const SPECIES = ["lentus", "echo", "minima", "noctis", "papyris", "salina", "inversa", "mollis", "secunda", "nebulosa", "tacita", "lunae", "memor", "vagans"];
+  const HABITATS = ["舊信封的夾層", "橋墩背風的那一側", "只有一個人的月台", "圖書館閉館後的燈光裡", "雨剛停的窗台", "地圖畫錯的那條街", "第二輪洗碗的水槽邊", "鐘樓裡多出來的那一級階梯"];
+  const SOUNDS = ["把杯子放回碟子", "遠方在摺信", "雨傘收起來", "有人在隔壁翻到對的那一頁", "鑰匙在口袋裡輕輕碰一下", "夜班電車過橋"];
+  const RUMORS = ["只在有人改變主意時出現", "以別人多餘的時間為食，吃完會把人變得比較輕", "會把遺失的鈕扣送回原處，但總是晚一天", "走路沒有聲音，離開時卻會把門帶上", "看見它的人會忽然想給遠方寫信", "它收集沒有寄出的句子，並把它們排成巢", "它的影子比它本人更早回家", "雨天會變成一把沒有人撐的傘，仍替人遮著", "它記得每個見過它的人，但假裝不記得", "若對它鞠躬，它會還一個比較淺的禮"];
+
+  const STAR_A = ["慢", "逆", "雙", "細", "老", "軟", "遠", "低", "私", "第三次", "未命名", "暖"];
+  const STAR_B = ["舟座", "燈座", "鑰匙座", "橋座", "信座", "潮座", "傘座", "貓座", "回聲座", "門座", "湯座", "月台座"];
+  const STAR_MYTHS = [
+    (name) => `${name}被畫在星圖邊緣，因為它只在有人改變主意的夜晚上空出現。`,
+    (name) => `水手不用${name}導航。他們用它決定要不要把真話留到靠岸再說。`,
+    (name) => `據說${name}是一封沒有寄出的信，後來學會了自己發光。`,
+    (name) => `古城的孩子把${name}當成點名。被點到的人，第二天可以晚起一刻。`,
+    (name) => `${name}的連線若在某夜斷開，表示城裡有人終於把道歉說完了。`
+  ];
+  const STAR_VIEWS = ["適合在說完對不起之後抬頭看。", "適合末班車的窗。", "適合一個人吃飯的那盞燈旁邊。", "雲多的夜晚它仍在，只是改為被想念。", "不要用它許太大的願，它只負責很小的光。"];
+
+  const PATTERN_NOTES = [
+    "在舊郵局的抽屜夾層裡找到，邊緣還有一點膠帶。",
+    "據說這是某種夜間用的禮紙，白天看不出完整花紋。",
+    "博物館不想修復它，因為裂痕也是圖案的一部分。",
+    "把它鋪在桌上，杯子會自己找到中心。",
+    "沒有人記得這是包裝什麼的。空著，也很好看。"
+  ];
+
+  function story(rng) {
+    return Object.assign({ visual: null }, pick(rng, STORY_MAKERS)(rng));
+  }
+  function poem(rng) {
+    const cluster = pick(rng, POEMS);
+    const lines = cluster.lines.map((row) => pick(rng, row));
+    return { title: lines[0], body: lines.slice(1).join("\n"), epigraph: cluster.theme, visual: null };
+  }
+  function dialogue(rng) {
+    const pair = pick(rng, DIALOGUES);
+    return { title: pair[0], body: pair[1], visual: null };
+  }
+  function question(rng) {
+    return { title: pick(rng, QUESTIONS), body: pick(rng, NUDGES), visual: null };
+  }
+  function menu(rng) {
+    const pair = pick(rng, MENUS);
+    return { title: pair[0], body: pair[1], visual: null };
+  }
+  function law(rng) {
+    return { title: `第 ${irand(rng, 12, 980)} 條`, body: pick(rng, LAWS), visual: null };
+  }
+  function invention(rng) {
+    const pair = pick(rng, INVENTIONS);
+    const circles = [];
+    const count = irand(rng, 3, 5);
+    for (let i = 0; i < count; i += 1) {
+      circles.push({ x: 70 + rng() * 400, y: 48 + rng() * 100, r: 14 + rng() * 22 });
+    }
+    return {
+      title: pair[0],
+      body: pair[1],
+      visual: {
+        kind: "blueprint",
+        circles,
+        gear: { x: 70 + rng() * 420, y: 50 + rng() * 90, r: 16 + rng() * 10 },
+        arrow: { x1: 40 + rng() * 80, y1: 150, x2: 180 + rng() * 280, y2: 36 + rng() * 40 }
+      }
+    };
+  }
+  function note(rng) {
+    const pair = pick(rng, NOTES);
+    return { title: pair[0], body: pair[1], visual: null };
+  }
+  function dream(rng) {
+    const thing = pick(rng, DREAM_THINGS);
+    const act = pick(rng, DREAM_ACTS);
+    const reason = pick(rng, DREAM_REASONS);
+    return {
+      title: pick(rng, DREAM_TITLES),
+      body: `若夢到${thing}，醒來後請${act}。\n\n附註：${reason}。\n若連續三晚相同，把這張說明書摺小，放在枕下，它會自己辭職。`,
+      visual: null
+    };
+  }
+  function nameColor(rng, hue) {
+    let family = COLOR_FAMILIES[COLOR_FAMILIES.length - 1];
+    for (const item of COLOR_FAMILIES) {
+      if (hue >= item.h0 && hue < item.h1) {
+        family = item;
+        break;
+      }
+    }
+    return pick(rng, COLOR_ADJ) + pick(rng, family.nouns);
+  }
+  function color(rng) {
+    const h = rng() * 360;
+    const mode = pick(rng, ["analog", "split", "triad"]);
+    let hues;
+    if (mode === "analog") hues = [h, h + 18, h - 16, h + 34];
+    else if (mode === "split") hues = [h, h + 150, h - 150, h + 28];
+    else hues = [h, h + 120, h + 240, h + 20];
+    const colors = hues.map((hue, index) => {
+      const hh = (hue + 360) % 360;
+      const s = index === 0 ? 42 + rng() * 28 : 28 + rng() * 35;
+      const l = index === 0 ? 42 + rng() * 16 : 24 + rng() * 52;
+      const hex = hslToHex(hh, s, l);
+      return { name: nameColor(rng, hh), hex };
+    });
+    return {
+      title: colors[0].name,
+      body: `${pick(rng, COLOR_USES)}\n其餘的顏色是它的親戚，站在旁邊，沒有搶著說話。`,
+      visual: { kind: "swatches", colors }
+    };
+  }
+  function star(rng) {
+    const name = pick(rng, STAR_A) + pick(rng, STAR_B);
+    const n = irand(rng, 5, 9);
+    const pts = [];
+    for (let i = 0; i < n; i += 1) {
+      pts.push({ x: 36 + rng() * 488, y: 24 + rng() * 150, r: rng() < 0.2 ? 2.6 : 1.35, bright: false });
+    }
+    pts[0].bright = true;
+    pts[0].r = 3.1;
+    const links = [];
+    for (let i = 0; i < n - 1; i += 1) {
+      if (rng() < 0.8) links.push([i, i + 1]);
+    }
+    if (n > 4 && rng() < 0.55) links.push([0, n - 1]);
+    if (links.length === 0) links.push([0, 1]);
+    return {
+      title: name,
+      body: `${pick(rng, STAR_MYTHS)(name)}\n${pick(rng, STAR_VIEWS)}`,
+      visual: { kind: "stars", pts, links }
+    };
+  }
+  function city(rng) {
+    const name = chance(rng, 0.16) ? pick(rng, CITY_SPECIAL) : pick(rng, CITY_A) + pick(rng, CITY_B);
+    const lines = [];
+    for (let i = 0; i < 6; i += 1) {
+      lines.push({ x1: 16 + rng() * 520, y1: 16 + rng() * 168, x2: 16 + rng() * 520, y2: 16 + rng() * 168 });
+    }
+    const blocks = [];
+    for (let i = 0; i < 4; i += 1) {
+      blocks.push({ x: 30 + rng() * 430, y: 24 + rng() * 120, w: 28 + rng() * 50, h: 16 + rng() * 28 });
+    }
+    return {
+      title: name,
+      body: `人口　${pick(rng, CITY_POPS)(rng)}\n出口　${pick(rng, CITY_EXPORTS)}\n禁忌　${pick(rng, CITY_TABOOS)}\n天氣　${pick(rng, CITY_WEATHERS)}\n忠告　${pick(rng, CITY_ADVICES)}`,
+      visual: {
+        kind: "map",
+        lines,
+        blocks,
+        water: 16 + rng() * 140,
+        gate: { x: 36 + rng() * 440, y: 28 + rng() * 130 }
+      }
+    };
+  }
+  function creature(rng) {
+    const cname = pick(rng, C1) + pick(rng, C2);
+    const latin = `${pick(rng, GENUS)} ${pick(rng, SPECIES)}`;
+    const hue = rng() * 360;
+    const radii = [];
+    for (let i = 0; i < 10; i += 1) radii.push(0.72 + rng() * 0.38);
+    const roll = rng();
+    const eyeCount = roll < 0.08 ? 3 : roll < 0.16 ? 1 : 2;
+    const eyes = [];
+    for (let i = 0; i < eyeCount; i += 1) {
+      const spread = (i - (eyeCount - 1) / 2) * 16;
+      eyes.push({ x: 100 + spread, y: 70 + rng() * 6, r: 3.2 + rng() * 1.6 });
+    }
+    const limbs = [];
+    const limbCount = irand(rng, 2, 6);
+    for (let i = 0; i < limbCount; i += 1) {
+      limbs.push({ angle: rng() * Math.PI * 2, len: 18 + rng() * 28, bend: rng() * 16 - 8 });
+    }
+    const spots = [];
+    const spotCount = irand(rng, 0, 5);
+    for (let i = 0; i < spotCount; i += 1) {
+      spots.push({ x: 78 + rng() * 44, y: 74 + rng() * 28, r: 2 + rng() * 4 });
+    }
+    return {
+      title: cname,
+      body: `學名　${latin}\n棲地　${pick(rng, HABITATS)}\n叫聲　像${pick(rng, SOUNDS)}\n筆記　${pick(rng, RUMORS)}\n飼養　不建議。觀看即已足夠。`,
+      visual: {
+        kind: "creature",
+        radii,
+        eyes,
+        limbs,
+        spots,
+        pattern: pick(rng, ["plain", "spots", "stripes"]),
+        body: hslToHex(hue, 38 + rng() * 20, 42 + rng() * 16),
+        belly: hslToHex(hue + 16, 30, 74),
+        ink: hslToHex(hue, 25, 18)
+      }
+    };
+  }
+  function pattern(rng) {
+    const h = rng() * 360;
+    const grid = [];
+    for (let y = 0; y < 4; y += 1) {
+      const row = [];
+      for (let x = 0; x < 10; x += 1) row.push(Math.floor(rng() * 5));
+      grid.push(row);
+    }
+    return {
+      title: `失傳的包裝紙第 ${irand(rng, 100, 998)} 號`,
+      body: pick(rng, PATTERN_NOTES),
+      visual: {
+        kind: "pattern",
+        bg: hslToHex(h, 24, 84),
+        ink: hslToHex(h, 30, 28),
+        accent: hslToHex(h + 24, 42, 40),
+        grid
+      }
+    };
+  }
+
+  const generators = { story, poem, dialogue, question, menu, city, creature, star, color, invention, law, dream, pattern, note };
+
+  function makeItem(type, seed) {
+    if (!generators[type]) throw new Error("未知展品");
+    const rng = mulberry32(seed >>> 0);
+    const item = generators[type](rng);
+    item.type = type;
+    item.seed = seed >>> 0;
+    item.kicker = KICKERS[type];
+    if (!item.title) item.title = "無題";
+    if (!item.body) item.body = "";
+    return item;
+  }
+
+  function plainText(item) {
+    const parts = [`【${item.kicker}】${item.title}`, "", item.body];
+    if (item.epigraph) parts.push("", `· ${item.epigraph} ·`);
+    if (item.visual && item.visual.kind === "swatches") {
+      parts.push("", item.visual.colors.map((c) => `${c.name}  ${c.hex}`).join("\n"));
+    }
+    return parts.join("\n").trim() + "\n";
+  }
+
+  function serial(seed) {
+    return String((seed % 900000) + 100000);
+  }
+
+  const state = { speed: 2800, filter: "all", paused: false, timer: null, latest: null, skyId: 0 };
+  let lifetime = 0;
+  let saved = [];
+  let toastTimer = 0;
+  const dust = Array.from({ length: 72 }, () => ({
+    x: Math.random(),
+    y: Math.random(),
+    r: Math.random() * 1.6 + 0.3,
+    a: Math.random() * 0.35 + 0.05,
+    s: Math.random() * 0.55 + 0.15
+  }));
+  const reduceMotion = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function textOn(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    const r = (n >> 16) & 255;
+    const g = (n >> 8) & 255;
+    const b = n & 255;
+    const y = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    return y > 0.64 ? "#1c1712" : "#f7f1e4";
+  }
+
+  function prepCanvas(canvas, w, h) {
+    const dpr = Math.min((typeof devicePixelRatio === "number" ? devicePixelRatio : 1) || 1, 2);
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    canvas.style.aspectRatio = `${w} / ${h}`;
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return ctx;
+  }
+
+  function drawMotif(ctx, cx, cy, id, ink, accent) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.strokeStyle = ink;
+    ctx.fillStyle = id % 2 ? accent : ink;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    if (id === 0) {
+      ctx.arc(0, 0, 4, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (id === 1) {
+      ctx.arc(0, 0, 10, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (id === 2) {
+      ctx.moveTo(-10, 0);
+      ctx.lineTo(10, 0);
+      ctx.moveTo(0, -10);
+      ctx.lineTo(0, 10);
+      ctx.stroke();
+    } else if (id === 3) {
+      ctx.arc(0, 0, 12, Math.PI, 0);
+      ctx.stroke();
+    } else {
+      ctx.moveTo(0, -11);
+      ctx.lineTo(11, 0);
+      ctx.lineTo(0, 11);
+      ctx.lineTo(-11, 0);
+      ctx.closePath();
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function blobPath(pts) {
+    const mids = pts.map((p, i) => {
+      const n = pts[(i + 1) % pts.length];
+      return [(p[0] + n[0]) / 2, (p[1] + n[1]) / 2];
+    });
+    let d = `M ${mids[0][0].toFixed(1)} ${mids[0][1].toFixed(1)}`;
+    for (let i = 0; i < pts.length; i += 1) {
+      const p = pts[(i + 1) % pts.length];
+      const m = mids[(i + 1) % pts.length];
+      d += ` Q ${p[0].toFixed(1)} ${p[1].toFixed(1)} ${m[0].toFixed(1)} ${m[1].toFixed(1)}`;
+    }
+    d += " Z";
+    return d;
+  }
+
+  function drawVisual(host, visual) {
+    if (!visual) return;
+    if (visual.kind === "swatches") {
+      const wrap = document.createElement("div");
+      wrap.className = "swatches";
+      visual.colors.forEach((c, index) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "swatch" + (index === 0 ? " hero" : "");
+        btn.style.background = c.hex;
+        btn.style.color = textOn(c.hex);
+        const name = document.createElement("span");
+        name.textContent = c.name;
+        const hex = document.createElement("small");
+        hex.textContent = c.hex;
+        btn.append(name, hex);
+        btn.addEventListener("click", () => copyString(`${c.name} ${c.hex}`, "已複製顏色"));
+        wrap.append(btn);
+      });
+      host.append(wrap);
+      return;
+    }
+    if (visual.kind === "creature") {
+      const pts = visual.radii.map((rad, i) => {
+        const a = (i / visual.radii.length) * Math.PI * 2 - Math.PI / 2;
+        return [100 + Math.cos(a) * 46 * rad, 82 + Math.sin(a) * 32 * rad];
+      });
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("viewBox", "0 0 200 150");
+      svg.setAttribute("role", "img");
+      svg.setAttribute("aria-label", "想像中的動物");
+      const ground = document.createElementNS(svg.namespaceURI, "ellipse");
+      ground.setAttribute("cx", "100");
+      ground.setAttribute("cy", "132");
+      ground.setAttribute("rx", "36");
+      ground.setAttribute("ry", "6");
+      ground.setAttribute("fill", "rgba(60,40,20,0.15)");
+      svg.append(ground);
+      visual.limbs.forEach((limb) => {
+        const x1 = 100 + Math.cos(limb.angle) * 28;
+        const y1 = 96 + Math.sin(limb.angle) * 16;
+        const x2 = x1 + Math.cos(limb.angle) * limb.len;
+        const y2 = y1 + Math.sin(limb.angle) * limb.len * 0.66;
+        const path = document.createElementNS(svg.namespaceURI, "path");
+        path.setAttribute("d", `M ${x1.toFixed(1)} ${y1.toFixed(1)} Q ${(x1 + limb.bend).toFixed(1)} ${(y1 + 8).toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`);
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke", visual.ink);
+        path.setAttribute("stroke-width", "2");
+        path.setAttribute("stroke-linecap", "round");
+        svg.append(path);
+      });
+      const body = document.createElementNS(svg.namespaceURI, "path");
+      body.setAttribute("d", blobPath(pts));
+      body.setAttribute("fill", visual.body);
+      svg.append(body);
+      const belly = document.createElementNS(svg.namespaceURI, "ellipse");
+      belly.setAttribute("cx", "100");
+      belly.setAttribute("cy", "96");
+      belly.setAttribute("rx", "18");
+      belly.setAttribute("ry", "12");
+      belly.setAttribute("fill", visual.belly);
+      svg.append(belly);
+      if (visual.pattern === "stripes") {
+        for (let i = 0; i < 4; i += 1) {
+          const line = document.createElementNS(svg.namespaceURI, "path");
+          const y = 70 + i * 10;
+          line.setAttribute("d", `M 78 ${y} Q 100 ${y - 6} 122 ${y}`);
+          line.setAttribute("fill", "none");
+          line.setAttribute("stroke", visual.ink);
+          line.setAttribute("stroke-width", "1");
+          line.setAttribute("opacity", "0.35");
+          svg.append(line);
+        }
+      }
+      visual.spots.forEach((spot) => {
+        const dot = document.createElementNS(svg.namespaceURI, "circle");
+        dot.setAttribute("cx", String(spot.x));
+        dot.setAttribute("cy", String(spot.y));
+        dot.setAttribute("r", String(spot.r));
+        dot.setAttribute("fill", visual.ink);
+        dot.setAttribute("opacity", "0.28");
+        svg.append(dot);
+      });
+      visual.eyes.forEach((eye) => {
+        const white = document.createElementNS(svg.namespaceURI, "circle");
+        white.setAttribute("cx", String(eye.x));
+        white.setAttribute("cy", String(eye.y));
+        white.setAttribute("r", String(eye.r + 1.4));
+        white.setAttribute("fill", "#f7f1e4");
+        const pupil = document.createElementNS(svg.namespaceURI, "circle");
+        pupil.setAttribute("cx", String(eye.x + 0.6));
+        pupil.setAttribute("cy", String(eye.y));
+        pupil.setAttribute("r", String(Math.max(1.2, eye.r * 0.45)));
+        pupil.setAttribute("fill", visual.ink);
+        svg.append(white, pupil);
+      });
+      host.append(svg);
+      return;
+    }
+
+    const canvas = document.createElement("canvas");
+    host.append(canvas);
+    if (visual.kind === "stars") {
+      const ctx = prepCanvas(canvas, 560, 200);
+      ctx.fillStyle = "#141a26";
+      ctx.fillRect(0, 0, 560, 200);
+      const g = ctx.createRadialGradient(280, 90, 10, 280, 100, 240);
+      g.addColorStop(0, "rgba(90, 110, 150, 0.35)");
+      g.addColorStop(1, "rgba(20, 26, 38, 0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, 560, 200);
+      ctx.strokeStyle = "rgba(214, 196, 160, 0.55)";
+      ctx.lineWidth = 1;
+      visual.links.forEach((link) => {
+        const a = visual.pts[link[0]];
+        const b = visual.pts[link[1]];
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      });
+      visual.pts.forEach((p) => {
+        ctx.beginPath();
+        ctx.fillStyle = p.bright ? "#fff6e4" : "rgba(255, 246, 228, 0.8)";
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      return;
+    }
+    if (visual.kind === "blueprint") {
+      const ctx = prepCanvas(canvas, 560, 180);
+      ctx.clearRect(0, 0, 560, 180);
+      ctx.strokeStyle = "rgba(90, 58, 42, 0.8)";
+      ctx.fillStyle = "rgba(90, 58, 42, 0.85)";
+      ctx.lineWidth = 1.25;
+      ctx.strokeRect(10, 10, 540, 160);
+      ctx.font = '13px Palatino, "Songti TC", serif';
+      ctx.fillText("圖一", 20, 30);
+      ctx.beginPath();
+      visual.circles.forEach((c, i) => {
+        ctx.moveTo(c.x + c.r, c.y);
+        ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+        if (i > 0) {
+          ctx.moveTo(visual.circles[i - 1].x, visual.circles[i - 1].y);
+          ctx.lineTo(c.x, c.y);
+        }
+      });
+      ctx.stroke();
+      const gear = visual.gear;
+      ctx.beginPath();
+      ctx.arc(gear.x, gear.y, gear.r, 0, Math.PI * 2);
+      ctx.stroke();
+      for (let i = 0; i < 8; i += 1) {
+        const a = (i / 8) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(gear.x + Math.cos(a) * (gear.r - 1), gear.y + Math.sin(a) * (gear.r - 1));
+        ctx.lineTo(gear.x + Math.cos(a) * (gear.r + 7), gear.y + Math.sin(a) * (gear.r + 7));
+        ctx.stroke();
+      }
+      const ar = visual.arrow;
+      ctx.beginPath();
+      ctx.moveTo(ar.x1, ar.y1);
+      ctx.lineTo(ar.x2, ar.y2);
+      ctx.stroke();
+      return;
+    }
+    if (visual.kind === "map") {
+      const ctx = prepCanvas(canvas, 560, 200);
+      ctx.fillStyle = "#e7d7b8";
+      ctx.fillRect(0, 0, 560, 200);
+      ctx.fillStyle = "rgba(62, 108, 118, 0.38)";
+      ctx.fillRect(0, visual.water, 560, 26);
+      ctx.strokeStyle = "rgba(90, 60, 40, 0.28)";
+      ctx.lineWidth = 1;
+      visual.blocks.forEach((b) => ctx.strokeRect(b.x, b.y, b.w, b.h));
+      ctx.strokeStyle = "rgba(90, 60, 40, 0.8)";
+      ctx.lineWidth = 2;
+      ctx.lineCap = "round";
+      visual.lines.forEach((ln) => {
+        ctx.beginPath();
+        ctx.moveTo(ln.x1, ln.y1);
+        ctx.lineTo(ln.x2, ln.y2);
+        ctx.stroke();
+      });
+      ctx.fillStyle = "#8f2d2d";
+      ctx.fillRect(visual.gate.x, visual.gate.y, 8, 8);
+      ctx.font = '12px Palatino, "Songti TC", serif';
+      ctx.fillText("城門", Math.min(visual.gate.x + 12, 520), visual.gate.y + 8);
+      return;
+    }
+    if (visual.kind === "pattern") {
+      const ctx = prepCanvas(canvas, 560, 160);
+      ctx.fillStyle = visual.bg;
+      ctx.fillRect(0, 0, 560, 160);
+      for (let y = 0; y < visual.grid.length; y += 1) {
+        for (let x = 0; x < visual.grid[y].length; x += 1) {
+          drawMotif(ctx, x * 56 + 28, y * 40 + 20, visual.grid[y][x], visual.ink, visual.accent);
+        }
+      }
+    }
+  }
+
+  function isSaved(item) {
+    return saved.some((rec) => rec.type === item.type && rec.seed === item.seed);
+  }
+
+  function buildCard(item, mode) {
+    const art = document.createElement("article");
+    art.className = `card type-${item.type}`;
+    art.dataset.type = item.type;
+    art.dataset.seed = String(item.seed);
+    const top = document.createElement("div");
+    top.className = "card-top";
+    const kicker = document.createElement("span");
+    kicker.className = "kicker";
+    kicker.textContent = item.kicker;
+    const num = document.createElement("span");
+    num.className = "num";
+    num.textContent = `No. ${serial(item.seed)}`;
+    top.append(kicker, num);
+    const seal = document.createElement("div");
+    seal.className = "seal";
+    seal.textContent = SEALS[item.type] || "藏";
+    seal.setAttribute("aria-hidden", "true");
+    const title = document.createElement("h2");
+    title.className = "card-title";
+    title.textContent = item.title;
+    const body = document.createElement("p");
+    body.className = "card-body";
+    body.textContent = item.body;
+    art.append(top, seal, title, body);
+    if (item.epigraph) {
+      const epi = document.createElement("p");
+      epi.className = "epigraph";
+      epi.textContent = `· ${item.epigraph} ·`;
+      art.append(epi);
+    }
+    if (item.visual) {
+      const vis = document.createElement("div");
+      vis.className = `visual ${item.visual.kind}`;
+      drawVisual(vis, item.visual);
+      art.append(vis);
+    }
+    const actions = document.createElement("div");
+    actions.className = "card-actions";
+    const keep = document.createElement("button");
+    keep.type = "button";
+    keep.dataset.act = "keep";
+    keep.textContent = isSaved(item) ? "已收藏" : "收入收藏";
+    keep.addEventListener("click", () => saveItem(item));
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.textContent = "複製";
+    copy.addEventListener("click", () => copyString(plainText(item), "已複製這一件"));
+    actions.append(keep, copy);
+    if (mode === "reader") {
+      const close = document.createElement("button");
+      close.type = "button";
+      close.textContent = "闔上";
+      close.addEventListener("click", () => document.getElementById("reader").close());
+      actions.append(close);
+    }
+    art.append(actions);
+    art.classList.toggle("kept", isSaved(item));
+    return art;
+  }
+
+  function refreshKeepButtons() {
+    document.querySelectorAll(".card").forEach((card) => {
+      const on = saved.some((rec) => rec.type === card.dataset.type && rec.seed === Number(card.dataset.seed));
+      const btn = card.querySelector("[data-act='keep']");
+      if (btn) btn.textContent = on ? "已收藏" : "收入收藏";
+      card.classList.toggle("kept", on);
+    });
+  }
+
+  function materialize(rec) {
+    try {
+      const item = makeItem(rec.type, rec.seed >>> 0);
+      item.savedAt = rec.savedAt || 0;
+      return item;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function renderShelf() {
+    const list = document.getElementById("shelf-list");
+    list.replaceChildren();
+    if (!saved.length) {
+      const p = document.createElement("p");
+      p.className = "empty-shelf";
+      p.textContent = "還沒有留下東西。遇到捨不得的，就收進來。";
+      list.append(p);
+      return;
+    }
+    const items = saved.map(materialize).filter(Boolean).sort((a, b) => b.savedAt - a.savedAt);
+    items.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "shelf-row";
+      const open = document.createElement("button");
+      open.type = "button";
+      open.className = "shelf-item";
+      const small = document.createElement("small");
+      small.textContent = item.kicker;
+      const strong = document.createElement("strong");
+      strong.textContent = item.title;
+      open.append(small, strong);
+      open.addEventListener("click", () => openReader(item));
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "icon-btn";
+      remove.setAttribute("aria-label", `移出${item.title}`);
+      remove.textContent = "×";
+      remove.addEventListener("click", () => saveItem(item));
+      row.append(open, remove);
+      list.append(row);
+    });
+  }
+
+  function openReader(item) {
+    const dlg = document.getElementById("reader");
+    dlg.replaceChildren(buildCard(item, "reader"));
+    if (typeof dlg.showModal === "function") dlg.showModal();
+    else dlg.setAttribute("open", "");
+  }
+
+  function toast(message) {
+    const el = document.getElementById("toast");
+    el.textContent = message;
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
+  }
+
+  async function copyString(text, ok) {
+    let done = false;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        done = true;
+      }
+    } catch (err) {
+      done = false;
+    }
+    if (!done) {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.append(ta);
+      ta.select();
+      try { done = document.execCommand("copy"); } catch (err) { done = false; }
+      ta.remove();
+    }
+    toast(done ? ok : "沒能複製，請手動選取");
+  }
+
+  function persist() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({
+        v: 1,
+        lifetime,
+        speed: state.speed,
+        filter: state.filter,
+        saved
+      }));
+    } catch (err) {
+      toast("這台裝置沒有把收藏留住");
+    }
+  }
+
+  function load() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(KEY) || "null");
+      if (!raw || typeof raw !== "object") return;
+      if (Number.isFinite(raw.lifetime) && raw.lifetime >= 0) lifetime = Math.floor(raw.lifetime);
+      if (Number.isFinite(raw.speed)) state.speed = Math.min(8000, Math.max(900, raw.speed));
+      if (typeof raw.filter === "string" && (raw.filter === "all" || KICKERS[raw.filter])) state.filter = raw.filter;
+      if (Array.isArray(raw.saved)) {
+        saved = raw.saved.filter((rec) => rec && KICKERS[rec.type] && Number.isFinite(rec.seed)).slice(0, 200);
+      }
+    } catch (err) {
+      saved = [];
+    }
+  }
+
+  function randSeed() {
+    const cryptoObj = globalThis.crypto;
+    if (cryptoObj && cryptoObj.getRandomValues) {
+      const buf = new Uint32Array(1);
+      cryptoObj.getRandomValues(buf);
+      return buf[0];
+    }
+    return Math.floor(Math.random() * 4294967296);
+  }
+
+  function pushNew(forceType) {
+    lifetime += 1;
+    let type = forceType || null;
+    if (!type) {
+      if (state.filter !== "all") type = state.filter;
+      else if (lifetime % 40 === 0) type = "note";
+      else type = pickWeighted(Math.random, WEIGHTS);
+    }
+    let item;
+    try {
+      item = makeItem(type, randSeed());
+    } catch (err) {
+      item = makeItem("note", randSeed());
+    }
+    state.latest = item;
+    const stage = document.getElementById("stage");
+    const stream = document.getElementById("stream");
+    const stick = stage.scrollTop < 16;
+    const prev = stage.scrollHeight;
+    stream.prepend(buildCard(item));
+    while (stream.children.length > 36) stream.lastElementChild.remove();
+    if (!stick) stage.scrollTop += stage.scrollHeight - prev;
+    document.getElementById("count").textContent = lifetime.toLocaleString("zh-Hant");
+    document.getElementById("live").textContent = `新展品：${item.kicker}，${item.title}`;
+    document.title = `${item.title} · 無窮珍奇櫃`;
+    persist();
+  }
+
+  function saveItem(item) {
+    const idx = saved.findIndex((rec) => rec.type === item.type && rec.seed === item.seed);
+    if (idx >= 0) {
+      saved.splice(idx, 1);
+      toast("已從收藏架取下");
+    } else {
+      if (saved.length >= 200) {
+        toast("收藏架滿了，先移出一件");
+        return;
+      }
+      saved.unshift({ type: item.type, seed: item.seed >>> 0, savedAt: Date.now() });
+      toast("已收入收藏");
+    }
+    persist();
+    renderShelf();
+    refreshKeepButtons();
+  }
+
+  function updateSpeedLabel() {
+    document.getElementById("speedlabel").textContent = `每 ${(state.speed / 1000).toFixed(1)} 秒`;
+  }
+
+  function syncTimer() {
+    if (state.timer) clearInterval(state.timer);
+    state.timer = null;
+    if (!state.paused && !document.hidden) state.timer = setInterval(() => pushNew(), state.speed);
+    const btn = document.getElementById("pause");
+    btn.textContent = state.paused ? "繼續" : "暫停";
+    btn.setAttribute("aria-pressed", state.paused ? "true" : "false");
+    document.getElementById("statusline").textContent = state.paused
+      ? "櫃門暫且掩上。按空白鍵可以再打開。"
+      : "正在想起下一件……";
+  }
+
+  function projectArm(x, y, z, rot) {
+    const cy = Math.cos(rot);
+    const sy = Math.sin(rot);
+    const x1 = x * cy - z * sy;
+    const z1 = x * sy + z * cy;
+    const cx = Math.cos(rot * 0.7);
+    const sx = Math.sin(rot * 0.7);
+    const y1 = y * cx - z1 * sx;
+    const z2 = y * sx + z1 * cx;
+    const f = 240 / (240 + z2);
+    return [x1 * f, y1 * f];
+  }
+
+  function drawSky(ts) {
+    const canvas = document.getElementById("sky");
+    if (!canvas) return;
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(h * dpr)) {
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+    }
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    const glow = ctx.createRadialGradient(w * 0.72, h * 0.18, 0, w * 0.5, h * 0.4, Math.max(w, h) * 0.7);
+    glow.addColorStop(0, "rgba(62, 48, 32, 0.55)");
+    glow.addColorStop(1, "rgba(18, 16, 14, 0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, w, h);
+    if (!reduceMotion) {
+      dust.forEach((p) => {
+        p.y -= 0.00012 * p.s;
+        if (p.y < 0) p.y += 1;
+      });
+    }
+    dust.forEach((p) => {
+      ctx.globalAlpha = p.a;
+      ctx.fillStyle = "#e6d3ae";
+      ctx.fillRect(p.x * w, (p.y % 1) * h, p.r, p.r);
+    });
+    ctx.globalAlpha = 1;
+    if (w >= 860) {
+      const rot = reduceMotion ? 0.6 : ts * 0.00005;
+      const R = Math.min(w, h) * 0.22;
+      ctx.save();
+      ctx.translate(w * 0.8, h * 0.46);
+      ctx.strokeStyle = "rgba(166, 132, 74, 0.28)";
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 4; i += 1) {
+        ctx.beginPath();
+        const tilt = i * 0.55 + rot;
+        for (let a = 0; a <= Math.PI * 2 + 0.01; a += 0.15) {
+          const x = Math.cos(a) * R;
+          const y = Math.sin(a) * R * Math.cos(tilt);
+          const z = Math.sin(a) * R * Math.sin(tilt);
+          const p = projectArm(x, y, z, rot);
+          if (a === 0) ctx.moveTo(p[0], p[1]);
+          else ctx.lineTo(p[0], p[1]);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    state.skyId = requestAnimationFrame(drawSky);
+  }
+
+  function startSky() {
+    if (!state.skyId) state.skyId = requestAnimationFrame(drawSky);
+  }
+  function stopSky() {
+    if (state.skyId) cancelAnimationFrame(state.skyId);
+    state.skyId = 0;
+  }
+
+  function exportSaved() {
+    const items = saved.map(materialize).filter(Boolean);
+    if (!items.length) {
+      toast("收藏架還是空的");
+      return;
+    }
+    const chunks = items.map((item) => plainText(item).trim());
+    const text = `無窮珍奇櫃 · 收藏\n共 ${items.length} 件\n\n${chunks.join("\n\n———\n\n")}\n`;
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "無窮珍奇櫃-收藏.txt";
+    document.body.append(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function boot() {
+    load();
+    const filter = document.getElementById("filter");
+    ORDER.forEach((id) => {
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = KICKERS[id];
+      filter.append(opt);
+    });
+    filter.value = state.filter;
+    document.getElementById("speed").value = String(state.speed);
+    updateSpeedLabel();
+    renderShelf();
+    document.getElementById("count").textContent = lifetime.toLocaleString("zh-Hant");
+    for (let i = 0; i < 3; i += 1) pushNew();
+    syncTimer();
+    startSky();
+
+    document.getElementById("pause").addEventListener("click", () => {
+      state.paused = !state.paused;
+      syncTimer();
+    });
+    document.getElementById("next").addEventListener("click", () => pushNew());
+    document.getElementById("burst").addEventListener("click", () => {
+      for (let i = 0; i < 7; i += 1) pushNew();
+    });
+    document.getElementById("keep-latest").addEventListener("click", () => {
+      if (state.latest) saveItem(state.latest);
+    });
+    document.getElementById("speed").addEventListener("input", (event) => {
+      state.speed = Number(event.target.value);
+      updateSpeedLabel();
+      persist();
+      syncTimer();
+    });
+    filter.addEventListener("change", () => {
+      state.filter = filter.value;
+      persist();
+    });
+    document.getElementById("export").addEventListener("click", exportSaved);
+    document.getElementById("clear").addEventListener("click", () => {
+      if (!saved.length) {
+        toast("收藏架本來就是空的");
+        return;
+      }
+      if (!confirm("清空收藏架？此動作不能復原。")) return;
+      saved = [];
+      persist();
+      renderShelf();
+      refreshKeepButtons();
+      toast("收藏架已清空");
+    });
+    document.getElementById("reader").addEventListener("click", (event) => {
+      if (event.target.id === "reader") event.target.close();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.repeat) return;
+      const dlg = document.getElementById("reader");
+      if (dlg.open) return;
+      if (event.target.closest("input, textarea, select")) return;
+      if (event.code === "Space") {
+        event.preventDefault();
+        state.paused = !state.paused;
+        syncTimer();
+      } else if (event.key === "n" || event.key === "N") {
+        pushNew();
+      } else if ((event.key === "s" || event.key === "S") && state.latest) {
+        saveItem(state.latest);
+      }
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        if (state.timer) clearInterval(state.timer);
+        state.timer = null;
+        stopSky();
+      } else {
+        startSky();
+        syncTimer();
+      }
+    });
+  }
+
+  if (typeof document === "undefined") {
+    globalThis.__CABINET__ = { makeItem, ORDER, KICKERS, mulberry32, plainText };
+  } else {
+    try {
+      boot();
+    } catch (err) {
+      console.error(err);
+      const p = document.createElement("p");
+      p.className = "lede";
+      p.textContent = "櫃門卡住了，請重新開啟這頁。";
+      document.body.append(p);
+    }
+  }
+})();
+</script>
+</body>
+</html>
+
