@@ -1,0 +1,128 @@
+去申請。 || Apply.
+先別申請。 || Don't apply yet.
+這份工作該留。 || Keep this work.
+這份工作該走。 || Leave this work.
+要求你該得的。 || Ask for what you should have.
+現在談報酬太早。 || It is too early to talk about pay.
+把作品送出去。 || Send the work out.
+作品還差一次修改。 || The work needs one more revision.
+停止修改，交出去。 || Stop revising. Hand it in.
+從最難的部分開始。 || Start with the hardest part.
+從最容易的部分開始。 || Start with the easiest part.
+今天只做四十分鐘。 || Today, only forty minutes.
+今天要做完這一塊。 || Finish this piece today.
+找人一起看。 || Ask someone to look with you.
+先不要給別人看。 || Don't show anyone yet.
+你的標準太高，先降一階。 || Your standard is too high. Lower it one step.
+你的標準鬆了，收回來。 || Your standard slipped. Pull it back.
+學習，先別變現。 || Learn first. Don't monetize it yet.
+可以收費了。 || You may charge for this.
+免費會讓你怨。 || Free will make you resent it.
+這筆錢不該花。 || This money should not be spent.
+這筆錢該花。 || This money should be spent.
+便宜的那個就好。 || The cheaper one will do.
+貴的那個比較誠實。 || The expensive one is more honest.
+先存下來。 || Save it first.
+留下一筆備用。 || Keep a reserve.
+不要借。 || Don't borrow.
+可以借，寫清楚。 || You may borrow. Write it clearly.
+不要借給這個人。 || Don't lend to this person.
+這筆債先還。 || Pay this debt first.
+債可以再談一次。 || The debt can be discussed once more.
+投資先停。 || Pause the investment.
+小額可以試。 || A small amount may be tried.
+不要把生活費放進去。 || Don't put living money into it.
+這個機會是真的。 || This opportunity is real.
+這個機會太吵。 || This opportunity is too loud.
+履歷改短。 || Shorten the résumé.
+履歷少一點形容詞。 || Fewer adjectives on the résumé.
+去面試。 || Go to the interview.
+放棄這次面試。 || Let this interview go.
+面試時少解釋。 || Explain less in the interview.
+把成果說成數字。 || Say the result as a number.
+你適合被看見。 || You are suited to being seen.
+你適合先把東西做完。 || You are suited to finishing the thing first.
+換城市。 || Change cities.
+先別搬家。 || Don't move yet.
+留下，是因為還有未完。 || Stay, because something is unfinished.
+離開，是因為已經完了。 || Leave, because it is already finished.
+跟主管說真話。 || Tell your lead the truth.
+跟主管只說進度。 || Tell your lead only the progress.
+這個會議可以不去。 || You may skip this meeting.
+這個會議你得在場。 || You need to be in this meeting.
+信裡只留三句。 || Keep only three sentences in the letter.
+刪掉最後一段。 || Delete the last paragraph.
+開頭重寫。 || Rewrite the opening.
+標題換掉。 || Change the title.
+名字用你自己的。 || Use your own name.
+可以匿名。 || You may be anonymous.
+合作條款先讀完。 || Read the terms through first.
+條款有一處要改。 || One clause must change.
+簽名之前睡一晚。 || Sleep on it before you sign.
+這份合約可以簽。 || This contract may be signed.
+找懂的人看過再簽。 || Have someone who knows read it before you sign.
+你不需要更多工具。 || You don't need more tools.
+換一把更順手的工具。 || Switch to a tool that fits your hand.
+桌子清一下再開始。 || Clear the desk, then begin.
+亂一點沒關係，先做。 || A little mess is fine. Start.
+計畫寫成一頁。 || Write the plan as one page.
+不要計畫了，做最小的版本。 || Stop planning. Make the smallest version.
+版本還太早給世界。 || This version is too early for the world.
+世界等得及。 || The world can wait.
+你在收集意見，其實在拖。 || You are gathering opinions, and stalling.
+意見夠了。 || You have enough opinions.
+再問一個內行。 || Ask one more person who does this work.
+老師是對的。 || The teacher is right.
+老師這次不適合你。 || This teacher is not right for you.
+課程先上完這一門。 || Finish this one course first.
+退課。 || Drop the course.
+證書不重要，作品重要。 || The certificate matters less than the work.
+先把基礎補上。 || Fill in the foundation first.
+你已經會了，去用。 || You already know it. Go use it.
+模仿到像，再離開。 || Imitate until it is close, then leave.
+不要再模仿。 || Stop imitating.
+你的笨方法是有效的。 || Your clumsy method works.
+方法該換了。 || The method is due for a change.
+每天同一時間做。 || Do it at the same hour each day.
+時間換一下，狀態會來。 || Change the hour, and the mood will come.
+早起對這件事有幫助。 || Waking early helps this.
+你是夜的人，順著來。 || You belong to the night. Work with that.
+休息是行程的一部分。 || Rest is part of the schedule.
+你休息的理由太完整，所以沒動。 || Your reasons for rest are so complete that nothing moves.
+請假。 || Take the leave.
+先別請假，撐過這週。 || Don't take leave yet. Last the week.
+這週的忙是假的。 || This week's busyness is false.
+這週的忙是真的，減一件。 || The busyness is real. Remove one thing.
+委託別人。 || Delegate it.
+這件不能委託。 || This one cannot be delegated.
+你該收手旁觀。 || You should step back and watch.
+你該親手做。 || You should do it with your own hands.
+品質先於速度。 || Quality before speed.
+速度先於完美。 || Speed before perfection.
+完美是你的藉口。 || Perfection is your excuse.
+再磨一下會發光。 || A little more polish and it will shine.
+發表。 || Publish it.
+先收藏，不發表。 || Keep it, and don't publish.
+用真名發表。 || Publish under your real name.
+這個點子太小，放大。 || This idea is too small. Enlarge it.
+這個點子太大，切一半。 || This idea is too big. Cut it in half.
+和別人的想法撞了，改道。 || It collides with someone else's. Change course.
+撞了也沒關係，你的版本不同。 || Let it collide. Your version is different.
+記錄下來，否則會丟。 || Write it down, or it will be lost.
+不要記錄，用身體記住。 || Don't record it. Remember it in the body.
+檔案命名清楚。 || Name the file clearly.
+舊檔可以刪。 || The old file may be deleted.
+備份。 || Make a copy.
+你有太多備份，留下最好的。 || You have too many copies. Keep the best.
+客戶是對的。 || The client is right.
+客戶這次不對，溫和地說。 || The client is wrong this time. Say it gently.
+降價會傷害這件事。 || Lowering the price will harm it.
+價錢可以讓一步。 || The price can give one step.
+截止日期前提早一天交。 || Deliver a day before the deadline.
+準時就好。 || On time is enough.
+你該請人幫忙校對。 || Ask someone to proofread.
+自己再讀一遍，出聲。 || Read it once more, aloud.
+走出門，這件事會變輕。 || Walk outside, and this will get lighter.
+坐回椅子上，不要逃。 || Sit back down. Don't flee.
+換一個房間試。 || Try another room.
+就在原處做完。 || Finish it where you are.

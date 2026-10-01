@@ -1,0 +1,128 @@
+是。 || Yes.
+不是。 || No.
+可以。 || You may.
+先不要。 || Not yet.
+留下。 || Stay.
+離開。 || Leave.
+開始。 || Begin.
+停下來。 || Stop.
+去。 || Go.
+別去。 || Don't go.
+說出來。 || Say it.
+先別說。 || Don't say it yet.
+等一等。 || Wait a little.
+別再等。 || Stop waiting.
+答應。 || Say yes.
+拒絕。 || Say no.
+簽下它。 || Sign it.
+先別簽。 || Don't sign yet.
+寄出去。 || Send it.
+留在草稿。 || Leave it in drafts.
+買。 || Buy it.
+先別買。 || Don't buy it yet.
+原諒。 || Forgive.
+還沒有到原諒。 || Forgiveness is not due yet.
+道歉。 || Apologize.
+不必道歉。 || No apology is owed.
+相信這一次。 || Trust this once.
+先存疑。 || Keep the doubt for now.
+值得。 || It is worth it.
+不值得。 || It is not worth it.
+你是對的。 || You are right.
+你看錯了。 || You read it wrong.
+直覺是對的。 || The instinct is right.
+放下那個直覺。 || Set that instinct down.
+就是這一個。 || This is the one.
+不是這一個。 || Not this one.
+兩個都別選。 || Choose neither.
+選先出現的。 || Choose the one that appeared first.
+選讓你肩鬆的。 || Choose what drops your shoulders.
+選讓你坐直的。 || Choose what makes you sit up.
+公開它。 || Make it public.
+私下處理。 || Handle it in private.
+加入。 || Join.
+退出。 || Withdraw.
+一起做。 || Do it together.
+一個人做完。 || Finish it alone.
+見面。 || Meet.
+改期再見。 || Meet another day.
+取消這次。 || Cancel this one.
+保留。 || Keep it.
+放下。 || Put it down.
+修好它。 || Repair it.
+換掉它。 || Replace it.
+維持現狀。 || Leave things as they are.
+前進。 || Move forward.
+退一步。 || Take one step back.
+轉向。 || Change direction.
+照直走。 || Keep going straight.
+點頭。 || Nod.
+搖頭。 || Shake your head.
+這是結局。 || This is the ending.
+這只是中段。 || This is only the middle.
+這是開始。 || This is the beginning.
+還有下文。 || There is more after this.
+沒有下文。 || There is nothing after.
+收下。 || Accept it.
+退回去。 || Give it back.
+說給別人聽。 || Tell someone.
+只留給自己。 || Keep it to yourself.
+再試一次。 || Try once more.
+不要再試。 || Do not try again.
+換一種方式。 || Try a different way.
+用舊方法。 || Use the old way.
+簡化。 || Simplify.
+先做最小的一步。 || Take the smallest step first.
+一步就夠了。 || One step is enough.
+全部做完。 || Finish all of it.
+做到一半就停。 || Stop at the halfway mark.
+今天就做。 || Do it today.
+明天再說。 || Speak of it tomorrow.
+這個星期會明朗。 || It will clear this week.
+這個月不適合。 || This month is unfit for it.
+給它三天。 || Give it three days.
+給它一個季節。 || Give it a season.
+午夜之後再決定。 || Decide after midnight.
+天亮再看。 || Look again at dawn.
+別在疲倦時決定。 || Don't decide while tired.
+睡一覺會改寫。 || Sleep will rewrite this.
+你已經等夠久了。 || You have waited long enough.
+再等會變成失去。 || More waiting turns into loss.
+太早了。 || It is too early.
+太遲了。 || It is too late.
+時間剛剛好。 || The timing is exact.
+遲一點會更好。 || A little later will be better.
+早一點會弄壞。 || Earlier would spoil it.
+趁熱。 || While it is still warm.
+等它冷卻。 || Let it cool.
+別用截止日期嚇自己。 || Don't frighten yourself with the deadline.
+截止日期是真的。 || The deadline is real.
+延後，不是取消。 || Postpone, do not cancel.
+現在不做，就沒有了。 || If not now, then never.
+錯過這次還有下次。 || Miss this, and there will be another.
+沒有下次了。 || There will not be another.
+先完成舊的。 || Finish the old thing first.
+舊的可以先放著。 || The old thing can wait.
+新年之前會有答案。 || An answer arrives before the new year.
+換季的時候再問。 || Ask again when the season turns.
+雨停再出門。 || Leave after the rain.
+就在雨裡走。 || Walk in the rain.
+別在星期一一早決定。 || Don't decide on Monday morning.
+星期五的勇氣不可靠。 || Friday's courage is unreliable.
+星期天適合結束。 || Sunday is for endings.
+清晨的你比較誠實。 || The morning version of you is more honest.
+夜裡的想法先收好。 || Fold the night thoughts away.
+給自己一個小時，不是一分鐘。 || Give yourself an hour, not a minute.
+一分鐘就夠判斷。 || One minute is enough to judge.
+慢，是這題的答案。 || Slowness is the answer.
+快，是這題的答案。 || Speed is the answer.
+你來早了。 || You arrived early.
+你來晚了，但還進得去。 || You are late, and the door still opens.
+今天不談這件事。 || Do not discuss it today.
+今天必須談。 || It must be discussed today.
+先吃飯。 || Eat first.
+空肚子別做承諾。 || Don't promise on an empty stomach.
+喝口水，再回。 || Drink water, then reply.
+別在車上決定。 || Don't decide in a moving car.
+走到路口再選。 || Choose when you reach the corner.
+路口本身就是答案。 || The corner itself is the answer.

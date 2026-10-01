@@ -1,0 +1,128 @@
+早點睡，這題會縮小。 || Sleep earlier. This question will shrink.
+你不是病了，是緊。 || You are not ill. You are clenched.
+身體不適就去找人，不是找這頁。 || If the body is unwell, see a person, not this page.
+散步比搜索有用。 || A walk will do more than searching.
+把手機放在另一個房間。 || Put the phone in another room.
+螢幕太亮了。 || The screen is too bright.
+紙上記得比螢幕清楚。 || Paper will remember this more clearly than a screen.
+通知關掉一天。 || Turn notifications off for a day.
+有一則通知是重要的。 || One notification matters.
+重要的那則你已經看到。 || You have already seen the one that matters.
+回覆最上面的那封。 || Reply to the one at the top.
+從最舊的信回起。 || Start with the oldest letter.
+信箱可以清空。 || The inbox may be emptied.
+有一封要留星號。 || One letter deserves a star.
+行程取消一個。 || Cancel one appointment.
+行程保留，人要到。 || Keep the appointment. Be there.
+你會遲到，先說。 || You will be late. Say so first.
+你會準時。 || You will be on time.
+早到五分鐘就好。 || Five minutes early is enough.
+不要早到太多。 || Don't arrive too early.
+穿那件你放心的。 || Wear the one you trust.
+衣服沒有那麼重要。 || The clothes matter less than you think.
+顏色選深的。 || Choose the darker color.
+顏色選淺的。 || Choose the lighter color.
+紅色可以。 || Red is allowed.
+今天不要紅色。 || No red today.
+頭髮撥一下就出門。 || Sweep your hair back and go.
+打扮從簡。 || Dress plainly.
+鄭重一點。 || Be a little more formal.
+禮物親手交。 || Deliver the gift by hand.
+禮物寄出即可。 || Sending the gift is enough.
+不需要禮物。 || No gift is needed.
+一束小的比一束大的好。 || A small bouquet is better than a large one.
+卡片寫兩行。 || Write two lines on the card.
+卡片空白，簽名即可。 || Leave the card blank. Just sign.
+蛋糕不必。 || No need for cake.
+可以吃甜的。 || You may eat something sweet.
+敬酒說短。 || Keep the toast short.
+這杯可以不喝。 || You may leave this cup.
+喝一杯就停。 || One drink, then stop.
+水就好。 || Water is enough.
+座位換到中間。 || Move your seat to the middle.
+坐在邊上。 || Sit at the edge.
+主人的話聽完。 || Hear the host out.
+你可以先走。 || You may leave first.
+最後一個走。 || Leave last.
+幫忙收桌子。 || Help clear the table.
+你是客人，坐下。 || You are the guest. Sit.
+帶一個小菜去。 || Bring a small dish.
+空手去就好。 || Go empty-handed.
+話多的人讓他說。 || Let the talkative one speak.
+你今天要說滿三句。 || Say at least three sentences today.
+你今天少說三句。 || Say three sentences fewer today.
+笑話收回。 || Hold the joke back.
+笑話可以說。 || The joke may be told.
+嚴肅的場合，收起俏皮。 || In a solemn room, put the wit away.
+俏皮能救人。 || Wit can save the moment.
+拍照可以，但先問。 || Photos are fine. Ask first.
+不要拍照。 || Don't take a photo.
+這一天要記住。 || Remember this day.
+這一天不必紀念。 || This day doesn't need a memorial.
+日期記下來。 || Write the date down.
+日期不重要。 || The date doesn't matter.
+地點換一個。 || Change the place.
+就在老地方。 || Meet at the old place.
+老地方已經不適合。 || The old place no longer fits.
+挑白天見。 || Meet in daylight.
+夜晚見比較真。 || Night will make it truer.
+公共場合談。 || Talk in a public place.
+換到安靜的房間談。 || Move the talk to a quiet room.
+走著談。 || Talk while walking.
+坐下來談。 || Sit down to talk.
+站著說完就走。 || Say it standing, then go.
+留十分鐘緩衝。 || Leave a buffer of ten minutes.
+不要緩衝，直接進入。 || No buffer. Go straight in.
+開場先謝。 || Begin with thanks.
+開場直接說事。 || Begin with the matter itself.
+結尾停在好的句子。 || End on a good sentence.
+結尾不必圓。 || The ending doesn't have to be round.
+你會被問到，準備一句。 || You will be asked. Prepare one sentence.
+你不會被問，放鬆。 || You will not be asked. Relax.
+問題丟回來時，接住。 || When the question comes back, catch it.
+問題丟回來時，不必接。 || When the question comes back, you need not catch it.
+你的作品已經夠格。 || Your work is already good enough.
+再等一次評語。 || Wait for one more comment.
+評語只採納具體的。 || Take only the comments that are concrete.
+讚美收下，不要推開。 || Accept the praise. Don't push it away.
+讚美裡有水分，擠掉。 || There is water in the praise. Squeeze it out.
+批評裡有金子。 || There is gold in the criticism.
+批評是情緒，放下。 || The criticism is mood. Set it down.
+你該教別人這一招。 || You should teach this to someone.
+你還是學生，先別教。 || You are still a student. Don't teach yet.
+學生會超過你，那是好事。 || The student will surpass you. That is good.
+把方法寫下來給後來的人。 || Write the method down for whoever comes next.
+方法留在手上，不要寫。 || Keep the method in your hands. Don't write it.
+城市留你。 || The city is keeping you.
+城市該換了。 || It is time to change cities.
+先換區，不必換城。 || Change districts first, not cities.
+鄉下待一陣子。 || Stay in the countryside for a while.
+回到人多的地方。 || Return to where the people are.
+一個人的旅行會回答你。 || A journey alone will answer you.
+這次不要一個人去。 || Don't go alone this time.
+訂票。 || Book the ticket.
+票先別訂。 || Don't book the ticket yet.
+退票。 || Cancel the ticket.
+行程縮短一天。 || Shorten the trip by a day.
+多留一天。 || Stay one more day.
+旅館換一間更安靜的。 || Change to a quieter room.
+窗向街，比較不悶。 || A window onto the street will feel less shut in.
+你需要看海。 || You need to see the sea.
+看河就夠了。 || The river is enough.
+山上的空氣會幫你。 || The mountain air will help.
+回家睡自己的床。 || Go home and sleep in your own bed.
+別人家的床會讓你想清楚。 || A bed elsewhere will make you think clearly.
+植物搬到有光的地方。 || Move the plant into the light.
+你也該移到有光的地方。 || You should move into the light too.
+貓知道，你也知道。 || The cat knows. So do you.
+狗會往那個方向走。 || The dog will walk that way.
+跟著小孩子的率直。 || Follow the child's frankness.
+小孩子的話再聽一次。 || Listen to the child once more.
+長者這次說對了。 || The elder is right this time.
+長者的擔心不是命令。 || An elder's worry is not a command.
+傳統留一半。 || Keep half the tradition.
+傳統這次要守。 || This time, keep the tradition.
+新的儀式從今天開始。 || The new ritual starts today.
+儀式不用大。 || The ritual need not be large.
+點一支香，或放一首安靜的歌。 || Light incense, or play one quiet song.
+做完這個小動作，就去生活。 || Do this small thing, then go live.
