@@ -1,108 +1,128 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Filter App</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="filter.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="在瀏覽器裡即時調色、套用底片風格、對比原圖，並下載成品。照片不會上傳。">
+  <meta name="theme-color" content="#f3f0e7">
+  <title>Image Filter — Simon Lo</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='16' fill='%2317211b'/%3E%3Ctext x='16' y='21' text-anchor='middle' font-family='Arial' font-size='12' font-weight='700' fill='%23dfff45'%3ESL%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="filter.css">
 </head>
 <body>
-    <div class="container">
-        <h3 class="center-align">Image Filter Demo</h3>
-        <div class="file-field input-field">
-            <div class="btn">
-                <span>Upload</span>
-                <input type="file" id="imageInput" accept="image/*" multiple>
+  <div class="app">
+    <header class="topbar">
+      <a class="brand" href="index.html">
+        <span class="brand-mark">SL</span>
+        Simon Lo
+      </a>
+      <p class="top-title">Image Filter</p>
+      <a class="back" href="index.html">作品</a>
+    </header>
+
+    <div class="workspace">
+      <section class="stage-wrap" aria-label="預覽">
+        <div class="stage-toolbar">
+          <div class="file-meta">
+            <strong id="fileName">尚未選擇照片</strong>
+            <span id="fileMeta">拖放、貼上或從相簿選擇</span>
+          </div>
+          <div class="toolbar-actions" hidden>
+            <div class="toolgroup">
+              <button type="button" id="peekBtn" class="toolbtn" title="按住查看原圖" disabled>原圖</button>
+              <button type="button" id="compareBtn" class="toolbtn" title="左右對比" aria-pressed="false" disabled>對比</button>
             </div>
-            <div class="file-path-wrapper">
-                <input class="file-path validate" type="text" placeholder="Upload one or more images">
+            <div class="toolgroup">
+              <button type="button" id="undoBtn" class="toolbtn" title="復原（Ctrl 或 ⌘ Z）" disabled>復原</button>
+              <button type="button" id="redoBtn" class="toolbtn" title="重做（Ctrl 或 ⌘ Shift Z）" disabled>重做</button>
+              <button type="button" id="resetBtn" class="toolbtn" title="重設全部調整與構圖" disabled>重設</button>
             </div>
+            <div class="toolgroup">
+              <button type="button" id="downloadJpg" class="toolbtn solid" disabled>下載 JPG</button>
+              <button type="button" id="downloadPng" class="toolbtn" disabled>PNG</button>
+            </div>
+          </div>
         </div>
 
-        <div class="input-field">
-            <select id="preset">
-                <option value="custom" selected>Custom</option>
-                <option value="vintage">Vintage</option>
-                <option value="lomo">Lomo</option>
-                <option value="clarity">Clarity</option>
-                <option value="warm">Warm</option>
-                <option value="cool">Cool</option>
-            </select>
-            <label>Filter Preset</label>
+        <div id="stage" class="stage">
+          <div id="empty" class="empty">
+            <div class="empty-copy">
+              <p class="eyebrow">Experiment / 02</p>
+              <h1>把<em>照片</em><br>丟進來。</h1>
+              <p class="lede">拖放、貼上，或一次選多張。亮度、色溫、暗角與底片風格都會即時預覽，處理只在這台裝置上進行。</p>
+              <div class="empty-actions">
+                <button type="button" id="pickBtn" class="primary">選擇照片</button>
+                <span class="hint">也可直接把檔案拖到這個畫面</span>
+              </div>
+            </div>
+            <div class="sample-block">
+              <p class="sample-label">或先用範例</p>
+              <div id="samples" class="samples"></div>
+            </div>
+          </div>
+
+          <div id="viewer" class="viewer" hidden>
+            <p id="loading" class="loading" hidden>讀取中</p>
+            <div id="print" class="print" hidden>
+              <img id="baseImg" class="photo" alt="" draggable="false">
+              <div id="clip" class="clip">
+                <div id="look" class="look">
+                  <img id="fxImg" class="photo fx" alt="" draggable="false">
+                  <div class="layer temp"></div>
+                  <div class="layer tint"></div>
+                  <div class="layer fade"></div>
+                  <div class="layer vignette"></div>
+                  <div class="layer grain"></div>
+                </div>
+              </div>
+              <div id="handle" class="handle" hidden>
+                <div class="line"></div>
+                <span class="tag before">原圖</span>
+                <span class="tag after">效果</span>
+                <div class="knob" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                  <path d="M7 4 L3 9 L7 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M11 4 L15 9 L11 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="dropveil" class="dropveil" hidden>放開以加入照片</div>
+          <input id="compareRange" class="sr-only" type="range" min="0" max="100" value="50" step="0.1" aria-label="原圖與效果的分界" disabled>
         </div>
 
-        <div class="row">
-            <div class="input-field col s12 m6">
-                <p class="range-field">
-                    <label for="brightness">Brightness <span id="brightnessVal">100</span>%</label>
-                    <input type="range" id="brightness" min="0" max="200" value="100">
-                </p>
-            </div>
-            <div class="input-field col s12 m6">
-                <p class="range-field">
-                    <label for="contrast">Contrast <span id="contrastVal">100</span>%</label>
-                    <input type="range" id="contrast" min="0" max="200" value="100">
-                </p>
-            </div>
-            <div class="input-field col s12 m6">
-                <p class="range-field">
-                    <label for="saturate">Saturate <span id="saturateVal">100</span>%</label>
-                    <input type="range" id="saturate" min="0" max="200" value="100">
-                </p>
-            </div>
-            <div class="input-field col s12 m6">
-                <p class="range-field">
-                    <label for="grayscale">Grayscale <span id="grayscaleVal">0</span>%</label>
-                    <input type="range" id="grayscale" min="0" max="100" value="0">
-                </p>
-            </div>
-            <div class="input-field col s12 m6">
-                <p class="range-field">
-                    <label for="sepia">Sepia <span id="sepiaVal">0</span>%</label>
-                    <input type="range" id="sepia" min="0" max="100" value="0">
-                </p>
-            </div>
-            <div class="input-field col s12 m6">
-                <p class="range-field">
-                    <label for="hue">Hue Rotate <span id="hueVal">0</span>°</label>
-                    <input type="range" id="hue" min="0" max="360" value="0">
-                </p>
-            </div>
-            <div class="input-field col s12 m6">
-                <p class="range-field">
-                    <label for="blur">Blur <span id="blurVal">0</span>px</label>
-                    <input type="range" id="blur" min="0" max="10" value="0" step="0.5">
-                </p>
-            </div>
-            <div class="input-field col s12 m6">
-                <p class="range-field">
-                    <label for="invert">Invert <span id="invertVal">0</span>%</label>
-                    <input type="range" id="invert" min="0" max="100" value="0">
-                </p>
-            </div>
-            <div class="input-field col s12 m6">
-                <p class="range-field">
-                    <label for="opacity">Opacity <span id="opacityVal">100</span>%</label>
-                    <input type="range" id="opacity" min="0" max="100" value="100">
-                </p>
-            </div>
-            <div class="input-field col s12 m6">
-                <p class="range-field">
-                    <label for="temperature">White Balance <span id="temperatureVal">0</span></label>
-                    <input type="range" id="temperature" min="-100" max="100" value="0">
-                </p>
-            </div>
+        <div id="filmdock" class="filmdock" hidden>
+          <div class="filmbar">
+            <span id="filmCount">照片</span>
+            <button type="button" id="addMore" class="textbtn">加入照片</button>
+          </div>
+          <div id="filmstrip" class="filmstrip"></div>
         </div>
+      </section>
 
-        <div class="center-align">
-            <button id="applyButton" class="btn waves-effect waves-light">Apply Filters</button>
+      <aside class="panel" aria-labelledby="adjust-title">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Adjust</p>
+            <h2 id="adjust-title">調整</h2>
+          </div>
+          <button type="button" id="applyAll" class="toolbtn" disabled>套用到全部</button>
         </div>
-
-        <div id="previewContainer" class="row"></div>
+        <p class="panel-note">拖曳即時更新。雙擊項目名稱可單獨重設。</p>
+        <div class="preset-wrap">
+          <div id="presets" class="presets" role="listbox" aria-label="風格預設"></div>
+        </div>
+        <div id="controls" class="controls"></div>
+        <p class="keys">按住「原圖」或空白鍵看原本 · Ctrl/⌘ Z 復原</p>
+      </aside>
     </div>
+  </div>
 
-    <script src="filter.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <input id="imageInput" type="file" accept="image/*" multiple hidden>
+  <div id="toast" class="toast" role="status"></div>
+  <noscript><p class="noscript">這個濾鏡需要啟用 JavaScript。</p></noscript>
+  <script src="filter.js"></script>
 </body>
 </html>
