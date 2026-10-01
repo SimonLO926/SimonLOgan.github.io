@@ -154,6 +154,7 @@
       min-height: 250px;
       padding: 28px;
       overflow: hidden;
+      background: var(--card-color, #e3e9df);
       border-right: 1px solid var(--line);
       border-bottom: 1px solid var(--line);
       text-decoration: none;
@@ -169,8 +170,19 @@
       transition: transform .25s ease;
     }
 
-    .project:hover { background: var(--ink); color: var(--paper); }
-    .project:hover::after { transform: translate(5px, -5px); }
+    .project:nth-child(7n + 1) { --card-color: #ff9675; }
+    .project:nth-child(7n + 2) { --card-color: #dfff85; }
+    .project:nth-child(7n + 3) { --card-color: #a9d7cb; }
+    .project:nth-child(7n + 4) { --card-color: #d0c1ed; }
+    .project:nth-child(7n + 5) { --card-color: #aacbe9; }
+    .project:nth-child(7n + 6) { --card-color: #f2d38b; }
+    .project:nth-child(7n + 7) { --card-color: #edb8c8; }
+
+    .project:hover,
+    .project:focus-visible { background: var(--ink); color: var(--paper); }
+    .project:focus-visible { outline: 3px solid var(--ink); outline-offset: -5px; }
+    .project:hover::after,
+    .project:focus-visible::after { transform: translate(5px, -5px); }
 
     .project-no { font: 11px monospace; opacity: .65; }
 
@@ -183,8 +195,6 @@
     }
 
     .project p { margin: 0; opacity: .68; font-size: 13px; }
-    .project.featured { background: var(--orange); }
-    .project.featured:hover { background: var(--ink); }
 
     footer {
       display: flex;
@@ -249,7 +259,7 @@
           <span>2018—2026</span>
         </div>
         <div class="project-grid">
-          <a class="project featured" href="./tokyo/tokyo_index.html">
+          <a class="project" href="./tokyo/tokyo_index.html">
             <span class="project-no">PROJECT / 01</span>
             <h3>Tokyo 2026</h3>
             <p>七天東京聖地巡禮</p>
