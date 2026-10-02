@@ -173,6 +173,9 @@
       z-index: -3;
       overflow: hidden;
       pointer-events: none;
+      filter: blur(28px) saturate(1.15);
+      transform: scale(1.16);
+      transition: filter .65s ease, transform .65s ease;
     }
 
     .project-preview iframe {
@@ -208,6 +211,19 @@
     .project:hover, .project:focus-visible {
       transform: translateY(-5px);
       box-shadow: 0 22px 44px rgba(23,33,27,.16), inset 0 1px 0 #fff;
+    }
+
+    /* Reveal the homepage through the glass on hover or keyboard focus. */
+    @media (hover: hover) and (pointer: fine) {
+      .project:hover .project-preview {
+        filter: blur(.5px) saturate(1.1);
+        transform: scale(1.02);
+      }
+    }
+
+    .project:focus-visible .project-preview {
+      filter: blur(.5px) saturate(1.1);
+      transform: scale(1.02);
     }
 
     .project:focus-visible { outline: 3px solid #42695a; outline-offset: 4px; }
@@ -261,7 +277,7 @@
 
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
-      .project, .project-arrow { transition: none; }
+      .project, .project-arrow, .project-preview { transition: none; }
       .project:hover, .project:focus-visible { transform: none; }
     }
   </style>
@@ -297,9 +313,9 @@
           <span>2018—2026</span>
         </div>
         <div class="project-grid">
-          <a class="project" href="./dynamic-answer-book/github-pages-upload/">
+          <a class="project" href="./dynamic-answer-book/index.html">
             <div class="project-preview" aria-hidden="true" inert>
-              <iframe src="./dynamic-answer-book/github-pages-upload/" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
+              <iframe src="./dynamic-answer-book/index.html" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
             </div>
             <div class="project-top">
               <span class="project-no">INTERACTIVE / 08</span>
@@ -428,7 +444,12 @@
     // Match a desktop homepage to each card without adding horizontal overflow.
     const resizePreviews = new ResizeObserver(entries => {
       for (const { target, contentRect } of entries) {
-        target.style.setProperty('--preview-scale', contentRect.width / 1280);
+        const scale = contentRect.width / 1280;
+        target.style.setProperty('--preview-scale', scale);
+        // Keep the preview covering tall mobile cards after desktop scaling.
+        if (scale > 0) {
+          target.querySelector('iframe').style.height = `${Math.max(800, contentRect.height / scale)}px`;
+        }
       }
     });
     cards.forEach(card => {
