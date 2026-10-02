@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="zh-Hant">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>架塊</title>
+  <title>Bridge</title>
   <style>
     :root {
       --ink: #1d1d1f;
@@ -38,7 +38,8 @@
       min-height: 100vh;
       color: var(--ink);
       background: var(--paper);
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Noto Sans TC", "Noto Sans JP", "Noto Sans KR", sans-serif;
+      font-family: Inter, "Noto Sans", "WenQuanYi Micro Hei", "Droid Sans Fallback", sans-serif;
+      font-feature-settings: "ss01", "cv11";
       -webkit-font-smoothing: antialiased;
     }
 
@@ -62,7 +63,7 @@
     }
     .text-btn { color: var(--blue); padding-left: 0; }
 
-    .page { width: min(1080px, calc(100% - 48px)); margin: 0 auto; padding: 28px 0 64px; }
+    .page { width: min(1440px, calc(100% - 28px)); margin: 0 auto; padding: 12px 0 16px; }
 
     .hero, .settings-wrap {
       position: relative;
@@ -74,21 +75,7 @@
       overflow: hidden;
     }
 
-    .hero {
-      background:
-        radial-gradient(42% 32% at 16% 24%, rgba(100, 210, 255, .34), transparent 70%),
-        radial-gradient(36% 30% at 84% 18%, rgba(255, 214, 10, .22), transparent 72%),
-        radial-gradient(40% 36% at 78% 82%, rgba(191, 90, 242, .28), transparent 70%),
-        radial-gradient(34% 28% at 18% 78%, rgba(48, 209, 88, .16), transparent 72%);
-    }
-
-    body[data-theme="dark"] .hero {
-      background:
-        radial-gradient(42% 32% at 16% 24%, rgba(10, 132, 255, .28), transparent 70%),
-        radial-gradient(36% 30% at 84% 18%, rgba(255, 214, 10, .12), transparent 72%),
-        radial-gradient(40% 36% at 78% 82%, rgba(191, 90, 242, .22), transparent 70%),
-        radial-gradient(34% 28% at 18% 78%, rgba(48, 209, 88, .1), transparent 72%);
-    }
+    .hero { background: var(--paper); }
 
     #hero3d {
       position: absolute;
@@ -103,12 +90,9 @@
       z-index: 1;
       display: grid;
       justify-items: center;
-      padding: 42px 56px 30px;
-      border-radius: 36px;
-      background: color-mix(in srgb, var(--paper) 78%, transparent);
-      border: 1px solid var(--line);
-      box-shadow: 0 24px 70px rgba(0, 0, 0, .08);
-      backdrop-filter: blur(22px) saturate(1.4);
+      background: none;
+      border: 0;
+      box-shadow: none;
     }
 
     .eyebrow {
@@ -119,12 +103,16 @@
       letter-spacing: .18em;
     }
 
+    h1, .wordmark {
+      font-family: "Noto Sans Display", Inter, "WenQuanYi Micro Hei", sans-serif;
+    }
+
     h1 {
       margin: 0;
-      font-size: 80px;
-      font-weight: 600;
-      letter-spacing: -.045em;
-      line-height: 1;
+      font-size: 96px;
+      font-weight: 700;
+      letter-spacing: -.055em;
+      line-height: .92;
     }
 
     .lede {
@@ -180,33 +168,37 @@
     }
     .theme-row button[aria-pressed="true"] { background: var(--blue); color: white; box-shadow: none; }
 
+    #game {
+      min-height: calc(100vh - 28px);
+      display: flex;
+      flex-direction: column;
+    }
+
     .nav {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 18px;
+      margin-bottom: 8px;
     }
 
-    .wordmark { font-weight: 600; letter-spacing: -.03em; font-size: 17px; }
+    .wordmark { font-weight: 700; letter-spacing: -.04em; font-size: 22px; }
 
     .stage {
+      flex: 1;
       display: grid;
-      grid-template-columns: 176px auto 196px;
-      gap: 22px;
-      align-items: start;
+      grid-template-columns: 148px minmax(0, 1fr) 164px;
+      gap: 16px;
+      align-items: center;
       justify-content: center;
-      padding-top: 8px;
     }
 
     .panel {
       display: grid;
-      gap: 22px;
-      padding: 18px 16px 20px;
-      border-radius: 28px;
+      gap: 18px;
+      padding: 16px 14px 18px;
+      border-radius: var(--corner, 8px);
       background: var(--card);
       border: 1px solid var(--line);
-      box-shadow: 0 16px 40px rgba(0, 0, 0, .06);
-      backdrop-filter: blur(18px) saturate(1.3);
     }
     .box h2 {
       margin: 0 0 10px;
@@ -218,7 +210,7 @@
     }
     .stat { display: grid; gap: 2px; }
     .stat span { color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
-    .stat b { font-size: 28px; font-weight: 600; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+    .stat b { font-size: 32px; font-weight: 600; letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
     .meter {
       height: 4px;
       margin-top: 12px;
@@ -231,7 +223,7 @@
       height: 100%;
       width: 100%;
       border-radius: inherit;
-      background: linear-gradient(90deg, #64d2ff, var(--blue));
+      background: var(--blue);
       transform: scaleX(0);
       transform-origin: left center;
     }
@@ -239,21 +231,19 @@
       position: relative;
       width: max-content;
       justify-self: center;
-      padding: 12px;
-      border-radius: 40px;
-      background: linear-gradient(180deg, rgba(255, 255, 255, .92), rgba(255, 255, 255, .45));
-      box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, .95);
-    }
-    body[data-theme="dark"] .board-wrap {
-      background: linear-gradient(180deg, #3a3a3c, #0e0e10);
-      box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, .16);
+      padding: 0;
+      border-radius: var(--corner, 8px);
+      background: transparent;
+      box-shadow: none;
     }
     #board {
       display: block;
+      width: 280px;
+      height: 560px;
       background: var(--well);
       border: 0;
-      border-radius: 28px;
-      box-shadow: inset 0 0 0 1px var(--line);
+      border-radius: var(--corner, 8px);
+      box-shadow: none;
     }
     #hold-canvas, #next-canvas { display: block; background: transparent; border: 0; }
     #hold-canvas.used { opacity: .35; }
@@ -269,7 +259,7 @@
       padding: 28px;
       text-align: center;
       background: color-mix(in srgb, var(--well) 88%, transparent);
-      border-radius: 28px;
+      border-radius: var(--corner, 8px);
       backdrop-filter: blur(16px);
     }
 
@@ -282,8 +272,7 @@
     .keys { margin: 22px 0 0; color: var(--muted); font-size: 13px; text-align: center; }
 
     @media (max-width: 760px) {
-      h1 { font-size: 48px; }
-      .hero-copy { padding: 28px 22px 18px; }
+      h1 { font-size: 64px; }
       .hero-actions, .stage { display: grid; }
       .stage { grid-template-columns: 1fr; }
       .panel { grid-template-columns: 1fr 1fr; }
@@ -298,20 +287,20 @@
       <canvas id="hero3d" aria-hidden="true"></canvas>
       <div class="hero-copy">
         <p class="eyebrow">BRIDGE</p>
-        <h1 data-i18n="title">架塊</h1>
+        <h1 data-i18n="title">Bridge</h1>
         <div class="hero-actions">
-          <button id="go-marathon" class="primary" type="button" data-i18n="marathon">馬拉松</button>
-          <button id="go-sprint" class="secondary" type="button" data-i18n="sprint">40 行競速</button>
+          <button id="go-marathon" class="primary" type="button" data-i18n="marathon">Marathon</button>
+          <button id="go-sprint" class="secondary" type="button" data-i18n="sprint">40-line sprint</button>
         </div>
-        <button id="go-settings" class="text-btn" type="button" data-i18n="settings">設定</button>
+        <button id="go-settings" class="text-btn" type="button" data-i18n="settings">Settings</button>
       </div>
     </section>
 
     <section id="settings" class="settings-wrap" hidden>
       <p class="eyebrow">BRIDGE</p>
-      <h1 data-i18n="settings">設定</h1>
+      <h1 data-i18n="settings">Settings</h1>
       <div class="settings-card">
-        <label><span data-i18n="language">語言</span>
+        <label><span data-i18n="language">Language</span>
           <select id="lang">
             <option value="zh-Hant">繁體中文</option>
             <option value="zh-Hans">简体中文</option>
@@ -322,29 +311,29 @@
             <option value="es">Español</option>
           </select>
         </label>
-        <label><span data-i18n="volume">音量</span>
+        <label><span data-i18n="volume">Volume</span>
           <input id="volume" type="range" min="0" max="100" value="70">
         </label>
         <div class="field">
-          <span data-i18n="theme">背景</span>
+          <span data-i18n="theme">Background</span>
           <div class="theme-row">
-            <button id="theme-light" type="button" data-i18n="light">白底</button>
-            <button id="theme-dark" type="button" data-i18n="dark">黑底</button>
+            <button id="theme-light" type="button" data-i18n="light">White</button>
+            <button id="theme-dark" type="button" data-i18n="dark">Black</button>
           </div>
         </div>
       </div>
-      <button id="settings-back" class="text-btn" type="button" data-i18n="close">返回</button>
+      <button id="settings-back" class="text-btn" type="button" data-i18n="close">Back</button>
     </section>
 
     <section id="game" hidden>
       <div class="nav">
-        <div class="wordmark" data-i18n="title">架塊</div>
-        <button id="game-menu" class="text-btn" type="button" data-i18n="menu">回選單</button>
+        <div class="wordmark" data-i18n="title">Bridge</div>
+        <button id="game-menu" class="text-btn" type="button" data-i18n="menu">Menu</button>
       </div>
       <div class="stage">
         <aside class="panel">
           <section class="box">
-            <h2 data-i18n="hold">保留</h2>
+            <h2 data-i18n="hold">Hold</h2>
             <canvas id="hold-canvas" width="112" height="96"></canvas>
             <p class="hint" id="hold-state"></p>
           </section>
@@ -355,33 +344,34 @@
             <h2 id="veil-title"></h2>
             <p id="veil-copy"></p>
             <button id="veil-btn" class="primary" type="button"></button>
-            <button id="veil-menu" class="text-btn" type="button" data-i18n="menu">回選單</button>
+            <button id="veil-menu" class="text-btn" type="button" data-i18n="menu">Menu</button>
           </div>
         </div>
         <aside class="panel">
           <section class="box">
-            <h2 data-i18n="next">下一個</h2>
+            <h2 data-i18n="next">Next</h2>
             <canvas id="next-canvas" width="112" height="250"></canvas>
           </section>
           <section class="box">
-            <div class="stat"><span data-i18n="score">分數</span><b id="score">0</b></div>
-            <div class="stat"><span data-i18n="lines">消除</span><b id="lines">0</b></div>
-            <div class="stat"><span id="third-label" data-i18n="stage">階段</span><b id="third">1</b></div>
-            <div class="stat"><span data-i18n="best">最高</span><b id="best">0</b></div>
+            <div class="stat"><span data-i18n="score">Score</span><b id="score">0</b></div>
+            <div class="stat"><span data-i18n="lines">Lines</span><b id="lines">0</b></div>
+            <div class="stat"><span id="third-label" data-i18n="stage">Stage</span><b id="third">1</b></div>
+            <div class="stat"><span data-i18n="best">Best</span><b id="best">0</b></div>
             <div class="meter" aria-hidden="true"><i id="meter-bar"></i></div>
           </section>
         </aside>
       </div>
       <div class="pad">
-        <button type="button" id="btn-left" data-i18n="left">左</button>
-        <button type="button" id="btn-right" data-i18n="right">右</button>
-        <button type="button" id="btn-rot" data-i18n="rotate">轉</button>
-        <button type="button" id="btn-hold" data-i18n="keep">留</button>
-        <button type="button" id="btn-drop" data-i18n="drop">落</button>
+        <button type="button" id="btn-left" data-i18n="left">Left</button>
+        <button type="button" id="btn-right" data-i18n="right">Right</button>
+        <button type="button" id="btn-rot" data-i18n="rotate">Turn</button>
+        <button type="button" id="btn-hold" data-i18n="keep">Hold</button>
+        <button type="button" id="btn-drop" data-i18n="drop">Drop</button>
       </div>
     </section>
   </div>
   <script type="module">
+    import { createSound } from "./audio.mjs";
     import { createSession, drawSession, updateSession } from "./arcade.mjs";
     import { translate } from "./i18n.mjs";
     import {
@@ -417,16 +407,16 @@
     let dasDir = 0;
     let dasTime = 0;
     let dasOn = false;
-    let audio;
-    let master;
+    const sound = createSound(() => settings.volume);
+    const CORNER = 4;
 
     applySettings();
 
     function loadSettings() {
       try {
-        return { lang: "zh-Hant", volume: 0.7, theme: "light", ...JSON.parse(localStorage.getItem("bridge-settings") || "{}") };
+        return { lang: "en", volume: 0.7, theme: "light", ...JSON.parse(localStorage.getItem("bridge-settings") || "{}") };
       } catch {
-        return { lang: "zh-Hant", volume: 0.7, theme: "light" };
+        return { lang: "en", volume: 0.7, theme: "light" };
       }
     }
 
@@ -445,27 +435,7 @@
       document.querySelector("#volume").value = String(Math.round(settings.volume * 100));
       document.querySelector("#theme-light").setAttribute("aria-pressed", String(settings.theme === "light"));
       document.querySelector("#theme-dark").setAttribute("aria-pressed", String(settings.theme === "dark"));
-      if (master) master.gain.value = settings.volume;
-    }
-
-    function blip(freq, dur) {
-      if (settings.volume <= 0) return;
-      try {
-        audio ??= new AudioContext();
-        master ??= audio.createGain();
-        master.gain.value = settings.volume;
-        master.connect(audio.destination);
-        const osc = audio.createOscillator();
-        const gain = audio.createGain();
-        osc.frequency.value = freq;
-        osc.type = "square";
-        gain.gain.value = 0.05;
-        osc.connect(gain);
-        gain.connect(master);
-        osc.start();
-        gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + dur);
-        osc.stop(audio.currentTime + dur);
-      } catch { audio = null; }
+      sound.setVolume();
     }
 
     function bestKey() { return game.mode === "sprint" ? "bridge-best-sprint" : "bridge-best-marathon"; }
@@ -498,12 +468,15 @@
       frozenTime = 0;
       veil.hidden = true;
       showScreen("game");
+      fitBoard();
+      sound.restart();
     }
 
     function backToMenu() {
       paused = false;
       session = null;
       game.phase = "ready";
+      sound.stop();
       showScreen("menu");
     }
 
@@ -531,13 +504,13 @@
     function doRotate(dir) {
       if (paused || !tryRotate(game, dir)) return;
       onManeuver();
-      blip(700, 0.02);
+      sound.blip(700, 0.02);
     }
 
     function doHold() {
       if (paused || !hold(game)) return;
       resetTimers();
-      blip(520, 0.04);
+      sound.blip(520, 0.04);
     }
 
     function doHard() {
@@ -548,7 +521,7 @@
       if (paused || game.phase !== "playing") return;
       hardDrop(game);
       resetTimers();
-      blip(160, 0.05);
+      sound.blip(160, 0.05);
     }
 
     document.querySelector("#go-marathon").addEventListener("click", () => begin("marathon"));
@@ -570,6 +543,7 @@
       settings.volume = Number(event.target.value) / 100;
       saveSettings();
       applySettings();
+      if (settings.volume <= 0) sound.stop();
     });
     document.querySelector("#theme-light").addEventListener("click", () => { settings.theme = "light"; saveSettings(); applySettings(); });
     document.querySelector("#theme-dark").addEventListener("click", () => { settings.theme = "dark"; saveSettings(); applySettings(); });
@@ -644,41 +618,21 @@
     }
 
     function tile(context, x, y, size, ghost) {
-      const pad = size > 24 ? 2.4 : 1.7;
-      const radius = Math.max(5, size * 0.28);
+      const pad = size > 24 ? 1.25 : 1;
+      const radius = CORNER * (size / CELL);
       const left = x * size + pad;
       const top = y * size + pad;
       const side = size - pad * 2;
       roundTile(context, left, top, side, radius);
       if (ghost) {
-        context.fillStyle = document.body.dataset.theme === "dark" ? "rgba(255,255,255,.07)" : "rgba(0,0,0,.045)";
+        context.fillStyle = document.body.dataset.theme === "dark" ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.04)";
         context.fill();
-        context.strokeStyle = document.body.dataset.theme === "dark" ? "rgba(255,255,255,.62)" : "rgba(29,29,31,.4)";
-        context.lineWidth = 1.4;
+        context.strokeStyle = document.body.dataset.theme === "dark" ? "rgba(255,255,255,.7)" : "rgba(29,29,31,.45)";
+        context.lineWidth = 1.25;
         context.stroke();
         return;
       }
-      const base = context.fillStyle;
-      context.save();
-      context.shadowColor = "rgba(0,0,0,.22)";
-      context.shadowBlur = size > 24 ? 10 : 5;
-      context.shadowOffsetY = size > 24 ? 4 : 2;
       context.fill();
-      context.restore();
-      context.fillStyle = base;
-      roundTile(context, left, top, side, radius);
-      context.fill();
-      const gloss = context.createLinearGradient(left, top, left + side * 0.15, top + side);
-      gloss.addColorStop(0, "rgba(255,255,255,.62)");
-      gloss.addColorStop(0.34, "rgba(255,255,255,.08)");
-      gloss.addColorStop(1, "rgba(0,0,0,.2)");
-      context.fillStyle = gloss;
-      roundTile(context, left, top, side, radius);
-      context.fill();
-      context.strokeStyle = "rgba(255,255,255,.42)";
-      context.lineWidth = 1;
-      roundTile(context, left + 0.5, top + 0.5, side - 1, radius);
-      context.stroke();
     }
 
     function drawBlob(context, cells, type, size, ghost, markIndex = null) {
@@ -744,29 +698,32 @@
       });
     }
 
-    function drawBoard() {
-      const dark = document.body.dataset.theme === "dark";
-      const wash = ctx.createLinearGradient(0, 0, board.width, board.height);
-      wash.addColorStop(0, dark ? "#323234" : "#ffffff");
-      wash.addColorStop(1, dark ? "#141416" : "#ececf1");
-      ctx.fillStyle = wash;
-      ctx.fillRect(0, 0, board.width, board.height);
-      ctx.strokeStyle = dark ? "rgba(255,255,255,.045)" : "rgba(0,0,0,.04)";
-      ctx.lineWidth = 1;
-      for (let y = 1; y < ROWS; y += 1) {
-        ctx.beginPath();
-        ctx.moveTo(16, y * CELL + 0.5);
-        ctx.lineTo(board.width - 16, y * CELL + 0.5);
-        ctx.stroke();
+    function prepareBoard() {
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const cssW = board.clientWidth || 280;
+      const cssH = board.clientHeight || 560;
+      const nextW = Math.max(1, Math.round(cssW * dpr));
+      const nextH = Math.max(1, Math.round(cssH * dpr));
+      if (board.width !== nextW || board.height !== nextH) {
+        board.width = nextW;
+        board.height = nextH;
       }
+      const scale = (cssW / (COLS * CELL)) * dpr;
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    }
+
+    function drawBoard() {
+      prepareBoard();
+      ctx.fillStyle = document.body.dataset.theme === "dark" ? "#1c1c1e" : "#ffffff";
+      ctx.fillRect(0, 0, COLS * CELL, ROWS * CELL);
       const flipping = anim?.step.type === "flip" || anim?.step.type === "reward";
       if (flipping) {
         const turn = Math.min(1, anim.t / anim.dur);
         const angle = Math.PI * (1 - Math.cos(Math.PI * turn)) / 2;
         ctx.save();
-        ctx.translate(board.width / 2, board.height / 2);
+        ctx.translate((COLS * CELL) / 2, (ROWS * CELL) / 2);
         ctx.rotate(angle);
-        ctx.translate(-board.width / 2, -board.height / 2);
+        ctx.translate(-(COLS * CELL) / 2, -(ROWS * CELL) / 2);
       }
       const skip = new Set();
       if (anim?.step.type === "drop") for (const move of anim.step.moves) skip.add(move.g);
@@ -866,13 +823,15 @@
           if (lockMs >= 480) {
             lockActive(game);
             resetTimers();
-            blip(140, 0.04);
+            sound.blip(140, 0.04);
           }
         } else lockMs = 0;
       }
 
       if (!paused && session) {
+        const clearedBefore = session.cleared;
         updateSession(session, dt);
+        if (session.cleared > clearedBefore) sound.blip(760, 0.035);
         if (session.over) finishSession();
       }
 
@@ -895,8 +854,8 @@
             const distance = step.type === "drop" ? Math.max(0, ...step.moves.map((move) => move.y1 - move.y0)) : 0;
             const dur = step.type === "clear" ? (step.blasts?.length ? 280 : 170) : step.type === "drop" ? 120 + distance * 18 : 460;
             anim = { step, t: 0, dur };
-            if (step.type === "clear") blip(step.blasts?.length ? 90 : 240, 0.06);
-            if (step.type === "flip" || step.type === "reward") blip(180, 0.08);
+            if (step.type === "clear") sound.playClear(step.rows.length);
+            if (step.type === "flip" || step.type === "reward") sound.blip(180, 0.08);
           } else if (step?.type === "done") {
             frozenTime = performance.now();
             const time = elapsed();
@@ -910,9 +869,39 @@
           } else if (step?.type === "spawn") resetTimers();
         }
       }
+      const musicOn = !document.querySelector("#game").hidden && !paused && game.phase !== "ready" && game.phase !== "over" && game.phase !== "done";
+      if (musicOn) {
+        sound.start();
+        sound.tick();
+      } else sound.stop();
+      fitBoard();
       draw();
       requestAnimationFrame(frame);
     }
+
+    function fitBoard() {
+      if (document.querySelector("#game").hidden) return;
+      const nav = document.querySelector(".nav").offsetHeight;
+      const stage = document.querySelector(".stage");
+      const stacked = window.innerWidth <= 760;
+      const panels = [...stage.querySelectorAll(":scope > .panel")];
+      const gap = 16;
+      const availH = Math.max(420, window.innerHeight - nav - (stacked ? 220 : 36));
+      const panelW = stacked ? 0 : panels.reduce((sum, el) => sum + el.offsetWidth, 0);
+      const availW = Math.max(180, stage.clientWidth - panelW - (stacked ? 0 : gap * 2));
+      const scale = Math.max(0.85, Math.min(availH / (ROWS * CELL), availW / (COLS * CELL)));
+      const width = Math.round(COLS * CELL * scale);
+      const height = Math.round(ROWS * CELL * scale);
+      board.style.width = `${width}px`;
+      board.style.height = `${height}px`;
+      const radius = CORNER * scale;
+      board.style.borderRadius = `${radius}px`;
+      document.querySelector(".board-wrap").style.borderRadius = `${radius}px`;
+      veil.style.borderRadius = `${radius}px`;
+      document.documentElement.style.setProperty("--corner", `${radius}px`);
+    }
+
+    window.addEventListener("resize", fitBoard);
 
     requestAnimationFrame(frame);
     startHero();
@@ -965,6 +954,16 @@
         const mix = (channel) => Math.min(255, Math.round(channel * base + 255 * spec));
         return `rgb(${mix(red)}, ${mix(green)}, ${mix(blue)})`;
       };
+      const flyers = forms.map((form, index) => ({
+        form,
+        x: 0,
+        y: 0,
+        vx: (index % 2 === 0 ? 1 : -1) * (70 + index * 14),
+        vy: (index % 3 === 0 ? 1 : -1) * (42 + index * 9),
+        ay: form.orbit,
+        ready: false,
+      }));
+      let heroLast = 0;
       const frameHero = (now) => {
         if (!document.querySelector("#menu").hidden) {
           const ratio = Math.min(2, window.devicePixelRatio || 1);
@@ -978,26 +977,31 @@
           }
           context.setTransform(ratio, 0, 0, ratio, 0, 0);
           context.clearRect(0, 0, width, height);
-          const time = now / 1000;
-          const scene = forms.map((form) => ({
-            form,
-            depth: Math.sin(time * 0.35 + form.orbit),
-          })).sort((a, b) => a.depth - b.depth);
-          for (const item of scene) {
-            const form = item.form;
-            const ay = time * form.speed + form.orbit;
-            const ax = 0.55 + Math.sin(time * 0.4 + form.orbit) * 0.45;
-            const az = Math.sin(time * 0.2 + form.orbit) * 0.25;
-            const bob = Math.sin(time * 0.9 + form.orbit) * 14;
-            const ox = width * form.x + Math.cos(time * 0.17 + form.orbit) * 22;
-            const oy = height * form.y + bob;
-            context.save();
-            context.fillStyle = "rgba(0,0,0,.14)";
-            context.filter = "blur(8px)";
-            context.beginPath();
-            context.ellipse(ox, oy + form.scale * 2.3, form.scale * 1.7, form.scale * 0.38, 0, 0, Math.PI * 2);
-            context.fill();
-            context.restore();
+          const dt = heroLast ? Math.min(0.05, (now - heroLast) / 1000) : 0;
+          heroLast = now;
+          const margin = 90;
+          for (const flyer of flyers) {
+            if (!flyer.ready && width > 0) {
+              flyer.x = width * flyer.form.x;
+              flyer.y = height * flyer.form.y;
+              flyer.ready = true;
+            }
+            flyer.x += flyer.vx * dt;
+            flyer.y += flyer.vy * dt;
+            flyer.ay += flyer.form.speed * dt;
+            if (flyer.x < margin) { flyer.x = margin; flyer.vx = Math.abs(flyer.vx); }
+            if (flyer.x > width - margin) { flyer.x = width - margin; flyer.vx = -Math.abs(flyer.vx); }
+            if (flyer.y < margin) { flyer.y = margin; flyer.vy = Math.abs(flyer.vy); }
+            if (flyer.y > height - margin) { flyer.y = height - margin; flyer.vy = -Math.abs(flyer.vy); }
+          }
+          const scene = [...flyers].sort((a, b) => a.y - b.y);
+          for (const flyer of scene) {
+            const form = flyer.form;
+            const ay = flyer.ay;
+            const ax = 0.5 + Math.sin(flyer.ay * 0.7) * 0.35;
+            const az = Math.sin(flyer.ay * 0.45) * 0.3;
+            const ox = flyer.x;
+            const oy = flyer.y;
             const quads = [];
             for (const cell of form.cells) {
               for (const face of faces) {
