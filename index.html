@@ -142,59 +142,117 @@
     h2 { margin: 0; font-size: 17px; letter-spacing: -.02em; }
     .section-heading span { font: 12px monospace; }
 
+    /* Liquid Glass: homepage previews beneath a translucent lens. */
     .project-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      border-left: 1px solid var(--line);
-      border-top: 1px solid var(--line);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 24px;
     }
 
     .project {
       position: relative;
-      min-height: 250px;
-      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      isolation: isolate;
+      min-height: 340px;
+      padding: 22px;
       overflow: hidden;
-      background: var(--card-color, #e3e9df);
-      border-right: 1px solid var(--line);
-      border-bottom: 1px solid var(--line);
+      border: 1px solid rgba(255, 255, 255, .8);
+      border-radius: 28px;
+      background: #e5e8e6;
+      box-shadow: 0 12px 32px rgba(23, 33, 27, .09), inset 0 1px 0 #fff;
       text-decoration: none;
-      transition: background .25s ease, color .25s ease;
+      transform: translateY(0);
+      transition: transform .35s ease, box-shadow .35s ease;
+    }
+
+    .project-preview {
+      position: absolute;
+      inset: 0;
+      z-index: -3;
+      overflow: hidden;
+      pointer-events: none;
+      filter: blur(28px) saturate(1.15);
+      transform: scale(1.16);
+      transition: filter .65s ease, transform .65s ease;
+    }
+
+    .project-preview iframe {
+      width: 1280px;
+      height: 800px;
+      border: 0;
+      transform: scale(var(--preview-scale, .44));
+      transform-origin: top left;
+      pointer-events: none;
+    }
+
+    .project::before {
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      content: "";
+      background: linear-gradient(145deg, rgba(255,255,255,.15), rgba(255,255,255,.03) 45%, rgba(255,255,255,.3));
+      -webkit-backdrop-filter: blur(1.5px) saturate(1.15);
+      backdrop-filter: blur(1.5px) saturate(1.15);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.35), inset 2px 2px 8px rgba(255,255,255,.5);
+      pointer-events: none;
     }
 
     .project::after {
       position: absolute;
-      right: 26px;
-      top: 20px;
-      content: "↗";
-      font-size: 30px;
-      transition: transform .25s ease;
+      inset: 0;
+      z-index: -1;
+      content: "";
+      background: radial-gradient(circle at var(--glow-x, 80%) var(--glow-y, 0%), rgba(255,255,255,.48), transparent 55%);
+      pointer-events: none;
     }
 
-    .project:nth-child(7n + 1) { --card-color: #ff9675; }
-    .project:nth-child(7n + 2) { --card-color: #dfff85; }
-    .project:nth-child(7n + 3) { --card-color: #a9d7cb; }
-    .project:nth-child(7n + 4) { --card-color: #d0c1ed; }
-    .project:nth-child(7n + 5) { --card-color: #aacbe9; }
-    .project:nth-child(7n + 6) { --card-color: #f2d38b; }
-    .project:nth-child(7n + 7) { --card-color: #edb8c8; }
-
-    .project:hover,
-    .project:focus-visible { background: var(--ink); color: var(--paper); }
-    .project:focus-visible { outline: 3px solid var(--ink); outline-offset: -5px; }
-    .project:hover::after,
-    .project:focus-visible::after { transform: translate(5px, -5px); }
-
-    .project-no { font: 11px monospace; opacity: .65; }
-
-    .project h3 {
-      max-width: 80%;
-      margin: 82px 0 9px;
-      font-size: clamp(28px, 4vw, 48px);
-      line-height: .95;
-      letter-spacing: -.055em;
+    .project:hover, .project:focus-visible {
+      transform: translateY(-5px);
+      box-shadow: 0 22px 44px rgba(23,33,27,.16), inset 0 1px 0 #fff;
     }
 
-    .project p { margin: 0; opacity: .68; font-size: 13px; }
+    /* Reveal the homepage through the glass on hover or keyboard focus. */
+    @media (hover: hover) and (pointer: fine) {
+      .project:hover .project-preview {
+        filter: blur(.5px) saturate(1.1);
+        transform: scale(1.02);
+      }
+    }
+
+    .project:focus-visible .project-preview,
+    .project.is-previewing .project-preview {
+      filter: blur(.5px) saturate(1.1);
+      transform: scale(1.02);
+    }
+
+    .project:focus-visible { outline: 3px solid #42695a; outline-offset: 4px; }
+
+    @media (hover: none) {
+      .project { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+    }
+
+    .project-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+    .project-no, .project-arrow, .project-info {
+      border: 1px solid rgba(255,255,255,.75);
+      background: rgba(248,250,247,.78);
+      -webkit-backdrop-filter: blur(18px) saturate(1.6);
+      backdrop-filter: blur(18px) saturate(1.6);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 4px 16px rgba(0,0,0,.06);
+    }
+
+    .project-no { padding: 9px 13px; border-radius: 100px; font: 11px monospace; letter-spacing: .06em; }
+    .project-arrow { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; font-size: 22px; transition: transform .35s ease; }
+    .project:hover .project-arrow { transform: rotate(45deg); }
+    .project-info { margin-top: 120px; padding: 20px; border-radius: 20px; }
+    .project h3 { margin: 0 0 10px; font-size: clamp(26px, 3.5vw, 40px); line-height: 1.15; letter-spacing: -.045em; }
+    .project p { margin: 0; color: #38463e; font-size: 13px; line-height: 1.6; }
+
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+      .project-no, .project-arrow, .project-info { background: rgba(248,250,247,.94); }
+    }
 
     footer {
       display: flex;
@@ -217,14 +275,15 @@
       h1 span { margin-left: .12em; }
       .intro { max-width: 430px; }
       .project-grid { grid-template-columns: 1fr; }
-      .project { min-height: 220px; }
-      .project h3 { margin-top: 65px; }
+      .project { min-height: 300px; padding: 16px; }
+      .project-info { margin-top: 110px; padding: 18px; }
       footer { flex-direction: column; }
     }
 
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
-      .project, .project::after { transition: none; }
+      .project, .project-arrow, .project-preview { transition: none; }
+      .project:hover, .project:focus-visible { transform: none; }
     }
   </style>
 </head>
@@ -260,44 +319,134 @@
         </div>
         <div class="project-grid">
           <a class="project" href="./bridge/index.html">
-            <span class="project-no">GAME / 08</span>
-            <h3>架塊</h3>
-            <p>馬拉松與 40 行競速。方塊可以架在空洞上。</p>
+            <div class="project-preview" aria-hidden="true" inert>
+              <iframe src="./bridge/index.html" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
+            </div>
+            <div class="project-top">
+              <span class="project-no">GAME / 08</span>
+              <span class="project-arrow" aria-hidden="true">↗</span>
+            </div>
+            <div class="project-info">
+              <h3>架塊</h3>
+              <p>馬拉松與 40 行競速。方塊可以架在空洞上。</p>
+            </div>
+          </a>
+          <a class="project" href="./dynamic-answer-book/index.html">
+            <div class="project-preview" aria-hidden="true" inert>
+              <iframe src="./dynamic-answer-book/index.html" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
+            </div>
+            <div class="project-top">
+              <span class="project-no">INTERACTIVE / 08</span>
+              <span class="project-arrow" aria-hidden="true">↗</span>
+            </div>
+            <div class="project-info">
+              <h3>答案之書</h3>
+            <p>默問、翻書、抽籤，讓一頁回應心裡的問題</p>
+            </div>
+          </a>
+          <a class="project" href="./chengwen/">
+            <div class="project-preview" aria-hidden="true" inert>
+              <iframe src="./chengwen/" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
+            </div>
+            <div class="project-top">
+              <span class="project-no">SANCTUM / 00</span>
+              <span class="project-arrow" aria-hidden="true">↗</span>
+            </div>
+            <div class="project-info">
+              <h3>承問</h3>
+            <p>靈籤、塔羅、八字羅盤、七政、黃曆、紫微</p>
+            </div>
           </a>
           <a class="project" href="./tokyo/tokyo_index.html">
-            <span class="project-no">PROJECT / 01</span>
-            <h3>Tokyo 2026</h3>
+            <div class="project-preview" aria-hidden="true" inert>
+              <iframe src="./tokyo/tokyo_index.html" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
+            </div>
+            <div class="project-top">
+              <span class="project-no">PROJECT / 01</span>
+              <span class="project-arrow" aria-hidden="true">↗</span>
+            </div>
+            <div class="project-info">
+              <h3>Tokyo 2026</h3>
             <p>七天東京聖地巡禮</p>
+            </div>
           </a>
           <a class="project" href="./filter.html">
-            <span class="project-no">EXPERIMENT / 02</span>
-            <h3>Image Filter</h3>
+            <div class="project-preview" aria-hidden="true" inert>
+              <iframe src="./filter.html" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
+            </div>
+            <div class="project-top">
+              <span class="project-no">EXPERIMENT / 02</span>
+              <span class="project-arrow" aria-hidden="true">↗</span>
+            </div>
+            <div class="project-info">
+              <h3>Image Filter</h3>
             <p>即時調色、風格預設與原圖對比</p>
+            </div>
           </a>
           <a class="project" href="./齒輪教學實驗室.html">
-            <span class="project-no">EXPERIMENT / 03</span>
-            <h3>齒輪教學實驗室</h3>
+            <div class="project-preview" aria-hidden="true" inert>
+              <iframe src="./齒輪教學實驗室.html" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
+            </div>
+            <div class="project-top">
+              <span class="project-no">EXPERIMENT / 03</span>
+              <span class="project-arrow" aria-hidden="true">↗</span>
+            </div>
+            <div class="project-info">
+              <h3>齒輪教學實驗室</h3>
             <p>探索齒輪運轉的互動教學</p>
+            </div>
           </a>
           <a class="project" href="./anything.html">
-            <span class="project-no">EXPERIMENT / 04</span>
-            <h3>無窮珍奇櫃</h3>
+            <div class="project-preview" aria-hidden="true" inert>
+              <iframe src="./anything.html" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
+            </div>
+            <div class="project-top">
+              <span class="project-no">EXPERIMENT / 04</span>
+              <span class="project-arrow" aria-hidden="true">↗</span>
+            </div>
+            <div class="project-info">
+              <h3>無窮珍奇櫃</h3>
             <p>探索無窮珍奇櫃的互動世界</p>
+            </div>
           </a>
           <a class="project" href="./marksix-3d-simulator.html">
-            <span class="project-no">SIMULATOR / 05</span>
-            <h3>3D六合彩攪珠機</h3>
+            <div class="project-preview" aria-hidden="true" inert>
+              <iframe src="./marksix-3d-simulator.html" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
+            </div>
+            <div class="project-top">
+              <span class="project-no">SIMULATOR / 05</span>
+              <span class="project-arrow" aria-hidden="true">↗</span>
+            </div>
+            <div class="project-info">
+              <h3>3D六合彩攪珠機</h3>
             <p>立體攪珠與開獎模擬</p>
+            </div>
           </a>
           <a class="project" href="./PDF 獎狀生成器.html">
-            <span class="project-no">TOOL / 06</span>
-            <h3>PDF 獎狀生成器</h3>
+            <div class="project-preview" aria-hidden="true" inert>
+              <iframe src="./PDF 獎狀生成器.html" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
+            </div>
+            <div class="project-top">
+              <span class="project-no">TOOL / 06</span>
+              <span class="project-arrow" aria-hidden="true">↗</span>
+            </div>
+            <div class="project-info">
+              <h3>PDF 獎狀生成器</h3>
             <p>製作與輸出 PDF 獎狀</p>
+            </div>
           </a>
           <a class="project" href="./Test.html.html">
-            <span class="project-no">TOOL / 07</span>
-            <h3>比賽計分器</h3>
+            <div class="project-preview" aria-hidden="true" inert>
+              <iframe src="./Test.html.html" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
+            </div>
+            <div class="project-top">
+              <span class="project-no">TOOL / 07</span>
+              <span class="project-arrow" aria-hidden="true">↗</span>
+            </div>
+            <div class="project-info">
+              <h3>比賽計分器</h3>
             <p>簡潔直覺的比賽計分工具</p>
+            </div>
           </a>
         </div>
       </section>
@@ -308,5 +457,86 @@
       <p>Hosted on <a href="https://pages.github.com/" target="_blank" rel="noreferrer">GitHub Pages ↗</a></p>
     </footer>
   </div>
+  <script>
+    const cards = document.querySelectorAll('.project');
+    // Match a desktop homepage to each card without adding horizontal overflow.
+    const resizePreviews = new ResizeObserver(entries => {
+      for (const { target, contentRect } of entries) {
+        const scale = contentRect.width / 1280;
+        target.style.setProperty('--preview-scale', scale);
+        // Keep the preview covering tall mobile cards after desktop scaling.
+        if (scale > 0) {
+          target.querySelector('iframe').style.height = `${Math.max(800, contentRect.height / scale)}px`;
+        }
+      }
+    });
+    cards.forEach(card => {
+      resizePreviews.observe(card.querySelector('.project-preview'));
+      let press = null;
+      let pressTimer;
+      let resetTimer;
+      let suppressClickUntil = 0;
+      const cancelPress = () => {
+        clearTimeout(pressTimer);
+        press = null;
+      };
+      const hidePreview = () => {
+        clearTimeout(resetTimer);
+        card.classList.remove('is-previewing');
+      };
+      card.addEventListener('pointerdown', event => {
+        if (event.pointerType !== 'touch' || !event.isPrimary) return;
+        cancelPress();
+        hidePreview();
+        suppressClickUntil = 0;
+        press = { id: event.pointerId, x: event.clientX, y: event.clientY, revealed: false };
+        pressTimer = setTimeout(() => {
+          if (!press) return;
+          press.revealed = true;
+          card.classList.add('is-previewing');
+        }, 400);
+      }, { passive: true });
+      card.addEventListener('pointermove', event => {
+        if (!press || event.pointerId !== press.id) return;
+        if (Math.hypot(event.clientX - press.x, event.clientY - press.y) > 12) {
+          if (press.revealed) suppressClickUntil = Date.now() + 1000;
+          cancelPress();
+          hidePreview();
+        }
+      }, { passive: true });
+      card.addEventListener('pointerup', event => {
+        if (!press || event.pointerId !== press.id) return;
+        if (press.revealed) {
+          suppressClickUntil = Date.now() + 1000;
+          resetTimer = setTimeout(hidePreview, 1200);
+        }
+        cancelPress();
+      });
+      card.addEventListener('pointercancel', () => {
+        cancelPress();
+        hidePreview();
+      });
+      card.addEventListener('click', event => {
+        // A long press previews; a fresh short tap follows the link normally.
+        if (event.detail !== 0 && Date.now() < suppressClickUntil) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }, true);
+      card.addEventListener('contextmenu', event => {
+        if (press || card.classList.contains('is-previewing')) event.preventDefault();
+      });
+      card.addEventListener('pointermove', event => {
+        if (event.pointerType !== 'mouse') return;
+        const bounds = card.getBoundingClientRect();
+        card.style.setProperty('--glow-x', `${event.clientX - bounds.left}px`);
+        card.style.setProperty('--glow-y', `${event.clientY - bounds.top}px`);
+      });
+      card.addEventListener('pointerleave', () => {
+        card.style.removeProperty('--glow-x');
+        card.style.removeProperty('--glow-y');
+      });
+    });
+  </script>
 </body>
 </html>
