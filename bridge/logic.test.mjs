@@ -5,6 +5,7 @@ import {
   createGame,
   dropComponents,
   emptyGrid,
+  flipGrid,
   fullRows,
   hardDrop,
   hold,
@@ -109,4 +110,46 @@ test("hold swaps the stored piece back out", () => {
   assert.equal(hold(game), true);
   assert.equal(game.active.type, "T");
   assert.equal(game.hold, "O");
+});
+
+test("a bomb removes itself and the cells around it", () => {
+  const game = createGame({ sequence: ["B", "I", "O", "T", "L", "J", "S", "Z", "I", "O", "T", "L"] });
+  startGame(game);
+  game.grid[19][3] = { type: "O", g: 9 };
+  game.grid[19][0] = { type: "S", g: 8 };
+  hardDrop(game);
+  const step = pump(game);
+  assert.equal(step.type, "boom");
+  assert.equal(game.grid[19][3], null);
+  assert.equal(game.grid[19][4], null);
+  assert.equal(game.grid[19][0].type, "S");
+});
+
+test("the board flips once after every 10 cleared lines", () => {
+  const game = createGame({ sequence: ["I", "O", "T", "L", "J", "S", "Z", "I", "O", "T", "L", "J", "S", "Z"] });
+  startGame(game);
+  game.active = null;
+  game.phase = "resolving";
+  game.lines = 9;
+  game.comboArmed = true;
+  fillRow(game.grid, 19);
+  const kinds = [];
+  for (let i = 0; i < 6 && game.phase === "resolving"; i += 1) {
+    kinds.push(pump(game).type);
+    if (kinds.at(-1) === "flip") break;
+  }
+  assert.deepEqual(kinds, ["clear", "flip"]);
+  assert.equal(game.lines, 10);
+  assert.equal(game.stage, 1);
+  assert.equal(game.active, null);
+});
+
+test("flipping the board turns it upside down", () => {
+  const game = createGame();
+  game.grid[19][0] = { type: "I", g: 4 };
+  flipGrid(game);
+  assert.equal(game.grid[0][9].type, "I");
+  assert.equal(game.grid[19][0], null);
+  const falling = unsupportedComponents(game.grid);
+  assert.equal(falling.length, 1);
 });

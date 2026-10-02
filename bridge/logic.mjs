@@ -40,6 +40,7 @@ export const SHAPES = {
     [[0, 1], [1, 1], [2, 1], [0, 2]],
     [[0, 0], [1, 0], [1, 1], [1, 2]],
   ],
+  B: [[[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]]],
 };
 
 const KICKS = [
@@ -84,11 +85,17 @@ export function createGame(options = {}) {
   const random = options.random ?? Math.random;
   const sequence = options.sequence ? [...options.sequence] : null;
   const bag = [];
+  let sinceBomb = 0;
 
   function pull() {
     if (sequence) {
       if (!sequence.length) throw new Error("piece sequence exhausted");
       return sequence.shift();
+    }
+    sinceBomb += 1;
+    if (sinceBomb >= 8) {
+      sinceBomb = 0;
+      return "B";
     }
     if (!bag.length) bag.push(...shuffle(TYPES, random));
     return bag.pop();
@@ -103,8 +110,10 @@ export function createGame(options = {}) {
     score: 0,
     lines: 0,
     level: 1,
+    stage: 0,
     combo: 0,
     comboArmed: false,
+    pendingBoom: null,
     phase: "ready",
     gid: 1,
     pull,
@@ -124,8 +133,10 @@ export function startGame(game) {
   game.score = 0;
   game.lines = 0;
   game.level = 1;
+  game.stage = 0;
   game.combo = 0;
   game.comboArmed = false;
+  game.pendingBoom = null;
   game.phase = "playing";
   game.queue = [game.pull(), game.pull(), game.pull()];
   spawn(game);
@@ -203,16 +214,62 @@ export function hardDrop(game) {
   return dist;
 }
 
+function blastCells(grid, origin) {
+  const wiped = [];
+  const seen = new Set();
+  for (const [x, y] of origin) {
+    for (let dy = -1; dy <= 1; dy += 1) {
+      for (let dx = -1; dx <= 1; dx += 1) {
+        const cx = x + dx;
+        const cy = y + dy;
+        if (cx < 0 || cy < 0 || cx >= COLS || cy >= ROWS) continue;
+        const key = `${cx},${cy}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const prev = grid[cy][cx];
+        if (!prev) continue;
+        wiped.push({ x: cx, y: cy, type: prev.type });
+        grid[cy][cx] = null;
+      }
+    }
+  }
+  for (const [x, y] of origin) {
+    if (!wiped.some((cell) => cell.x === x && cell.y === y)) {
+      wiped.push({ x, y, type: "B" });
+    }
+  }
+  return wiped;
+}
+
 export function lockActive(game) {
   if (!game.active) return;
-  const gid = takeGid(game);
-  for (const [x, y] of cellsOf(game.active.type, game.active.rot, game.active.x, game.active.y)) {
-    game.grid[y][x] = { type: game.active.type, g: gid };
+  if (game.active.type === "B") {
+    const origin = cellsOf(game.active.type, game.active.rot, game.active.x, game.active.y);
+    const wiped = blastCells(game.grid, origin);
+    const destroyed = wiped.filter((cell) => cell.type !== "B").length;
+    game.score += destroyed * 10;
+    game.pendingBoom = wiped;
+  } else {
+    const gid = takeGid(game);
+    for (const [x, y] of cellsOf(game.active.type, game.active.rot, game.active.x, game.active.y)) {
+      game.grid[y][x] = { type: game.active.type, g: gid };
+    }
   }
   game.active = null;
   game.holdLocked = false;
   game.comboArmed = true;
   game.phase = "resolving";
+}
+
+export function flipGrid(game) {
+  const next = emptyGrid();
+  for (let y = 0; y < ROWS; y += 1) {
+    for (let x = 0; x < COLS; x += 1) {
+      const cell = game.grid[y][x];
+      if (cell) next[ROWS - 1 - y][COLS - 1 - x] = { type: cell.type, g: cell.g };
+    }
+  }
+  game.grid = next;
 }
 
 export function fullRows(grid) {
@@ -288,6 +345,11 @@ export function dropComponents(grid, comps, nextGid) {
 
 export function pump(game) {
   if (game.phase !== "resolving") return null;
+  if (game.pendingBoom) {
+    const cells = game.pendingBoom;
+    game.pendingBoom = null;
+    return { type: "boom", cells };
+  }
   const rows = fullRows(game.grid);
   if (rows.length) {
     const cells = [];
@@ -314,6 +376,11 @@ export function pump(game) {
   if (comps.length) {
     const moves = dropComponents(game.grid, comps, () => takeGid(game));
     return { type: "drop", moves };
+  }
+
+  if (Math.floor(game.lines / 10) > game.stage) {
+    game.stage += 1;
+    return { type: "flip", stage: game.stage };
   }
 
   if (game.comboArmed) game.combo = 0;
