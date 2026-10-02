@@ -142,6 +142,41 @@
     h2 { margin: 0; font-size: 17px; letter-spacing: -.02em; }
     .section-heading span { font: 12px monospace; }
 
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 22px;
+    }
+
+    .filters button {
+      border: 1px solid var(--ink);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--ink);
+      padding: 8px 14px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .filters button[aria-pressed="true"] {
+      background: var(--acid);
+    }
+
+    .filters button:focus-visible { outline: 3px solid #42695a; outline-offset: 3px; }
+
+    .project.is-hidden { display: none !important; }
+
+    .filter-empty {
+      margin: 8px 0 0;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .filter-empty[hidden] { display: none !important; }
+
     /* Liquid Glass: homepage previews beneath a translucent lens. */
     .project-grid {
       display: grid;
@@ -315,10 +350,18 @@
       <section class="projects" id="projects" aria-labelledby="projects-title">
         <div class="section-heading">
           <h2 id="projects-title">Selected works / 精選作品</h2>
-          <span>2018—2026</span>
+          <span id="project-count">2018—2026</span>
+        </div>
+        <div class="filters" role="toolbar" aria-label="篩選作品">
+          <button type="button" data-filter="all" aria-pressed="true">全部</button>
+          <button type="button" data-filter="game">遊戲</button>
+          <button type="button" data-filter="interactive">互動</button>
+          <button type="button" data-filter="experiment">實驗</button>
+          <button type="button" data-filter="tool">工具</button>
+          <button type="button" data-filter="record">紀錄</button>
         </div>
         <div class="project-grid">
-          <a class="project" href="./bridge/index.html">
+          <a class="project" href="./bridge/index.html" data-kind="game">
             <div class="project-preview" aria-hidden="true" inert>
               <iframe src="./bridge/index.html" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
             </div>
@@ -331,7 +374,7 @@
               <p>馬拉松與 40 行競速。方塊可以架在空洞上。</p>
             </div>
           </a>
-          <a class="project" href="./dynamic-answer-book/index.html">
+          <a class="project" href="./dynamic-answer-book/index.html" data-kind="interactive">
             <div class="project-preview" aria-hidden="true" inert>
               <iframe src="./dynamic-answer-book/index.html" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
             </div>
@@ -344,7 +387,7 @@
             <p>默問、翻書、抽籤，讓一頁回應心裡的問題</p>
             </div>
           </a>
-          <a class="project" href="./chengwen/">
+          <a class="project" href="./chengwen/" data-kind="record">
             <div class="project-preview" aria-hidden="true" inert>
               <iframe src="./chengwen/" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
             </div>
@@ -357,7 +400,7 @@
             <p>靈籤、塔羅、八字羅盤、七政、黃曆、紫微</p>
             </div>
           </a>
-          <a class="project" href="./tokyo/tokyo_index.html">
+          <a class="project" href="./tokyo/tokyo_index.html" data-kind="record">
             <div class="project-preview" aria-hidden="true" inert>
               <iframe src="./tokyo/tokyo_index.html" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
             </div>
@@ -370,7 +413,7 @@
             <p>七天東京聖地巡禮</p>
             </div>
           </a>
-          <a class="project" href="./filter.html">
+          <a class="project" href="./filter.html" data-kind="experiment">
             <div class="project-preview" aria-hidden="true" inert>
               <iframe src="./filter.html" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
             </div>
@@ -383,7 +426,7 @@
             <p>即時調色、風格預設與原圖對比</p>
             </div>
           </a>
-          <a class="project" href="./齒輪教學實驗室.html">
+          <a class="project" href="./齒輪教學實驗室.html" data-kind="experiment">
             <div class="project-preview" aria-hidden="true" inert>
               <iframe src="./齒輪教學實驗室.html" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
             </div>
@@ -396,7 +439,7 @@
             <p>探索齒輪運轉的互動教學</p>
             </div>
           </a>
-          <a class="project" href="./anything.html">
+          <a class="project" href="./anything.html" data-kind="experiment">
             <div class="project-preview" aria-hidden="true" inert>
               <iframe src="./anything.html" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
             </div>
@@ -409,7 +452,7 @@
             <p>探索無窮珍奇櫃的互動世界</p>
             </div>
           </a>
-          <a class="project" href="./marksix-3d-simulator.html">
+          <a class="project" href="./marksix-3d-simulator.html" data-kind="game">
             <div class="project-preview" aria-hidden="true" inert>
               <iframe src="./marksix-3d-simulator.html" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
             </div>
@@ -422,7 +465,7 @@
             <p>立體攪珠與開獎模擬</p>
             </div>
           </a>
-          <a class="project" href="./PDF 獎狀生成器.html">
+          <a class="project" href="./PDF 獎狀生成器.html" data-kind="tool">
             <div class="project-preview" aria-hidden="true" inert>
               <iframe src="./PDF 獎狀生成器.html" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
             </div>
@@ -435,7 +478,7 @@
             <p>製作與輸出 PDF 獎狀</p>
             </div>
           </a>
-          <a class="project" href="./Test.html.html">
+          <a class="project" href="./Test.html.html" data-kind="tool">
             <div class="project-preview" aria-hidden="true" inert>
               <iframe src="./Test.html.html" title="網站首頁預覽" loading="lazy" tabindex="-1" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
             </div>
@@ -449,6 +492,7 @@
             </div>
           </a>
         </div>
+        <p class="filter-empty" hidden>這個分類還沒有作品。</p>
       </section>
     </main>
 
@@ -459,6 +503,28 @@
   </div>
   <script>
     const cards = document.querySelectorAll('.project');
+    const filterButtons = document.querySelectorAll('.filters button');
+    const filterEmpty = document.querySelector('.filter-empty');
+    const projectCount = document.querySelector('#project-count');
+
+    function applyFilter(kind) {
+      let shown = 0;
+      cards.forEach((card) => {
+        const match = kind === 'all' || card.dataset.kind === kind;
+        card.classList.toggle('is-hidden', !match);
+        if (match) shown += 1;
+      });
+      filterEmpty.hidden = shown !== 0;
+      projectCount.textContent = `2018—2026 · ${shown}`;
+    }
+
+    filterButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        filterButtons.forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+        applyFilter(button.dataset.filter);
+      });
+    });
+    applyFilter('all');
     // Match a desktop homepage to each card without adding horizontal overflow.
     const resizePreviews = new ResizeObserver(entries => {
       for (const { target, contentRect } of entries) {
