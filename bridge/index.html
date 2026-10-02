@@ -822,6 +822,7 @@
                 <canvas id="hold-canvas" width="120" height="88"></canvas>
               </div>
               <p class="hint" id="hold-state"></p>
+              <p class="hint" id="curse-note"></p>
             </section>
             <section class="box">
               <div class="stat"><span data-i18n="lines">Lines</span><b id="lines">0</b></div>
@@ -904,6 +905,7 @@
     let dasOn = false;
     const sound = createSound(() => settings.volume);
     const fx = [];
+    const curseUntil = { reverse: 0, blind: 0, rush: 0, norotate: 0 };
     const CORNER = 4;
 
     applySettings();
@@ -965,6 +967,10 @@
       startedAt = performance.now();
       frozenTime = 0;
       veil.hidden = true;
+      curseUntil.reverse = 0;
+      curseUntil.blind = 0;
+      curseUntil.rush = 0;
+      curseUntil.norotate = 0;
       showScreen("game");
       fitBoard();
       sound.restart();
@@ -994,13 +1000,24 @@
       }
     }
 
+    function reversed() { return performance.now() < curseUntil.reverse; }
+
+    function steer(dir, down) {
+      const next = reversed() ? -dir : dir;
+      if (!session) return next;
+      if (next < 0) session.left = down;
+      else session.right = down;
+      return null;
+    }
+
     function shift(dir) {
-      if (paused || game.phase !== "playing" || !tryMove(game, dir, 0)) return;
+      const next = steer(dir, true);
+      if (next == null || paused || game.phase !== "playing" || !tryMove(game, next, 0)) return;
       onManeuver();
     }
 
     function doRotate(dir) {
-      if (paused || !tryRotate(game, dir)) return;
+      if (paused || performance.now() < curseUntil.norotate || !tryRotate(game, dir)) return;
       onManeuver();
       sound.blip(700, 0.02);
     }
@@ -1055,8 +1072,8 @@
       }
       if (paused) return;
       if (session) {
-        if (key === "ArrowLeft") session.left = true;
-        if (key === "ArrowRight") session.right = true;
+        if (key === "ArrowLeft") steer(-1, true);
+        if (key === "ArrowRight") steer(1, true);
         if (!event.repeat && (key === " " || key === "ArrowUp")) session.fire = true;
         return;
       }
@@ -1075,8 +1092,8 @@
     });
 
     window.addEventListener("keyup", (event) => {
-      if (event.key === "ArrowLeft") { heldKeys.delete("left"); if (session) session.left = false; }
-      if (event.key === "ArrowRight") { heldKeys.delete("right"); if (session) session.right = false; }
+      if (event.key === "ArrowLeft") { heldKeys.delete("left"); steer(-1, false); }
+      if (event.key === "ArrowRight") { heldKeys.delete("right"); steer(1, false); }
       if (event.key === "ArrowDown") heldKeys.delete("down");
       if (!heldKeys.has("left") && !heldKeys.has("right")) dasDir = 0;
     });
@@ -1094,21 +1111,67 @@
     let leftTimer = 0;
     let rightTimer = 0;
     bindPress("#btn-left", () => {
-      if (session) { session.left = true; return; }
+      if (session) { steer(-1, true); return; }
       shift(-1);
       leftTimer = window.setInterval(() => shift(-1), 70);
-    }, () => { if (session) session.left = false; window.clearInterval(leftTimer); });
+    }, () => { steer(-1, false); window.clearInterval(leftTimer); });
     bindPress("#btn-right", () => {
-      if (session) { session.right = true; return; }
+      if (session) { steer(1, true); return; }
       shift(1);
       rightTimer = window.setInterval(() => shift(1), 70);
-    }, () => { if (session) session.right = false; window.clearInterval(rightTimer); });
+    }, () => { steer(1, false); window.clearInterval(rightTimer); });
     bindPress("#btn-rot", () => doRotate(1));
     bindPress("#btn-hold", doHold);
     bindPress("#btn-drop", doHard);
 
     function ink() { return document.body.dataset.theme === "dark" ? "#f5f5f7" : "#1d1d1f"; }
-    function pieceColor(type) { return COLORS[type] || ink(); }
+    const CURSE_COLOR = {
+      seal: "#5e5ce6", reverse: "#ff9f0a", blind: "#1d1d1f", rush: "#ff375f", norotate: "#bf5af2",
+    };
+    function pieceColor(type, curse) {
+      if (type === "C") return CURSE_COLOR[curse] || "#3a3a3c";
+      return COLORS[type] || ink();
+    }
+
+    function curseMark(context, x, y, size, curse) {
+      const cx = x * size + size / 2;
+      const cy = y * size + size / 2;
+      context.save();
+      context.strokeStyle = "#ffffff";
+      context.fillStyle = "#ffffff";
+      context.lineWidth = Math.max(2, size * 0.08);
+      if (curse === "seal") {
+        context.fillRect(cx - size * 0.22, cy - size * 0.08, size * 0.44, size * 0.16);
+      } else if (curse === "reverse") {
+        context.beginPath();
+        context.moveTo(cx - size * 0.24, cy);
+        context.lineTo(cx - size * 0.08, cy - size * 0.12);
+        context.lineTo(cx - size * 0.08, cy + size * 0.12);
+        context.moveTo(cx + size * 0.24, cy);
+        context.lineTo(cx + size * 0.08, cy - size * 0.12);
+        context.lineTo(cx + size * 0.08, cy + size * 0.12);
+        context.fill();
+      } else if (curse === "blind") {
+        context.beginPath();
+        context.arc(cx, cy, size * 0.16, 0, Math.PI * 2);
+        context.stroke();
+      } else if (curse === "rush") {
+        context.beginPath();
+        context.moveTo(cx, cy - size * 0.22);
+        context.lineTo(cx + size * 0.12, cy);
+        context.lineTo(cx, cy + size * 0.22);
+        context.lineTo(cx - size * 0.12, cy);
+        context.fill();
+      } else if (curse === "norotate") {
+        context.beginPath();
+        context.moveTo(cx - size * 0.16, cy - size * 0.16);
+        context.lineTo(cx + size * 0.16, cy + size * 0.16);
+        context.moveTo(cx + size * 0.16, cy - size * 0.16);
+        context.lineTo(cx - size * 0.16, cy + size * 0.16);
+        context.stroke();
+      }
+      context.restore();
+    }
 
     function roundTile(context, left, top, side, radius) {
       context.beginPath();
@@ -1134,11 +1197,12 @@
       context.fill();
     }
 
-    function drawBlob(context, cells, type, size, ghost, markIndex = null) {
+    function drawBlob(context, cells, type, size, ghost, markIndex = null, curse = null) {
       cells.forEach(([x, y], index) => {
         if (y < 0 || y >= ROWS || x < 0 || x >= COLS) return;
-        context.fillStyle = pieceColor(type);
+        context.fillStyle = pieceColor(type, curse);
         tile(context, x, y, size, ghost);
+        if (!ghost && curse) curseMark(context, x, y, size, curse);
         if (!ghost && index === markIndex && (type === "B" || type === "X")) {
           context.fillStyle = type === "B" ? "#1d1d1f" : "#ffffff";
           context.beginPath();
@@ -1161,7 +1225,7 @@
               if (grid[gy][gx]?.g === cell.g) group.push([gx, gy]);
             }
           }
-          drawBlob(context, group, cell.type, size, false);
+          drawBlob(context, group, cell.type, size, false, null, cell.curse);
         }
       }
       context.fillStyle = "#dfff45";
@@ -1192,7 +1256,7 @@
         const oy = index * slot + (slot - (Math.max(...ys) - Math.min(...ys) + 1) * size) / 2 - Math.min(...ys) * size;
         context.save();
         context.translate(ox, oy);
-        drawBlob(context, cells, piece.type, size, false, piece.bombIndex);
+        drawBlob(context, cells, piece.type, size, false, piece.bombIndex, piece.curse);
         context.restore();
       });
     }
@@ -1300,10 +1364,34 @@
       if (game.active && game.phase === "playing") {
         const gy = ghostY(game);
         drawBlob(ctx, cellsOf(game.active.type, game.active.rot, game.active.x, gy), game.active.type, CELL, true);
-        drawBlob(ctx, cellsOf(game.active.type, game.active.rot, game.active.x, game.active.y), game.active.type, CELL, false, game.active.bombIndex);
+        drawBlob(ctx, cellsOf(game.active.type, game.active.rot, game.active.x, game.active.y), game.active.type, CELL, false, game.active.bombIndex, game.active.curse);
       }
       if (session) drawSession(ctx, session, ink());
+      if (performance.now() < curseUntil.blind) {
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, COLS * CELL, ROWS * CELL);
+      }
       if (flipping) ctx.restore();
+    }
+
+    function applyCurses(cells) {
+      const now = performance.now();
+      for (const cell of cells || []) {
+        if (cell.curse === "reverse") curseUntil.reverse = now + 20000;
+        if (cell.curse === "blind") curseUntil.blind = now + 5000;
+        if (cell.curse === "rush") curseUntil.rush = now + 15000;
+        if (cell.curse === "norotate") curseUntil.norotate = now + 12000;
+      }
+    }
+
+    function curseStatus() {
+      const now = performance.now();
+      const labels = [];
+      if (now < curseUntil.reverse) labels.push(t("curseReverse"));
+      if (now < curseUntil.blind) labels.push(t("curseBlind"));
+      if (now < curseUntil.rush) labels.push(t("curseRush"));
+      if (now < curseUntil.norotate) labels.push(t("curseNorotate"));
+      return labels.join(" · ");
     }
 
     function elapsed() {
@@ -1317,6 +1405,7 @@
       drawBoard();
       holdCanvas.classList.toggle("used", game.holdLocked && game.phase === "playing");
       document.querySelector("#hold-state").textContent = game.holdLocked && game.phase === "playing" ? t("holdUsed") : t("holdReady");
+      document.querySelector("#curse-note").textContent = curseStatus();
       paintPreview(holdCtx, holdCanvas, [game.hold]);
       paintPreview(nextCtx, nextCanvas, game.queue.slice(0, 3));
       document.querySelector("#score").textContent = String(game.score + (session?.score || 0));
@@ -1369,8 +1458,10 @@
           }
         }
         acc += dt;
-        while (acc >= gravityMs(game) && game.phase === "playing") {
-          acc -= gravityMs(game);
+        let fall = gravityMs(game);
+        if (performance.now() < curseUntil.rush) fall = Math.max(70, Math.round(fall * 0.35));
+        while (acc >= fall && game.phase === "playing") {
+          acc -= fall;
           if (!tryMove(game, 0, 1)) break;
           lockMs = 0;
         }
@@ -1391,6 +1482,10 @@
         const clearedBefore = session.cleared;
         updateSession(session, dt);
         if (session.cleared > clearedBefore) sound.blip(760, 0.035);
+        if (session.curseHits.length) {
+          applyCurses(session.curseHits);
+          session.curseHits = [];
+        }
         if (session.over) finishSession();
       }
 
@@ -1421,6 +1516,8 @@
               for (const cell of step.cells) burst(cell, false);
               for (const cell of step.blasts || []) burst(cell, true);
               if (step.blasts?.length) sound.playBoom();
+              applyCurses(step.cells);
+              applyCurses(step.blasts);
             }
             if (step.type === "flip" || step.type === "reward") sound.blip(180, 0.08);
           } else if (step?.type === "done") {

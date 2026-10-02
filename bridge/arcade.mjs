@@ -32,6 +32,7 @@ export function createSession(kind, grid, stage, random) {
     right: false,
     fire: false,
     flashes: [],
+    curseHits: [],
   };
 }
 
@@ -68,6 +69,7 @@ function hit(session, x, y) {
   for (const cell of removed) {
     award(session);
     session.flashes.push({ x: cell.x, y: cell.y, life: 200 });
+    if (cell.curse) session.curseHits.push(cell);
   }
   return removed.length > 0;
 }
