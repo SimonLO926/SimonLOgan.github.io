@@ -1,0 +1,1518 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bridge</title>
+  <style>
+    :root {
+      --ink: #1d1d1f;
+      --muted: #6e6e73;
+      --paper: #f5f5f7;
+      --card: rgba(255, 255, 255, .72);
+      --well: #ffffff;
+      --line: rgba(0, 0, 0, .08);
+      --blue: #0071e3;
+      --blue-press: #0077ed;
+      --shadow: 0 24px 60px rgba(0, 0, 0, .12);
+      --glass: linear-gradient(180deg, rgba(255, 255, 255, .38), rgba(255, 255, 255, .14));
+      --glass-edge: rgba(255, 255, 255, .9);
+      --md-surface: #f8f9ff;
+      --md-on-surface: #1a1b1f;
+      --md-on-variant: #44474e;
+      --md-container: #ebeef5;
+      --md-container-high: #e1e3eb;
+      --md-lowest: #ffffff;
+      --md-primary: #0b57d0;
+      --md-primary-container: #d3e3fd;
+      --md-on-primary-container: #041e49;
+      --md-outline: #c4c6d0;
+      --md-well: #ffffff;
+    }
+
+    body[data-theme="dark"] {
+      --ink: #f5f5f7;
+      --muted: #a1a1a6;
+      --paper: #000000;
+      --card: rgba(28, 28, 30, .78);
+      --well: #1c1c1e;
+      --line: rgba(255, 255, 255, .12);
+      --blue: #0a84ff;
+      --blue-press: #409cff;
+      --shadow: 0 24px 80px rgba(0, 0, 0, .45);
+      --glass: linear-gradient(180deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .05));
+      --glass-edge: rgba(255, 255, 255, .32);
+      --md-surface: #111318;
+      --md-on-surface: #e2e2e8;
+      --md-on-variant: #c4c6d0;
+      --md-container: #1e2026;
+      --md-container-high: #282a30;
+      --md-lowest: #0e1014;
+      --md-primary: #a8c7fa;
+      --md-primary-container: #0842a0;
+      --md-on-primary-container: #d3e3fd;
+      --md-outline: #44474e;
+      --md-well: #0e1014;
+    }
+
+    @font-face { font-family: "Pixel Latin"; src: url("./fonts/fusion-pixel-latin.woff2") format("woff2"); font-display: swap; }
+    @font-face { font-family: "Pixel Hant"; src: url("./fonts/fusion-pixel-zh-hant.woff2") format("woff2"); font-display: swap; }
+    @font-face { font-family: "Pixel Hans"; src: url("./fonts/fusion-pixel-zh-hans.woff2") format("woff2"); font-display: swap; }
+    @font-face { font-family: "Pixel Ja"; src: url("./fonts/fusion-pixel-ja.woff2") format("woff2"); font-display: swap; }
+    @font-face { font-family: "Pixel Ko"; src: url("./fonts/fusion-pixel-ko.woff2") format("woff2"); font-display: swap; }
+
+    * { box-sizing: border-box; }
+
+    [hidden] { display: none !important; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: "Pixel Latin", "WenQuanYi Micro Hei", sans-serif;
+      -webkit-font-smoothing: none;
+    }
+
+    body::before, body::after {
+      content: "";
+      position: fixed;
+      z-index: 0;
+      width: 46vw;
+      height: 46vw;
+      border-radius: 50%;
+      pointer-events: none;
+      filter: blur(8px);
+    }
+
+    body::before {
+      top: -16vw;
+      left: -10vw;
+      background: radial-gradient(circle, rgba(90, 180, 255, .55), rgba(90, 180, 255, 0) 68%);
+      animation: float-a 18s ease-in-out infinite;
+    }
+
+    body::after {
+      right: -12vw;
+      bottom: -18vw;
+      background: radial-gradient(circle, rgba(186, 140, 255, .42), rgba(186, 140, 255, 0) 68%);
+      animation: float-b 22s ease-in-out infinite;
+    }
+
+    body[data-theme="dark"]::before { background: radial-gradient(circle, rgba(10, 132, 255, .35), transparent 68%); }
+    body[data-theme="dark"]::after { background: radial-gradient(circle, rgba(175, 82, 222, .28), transparent 68%); }
+
+    .page { position: relative; z-index: 1; }
+
+    button, select, input { font: inherit; color: inherit; }
+
+    button {
+      border: 0;
+      border-radius: 980px;
+      background: transparent;
+      padding: 12px 22px;
+      font-size: 24px;
+      cursor: pointer;
+    }
+
+    .primary {
+      min-width: 168px;
+      color: white;
+      background: linear-gradient(180deg, rgba(64, 156, 255, .95), rgba(0, 113, 227, .82));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 10px 24px rgba(0, 113, 227, .28);
+      backdrop-filter: blur(12px) saturate(1.4);
+    }
+    .primary:hover { background: linear-gradient(180deg, #409cff, #0077ed); }
+    .secondary, .chip {
+      min-width: 168px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, .28);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), inset 0 0 0 1px rgba(255, 255, 255, .35);
+      backdrop-filter: blur(16px) saturate(1.6);
+    }
+    .chip { min-width: 0; padding: 8px 16px; }
+    body[data-theme="dark"] .secondary,
+    body[data-theme="dark"] .chip {
+      background: rgba(255, 255, 255, .08);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22);
+    }
+    .text-btn { color: var(--blue); padding-left: 0; }
+
+    .glass {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      background: var(--glass);
+      border-radius: 28px;
+      backdrop-filter: blur(24px) saturate(1.8);
+      box-shadow:
+        inset 0 1px 0 var(--glass-edge),
+        inset 0 -1px 0 rgba(255, 255, 255, .18),
+        0 18px 50px rgba(40, 70, 120, .1);
+    }
+
+    .glass::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1.5px;
+      background: linear-gradient(165deg, rgba(255, 255, 255, .95), rgba(255, 255, 255, .08) 42%, rgba(255, 255, 255, .45));
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    .glass::after {
+      content: "";
+      position: absolute;
+      top: -45%;
+      left: 0;
+      width: 30%;
+      height: 190%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .55), transparent);
+      transform: translateX(-140%) rotate(16deg);
+      animation: sheen 8.5s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    .glass > * { position: relative; z-index: 1; }
+
+    .page { width: min(1440px, calc(100% - 28px)); margin: 0 auto; padding: 12px 0 16px; }
+
+    .hero, .settings-wrap {
+      position: relative;
+      min-height: calc(100vh - 92px);
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .hero {
+      background:
+        radial-gradient(32% 28% at 36% 42%, rgba(80, 170, 255, .42), transparent 70%),
+        radial-gradient(28% 26% at 66% 58%, rgba(190, 130, 255, .32), transparent 72%),
+        transparent;
+    }
+
+    #hero3d {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .hero-copy {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      justify-items: center;
+      width: min(760px, calc(100vw - 40px));
+      padding: 26px 28px 22px;
+      border: 0;
+    }
+
+    .logo {
+      display: block;
+      width: min(680px, 100%);
+      height: auto;
+      color: var(--ink);
+    }
+
+    .logo.compact { width: 176px; }
+    .settings-wrap .logo { margin-bottom: 10px; }
+    .hero-copy .chip { margin-top: 16px; }
+
+    .logo-tile { fill: rgba(255, 255, 255, .42); stroke: rgba(255, 255, 255, .85); stroke-width: 1; }
+    body[data-theme="dark"] .logo-tile { fill: rgba(255, 255, 255, .08); stroke: rgba(255, 255, 255, .3); }
+    .logo-cell { fill: var(--blue); }
+    .logo-type { fill: currentColor; }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .18em;
+    }
+
+    h1, .wordmark { font-family: inherit; }
+
+    h1 {
+      margin: 0;
+      font-size: 96px;
+      font-weight: 700;
+      letter-spacing: -.055em;
+      line-height: .92;
+    }
+
+    .lede {
+      max-width: 520px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 21px;
+      line-height: 1.4;
+      font-weight: 400;
+    }
+
+    .hint { margin: 10px 0 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+
+    .hero-actions { display: flex; gap: 14px; margin-top: 32px; }
+
+    .settings-card {
+      width: min(420px, 100%);
+      margin-top: 28px;
+      padding: 8px 22px 18px;
+      text-align: left;
+      border-radius: 22px;
+    }
+
+    .settings-card label, .settings-card .field {
+      display: grid;
+      gap: 8px;
+      padding: 16px 0;
+      border-top: 1px solid var(--line);
+      font-size: 24px;
+      color: var(--muted);
+    }
+
+    .settings-card label:first-child, .settings-card .field:first-child { border-top: 0; }
+
+    select, input[type="range"] { width: 100%; }
+    select {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      font-size: 24px;
+      padding: 0;
+    }
+
+    .theme-row { display: flex; gap: 8px; }
+    .theme-row button {
+      color: var(--ink);
+      box-shadow: inset 0 0 0 1px var(--line);
+    }
+    .theme-row button[aria-pressed="true"] { background: var(--blue); color: white; box-shadow: none; }
+
+    #game {
+      width: 100vw;
+      margin-left: calc(50% - 50vw);
+      margin-top: -12px;
+      margin-bottom: -16px;
+      min-height: 100vh;
+      padding: 8px 24px 20px;
+      display: flex;
+      flex-direction: column;
+      background: var(--md-surface);
+      color: var(--md-on-surface);
+      letter-spacing: 0;
+    }
+
+    #game .nav {
+      height: 64px;
+      margin-bottom: 0;
+    }
+
+    #game .hint {
+      margin: 8px 0 0;
+      color: var(--md-on-variant);
+      font-size: 16px;
+      font-weight: 400;
+      line-height: 1.4;
+    }
+
+    #game .box h2,
+    #game .stat span,
+    #game .md-tonal,
+    #game .hint {
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+
+    .md-tonal {
+      min-width: 0;
+      padding: 10px 24px;
+      border-radius: 20px;
+      background: var(--md-primary-container);
+      color: var(--md-on-primary-container);
+      font-weight: 500;
+      box-shadow: none;
+      backdrop-filter: none;
+    }
+
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .wordmark { font-weight: 700; letter-spacing: -.04em; font-size: 22px; }
+
+    .stage {
+      flex: 1;
+      display: grid;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .console {
+      display: grid;
+      grid-template-columns: 220px auto 236px;
+      gap: 16px;
+      align-items: start;
+      width: max-content;
+      max-width: 100%;
+      padding: 0;
+      background: none;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .rail {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      gap: 20px;
+      min-width: 0;
+      padding: 16px;
+      border-radius: 28px;
+      background: var(--md-container);
+    }
+
+    .pocket {
+      display: grid;
+      justify-items: center;
+      padding: 8px;
+      border-radius: 16px;
+      background: var(--md-primary-container);
+      box-shadow: none;
+    }
+
+    .box h2 {
+      margin: 0 0 8px;
+      color: var(--md-on-variant);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: .02em;
+      text-transform: none;
+    }
+    .stat { display: grid; gap: 2px; }
+    .stat span { color: var(--md-on-variant); font-size: 12px; font-weight: 500; letter-spacing: .01em; text-transform: none; }
+    .stat b {
+      font-size: 36px;
+      font-weight: 400;
+      letter-spacing: 0;
+      font-variant-numeric: tabular-nums;
+      color: var(--md-on-surface);
+    }
+    .stat.hero-stat b { font-size: 48px; line-height: 1.1; color: var(--md-primary); }
+    .meter {
+      height: 4px;
+      margin-top: 12px;
+      border-radius: 99px;
+      background: var(--md-outline);
+      overflow: hidden;
+    }
+    .meter i {
+      display: block;
+      height: 100%;
+      width: 100%;
+      border-radius: inherit;
+      background: var(--md-primary);
+      transform: scaleX(0);
+      transform-origin: left center;
+    }
+    .board-wrap {
+      position: relative;
+      width: max-content;
+      justify-self: center;
+      padding: 0;
+      border-radius: var(--corner, 8px);
+      background: transparent;
+      box-shadow: none;
+    }
+    #board {
+      display: block;
+      width: 280px;
+      height: 560px;
+      background: var(--md-well);
+      border: 0;
+      border-radius: var(--corner, 8px);
+      box-shadow: inset 0 0 0 1px var(--md-outline);
+    }
+    #hold-canvas, #next-canvas { display: block; background: transparent; border: 0; }
+    #hold-canvas.used { opacity: .35; }
+    #hold-state { margin: 8px 0 0; }
+
+    .veil {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 12px;
+      padding: 28px;
+      text-align: center;
+      background: color-mix(in srgb, var(--md-surface) 94%, transparent);
+      border-radius: var(--corner, 8px);
+      color: var(--md-on-surface);
+    }
+
+    .veil[hidden] { display: none; }
+    .veil h2 { margin: 0; font-size: 40px; font-weight: 600; letter-spacing: -.04em; }
+    .veil p { margin: 0; color: var(--muted); }
+    .veil .primary, .veil .text-btn { margin-top: 6px; }
+    .pad { display: none; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 18px; }
+    .pad button { color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+    .keys { margin: 22px 0 0; color: var(--muted); font-size: 13px; text-align: center; }
+
+    @keyframes float-a {
+      0%, 100% { transform: translate3d(0, 0, 0); }
+      50% { transform: translate3d(8vw, 6vh, 0); }
+    }
+
+    @keyframes float-b {
+      0%, 100% { transform: translate3d(0, 0, 0); }
+      50% { transform: translate3d(-7vw, -5vh, 0); }
+    }
+
+    @keyframes sheen {
+      0%, 100% { transform: translateX(-160%) rotate(16deg); }
+      50% { transform: translateX(320%) rotate(16deg); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      body::before, body::after, .glass::after { animation: none; }
+    }
+
+    @media (max-width: 760px) {
+      h1 { font-size: 64px; }
+      .hero-actions, .stage, .console { display: grid; }
+      .console { grid-template-columns: 1fr 1fr; width: 100%; }
+      .board-wrap { grid-column: 1 / -1; order: -1; }
+      .pad { display: grid; }
+      .keys { display: none; }
+    }
+  </style>
+</head>
+<body data-theme="light">
+  <div class="page">
+    <section id="menu" class="hero">
+      <canvas id="hero3d" aria-hidden="true"></canvas>
+      <div class="hero-copy glass">
+        <svg class="logo" viewBox="0 0 196 36" role="img" aria-label="Bridge">
+        <rect class="logo-tile" x="0.6" y="0.6" width="34.8" height="34.8" rx="11"/>
+        <rect class="logo-cell" x="7" y="8" width="22" height="6.4" rx="2"/>
+        <rect class="logo-cell" x="7" y="16.4" width="6.4" height="12" rx="2"/>
+        <rect class="logo-cell" x="22.6" y="16.4" width="6.4" height="12" rx="2"/>
+        <rect class="logo-type" x="46.0" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="51.4" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="56.8" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="46.0" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="62.2" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="46.0" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="51.4" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="56.8" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="46.0" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="62.2" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="46.0" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="51.4" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="56.8" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="70.8" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="76.2" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="81.6" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="70.8" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="87.0" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="70.8" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="76.2" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="81.6" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="70.8" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="81.6" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="70.8" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="87.0" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="95.6" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="101.0" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="106.4" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="111.8" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="101.0" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="106.4" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="101.0" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="106.4" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="101.0" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="106.4" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="95.6" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="101.0" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="106.4" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="111.8" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="120.4" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="125.8" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="131.2" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="120.4" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="136.6" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="120.4" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="136.6" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="120.4" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="136.6" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="120.4" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="125.8" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="131.2" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="150.6" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="156.0" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="161.4" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="145.2" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="145.2" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="156.0" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="161.4" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="145.2" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="161.4" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="150.6" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="156.0" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="161.4" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="170.0" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="175.4" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="180.8" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="186.2" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="170.0" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="170.0" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="175.4" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="180.8" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="170.0" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="170.0" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="175.4" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="180.8" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="186.2" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+      </svg>
+        <div class="hero-actions">
+          <button id="go-marathon" class="primary" type="button" data-i18n="marathon">Marathon</button>
+          <button id="go-sprint" class="secondary" type="button" data-i18n="sprint">40-line sprint</button>
+        </div>
+        <button id="go-settings" class="chip" type="button" data-i18n="settings">Settings</button>
+      </div>
+    </section>
+
+    <section id="settings" class="settings-wrap" hidden>
+      <svg class="logo compact" viewBox="0 0 196 36" role="img" aria-label="Bridge">
+        <rect class="logo-tile" x="0.6" y="0.6" width="34.8" height="34.8" rx="11"/>
+        <rect class="logo-cell" x="7" y="8" width="22" height="6.4" rx="2"/>
+        <rect class="logo-cell" x="7" y="16.4" width="6.4" height="12" rx="2"/>
+        <rect class="logo-cell" x="22.6" y="16.4" width="6.4" height="12" rx="2"/>
+        <rect class="logo-type" x="46.0" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="51.4" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="56.8" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="46.0" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="62.2" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="46.0" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="51.4" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="56.8" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="46.0" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="62.2" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="46.0" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="51.4" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="56.8" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="70.8" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="76.2" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="81.6" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="70.8" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="87.0" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="70.8" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="76.2" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="81.6" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="70.8" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="81.6" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="70.8" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="87.0" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="95.6" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="101.0" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="106.4" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="111.8" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="101.0" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="106.4" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="101.0" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="106.4" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="101.0" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="106.4" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="95.6" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="101.0" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="106.4" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="111.8" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="120.4" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="125.8" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="131.2" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="120.4" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="136.6" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="120.4" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="136.6" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="120.4" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="136.6" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="120.4" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="125.8" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="131.2" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="150.6" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="156.0" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="161.4" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="145.2" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="145.2" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="156.0" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="161.4" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="145.2" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="161.4" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="150.6" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="156.0" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="161.4" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="170.0" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="175.4" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="180.8" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="186.2" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="170.0" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="170.0" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="175.4" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="180.8" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="170.0" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="170.0" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="175.4" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="180.8" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="186.2" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+      </svg>
+      <h1 data-i18n="settings">Settings</h1>
+      <div class="settings-card glass">
+        <label><span data-i18n="language">Language</span>
+          <select id="lang">
+            <option value="zh-Hant">繁體中文</option>
+            <option value="zh-Hans">简体中文</option>
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+            <option value="ko">한국어</option>
+            <option value="pt">Português</option>
+            <option value="es">Español</option>
+          </select>
+        </label>
+        <label><span data-i18n="volume">Volume</span>
+          <input id="volume" type="range" min="0" max="100" value="70">
+        </label>
+        <div class="field">
+          <span data-i18n="theme">Background</span>
+          <div class="theme-row">
+            <button id="theme-light" type="button" data-i18n="light">White</button>
+            <button id="theme-dark" type="button" data-i18n="dark">Black</button>
+          </div>
+        </div>
+      </div>
+      <button id="settings-back" class="text-btn" type="button" data-i18n="close">Back</button>
+    </section>
+
+    <section id="game" hidden>
+      <div class="nav">
+        <svg class="logo compact" viewBox="0 0 196 36" role="img" aria-label="Bridge">
+        <rect class="logo-tile" x="0.6" y="0.6" width="34.8" height="34.8" rx="11"/>
+        <rect class="logo-cell" x="7" y="8" width="22" height="6.4" rx="2"/>
+        <rect class="logo-cell" x="7" y="16.4" width="6.4" height="12" rx="2"/>
+        <rect class="logo-cell" x="22.6" y="16.4" width="6.4" height="12" rx="2"/>
+        <rect class="logo-type" x="46.0" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="51.4" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="56.8" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="46.0" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="62.2" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="46.0" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="51.4" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="56.8" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="46.0" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="62.2" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="46.0" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="51.4" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="56.8" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="70.8" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="76.2" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="81.6" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="70.8" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="87.0" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="70.8" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="76.2" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="81.6" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="70.8" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="81.6" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="70.8" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="87.0" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="95.6" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="101.0" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="106.4" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="111.8" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="101.0" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="106.4" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="101.0" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="106.4" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="101.0" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="106.4" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="95.6" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="101.0" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="106.4" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="111.8" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="120.4" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="125.8" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="131.2" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="120.4" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="136.6" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="120.4" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="136.6" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="120.4" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="136.6" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="120.4" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="125.8" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="131.2" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="150.6" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="156.0" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="161.4" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="145.2" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="145.2" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="156.0" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="161.4" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="145.2" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="161.4" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="150.6" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="156.0" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="161.4" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="170.0" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="175.4" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="180.8" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="186.2" y="5.0" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="170.0" y="10.4" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="170.0" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="175.4" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="180.8" y="15.8" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="170.0" y="21.2" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="170.0" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="175.4" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="180.8" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+<rect class="logo-type" x="186.2" y="26.6" width="4.4" height="4.4" rx="1.3"/>
+      </svg>
+        <button id="game-menu" class="md-tonal" type="button" data-i18n="menu">Menu</button>
+      </div>
+      <div class="stage">
+        <div class="console">
+          <aside class="rail">
+            <section class="box">
+              <h2 data-i18n="hold">Hold</h2>
+              <div class="pocket">
+                <canvas id="hold-canvas" width="120" height="88"></canvas>
+              </div>
+              <p class="hint" id="hold-state"></p>
+            </section>
+            <section class="box">
+              <div class="stat"><span data-i18n="lines">Lines</span><b id="lines">0</b></div>
+              <div class="stat"><span id="third-label" data-i18n="stage">Stage</span><b id="third">1</b></div>
+            </section>
+          </aside>
+          <div class="board-wrap">
+            <canvas id="board" width="280" height="560"></canvas>
+            <div class="veil" id="veil" hidden>
+              <h2 id="veil-title"></h2>
+              <p id="veil-copy"></p>
+              <button id="veil-btn" class="primary" type="button"></button>
+              <button id="veil-menu" class="text-btn" type="button" data-i18n="menu">Menu</button>
+            </div>
+          </div>
+          <aside class="rail">
+            <section class="box">
+              <h2 data-i18n="next">Next</h2>
+              <div class="pocket">
+                <canvas id="next-canvas" width="120" height="236"></canvas>
+              </div>
+            </section>
+            <section class="box">
+              <div class="stat hero-stat"><span data-i18n="score">Score</span><b id="score">0</b></div>
+              <div class="stat"><span data-i18n="best">Best</span><b id="best">0</b></div>
+              <div class="meter" aria-hidden="true"><i id="meter-bar"></i></div>
+            </section>
+          </aside>
+        </div>
+      </div>
+      <div class="pad">
+        <button type="button" id="btn-left" data-i18n="left">Left</button>
+        <button type="button" id="btn-right" data-i18n="right">Right</button>
+        <button type="button" id="btn-rot" data-i18n="rotate">Turn</button>
+        <button type="button" id="btn-hold" data-i18n="keep">Hold</button>
+        <button type="button" id="btn-drop" data-i18n="drop">Drop</button>
+      </div>
+    </section>
+  </div>
+  <script type="module">
+    import { createSound } from "./audio.mjs";
+    import { createSession, drawSession, updateSession } from "./arcade.mjs";
+    import { translate } from "./i18n.mjs";
+    import {
+      COLS, ROWS, SHAPES, cellsOf, createGame, fits, flipGrid, ghostY, gravityMs,
+      hardDrop, hold, lockActive, pump, startGame, tryMove, tryRotate,
+    } from "./logic.mjs";
+
+    const COLORS = {
+      I: "#64d2ff", O: "#ffd60a", T: "#bf5af2", S: "#30d158", Z: "#ff453a",
+      J: "#0a84ff", L: "#ff9f0a", B: "#8e8e93", X: "#5e5ce6", D: "#ff9f0a", R: "#ff375f",
+    };
+    const CELL = 28;
+    const board = document.querySelector("#board");
+    const holdCanvas = document.querySelector("#hold-canvas");
+    const nextCanvas = document.querySelector("#next-canvas");
+    const ctx = board.getContext("2d");
+    const holdCtx = holdCanvas.getContext("2d");
+    const nextCtx = nextCanvas.getContext("2d");
+    const veil = document.querySelector("#veil");
+    const game = createGame();
+    const settings = loadSettings();
+    let paused = false;
+    let acc = 0;
+    let softAcc = 0;
+    let lockMs = 0;
+    let lockResets = 0;
+    let anim = null;
+    let session = null;
+    let last = performance.now();
+    let startedAt = 0;
+    let frozenTime = 0;
+    const heldKeys = new Set();
+    let dasDir = 0;
+    let dasTime = 0;
+    let dasOn = false;
+    const sound = createSound(() => settings.volume);
+    const CORNER = 4;
+
+    applySettings();
+
+    function loadSettings() {
+      try {
+        return { lang: "en", volume: 0.7, theme: "light", ...JSON.parse(localStorage.getItem("bridge-settings") || "{}") };
+      } catch {
+        return { lang: "en", volume: 0.7, theme: "light" };
+      }
+    }
+
+    function saveSettings() {
+      localStorage.setItem("bridge-settings", JSON.stringify(settings));
+    }
+
+    function t(key) { return translate(settings.lang, key); }
+
+    function applySettings() {
+      document.body.dataset.theme = settings.theme;
+      document.documentElement.lang = settings.lang;
+      const pixelFonts = { "zh-Hant": "Pixel Hant", "zh-Hans": "Pixel Hans", ja: "Pixel Ja", ko: "Pixel Ko" };
+      document.body.style.fontFamily = `"${pixelFonts[settings.lang] || "Pixel Latin"}", "WenQuanYi Micro Hei", sans-serif`;
+      document.title = t("title");
+      for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
+      document.querySelector("#lang").value = settings.lang;
+      document.querySelector("#volume").value = String(Math.round(settings.volume * 100));
+      document.querySelector("#theme-light").setAttribute("aria-pressed", String(settings.theme === "light"));
+      document.querySelector("#theme-dark").setAttribute("aria-pressed", String(settings.theme === "dark"));
+      sound.setVolume();
+    }
+
+    function bestKey() { return game.mode === "sprint" ? "bridge-best-sprint" : "bridge-best-marathon"; }
+
+    function readBest() {
+      const raw = Number(localStorage.getItem(bestKey()) || 0);
+      return Number.isFinite(raw) ? raw : 0;
+    }
+
+    function formatTime(ms) {
+      const total = Math.max(0, ms) / 1000;
+      const mins = Math.floor(total / 60);
+      return `${mins}:${(total - mins * 60).toFixed(2).padStart(5, "0")}`;
+    }
+
+    function showScreen(id) {
+      for (const name of ["menu", "settings", "game"]) document.querySelector(`#${name}`).hidden = name !== id;
+    }
+
+    function resetTimers() { acc = 0; softAcc = 0; lockMs = 0; lockResets = 0; }
+
+    function begin(mode) {
+      startGame(game, mode);
+      paused = false;
+      session = null;
+      anim = null;
+      resetTimers();
+      heldKeys.clear();
+      startedAt = performance.now();
+      frozenTime = 0;
+      veil.hidden = true;
+      showScreen("game");
+      fitBoard();
+      sound.restart();
+    }
+
+    function backToMenu() {
+      paused = false;
+      session = null;
+      game.phase = "ready";
+      sound.stop();
+      showScreen("menu");
+    }
+
+    function showVeil(title, copy, label) {
+      veil.hidden = false;
+      document.querySelector("#veil-title").textContent = title;
+      document.querySelector("#veil-copy").textContent = copy;
+      document.querySelector("#veil-btn").textContent = label;
+    }
+
+    function onManeuver() {
+      if (!game.active) return;
+      const { type, rot, x, y } = game.active;
+      if (!fits(game.grid, type, rot, x, y + 1) && lockResets < 12) {
+        lockMs = 0;
+        lockResets += 1;
+      }
+    }
+
+    function shift(dir) {
+      if (paused || game.phase !== "playing" || !tryMove(game, dir, 0)) return;
+      onManeuver();
+    }
+
+    function doRotate(dir) {
+      if (paused || !tryRotate(game, dir)) return;
+      onManeuver();
+      sound.blip(700, 0.02);
+    }
+
+    function doHold() {
+      if (paused || !hold(game)) return;
+      resetTimers();
+      sound.blip(520, 0.04);
+    }
+
+    function doHard() {
+      if (session) {
+        session.fire = true;
+        return;
+      }
+      if (paused || game.phase !== "playing") return;
+      hardDrop(game);
+      resetTimers();
+      sound.blip(160, 0.05);
+    }
+
+    document.querySelector("#go-marathon").addEventListener("click", () => begin("marathon"));
+    document.querySelector("#go-sprint").addEventListener("click", () => begin("sprint"));
+    document.querySelector("#go-settings").addEventListener("click", () => showScreen("settings"));
+    document.querySelector("#settings-back").addEventListener("click", () => showScreen("menu"));
+    document.querySelector("#game-menu").addEventListener("click", backToMenu);
+    document.querySelector("#veil-menu").addEventListener("click", backToMenu);
+    document.querySelector("#veil-btn").addEventListener("click", () => {
+      if (game.phase === "over" || game.phase === "done") begin(game.mode);
+      else paused = false;
+    });
+    document.querySelector("#lang").addEventListener("change", (event) => {
+      settings.lang = event.target.value;
+      saveSettings();
+      applySettings();
+    });
+    document.querySelector("#volume").addEventListener("input", (event) => {
+      settings.volume = Number(event.target.value) / 100;
+      saveSettings();
+      applySettings();
+      if (settings.volume <= 0) sound.stop();
+    });
+    document.querySelector("#theme-light").addEventListener("click", () => { settings.theme = "light"; saveSettings(); applySettings(); });
+    document.querySelector("#theme-dark").addEventListener("click", () => { settings.theme = "dark"; saveSettings(); applySettings(); });
+
+    window.addEventListener("keydown", (event) => {
+      const key = event.key;
+      if (["ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp", " "].includes(key)) event.preventDefault();
+      if (key === "p" || key === "P" || key === "Escape") {
+        if (["playing", "resolving", "breakout", "bbtan", "pinball"].includes(game.phase)) paused = !paused;
+        return;
+      }
+      if (paused) return;
+      if (session) {
+        if (key === "ArrowLeft") session.left = true;
+        if (key === "ArrowRight") session.right = true;
+        if (!event.repeat && (key === " " || key === "ArrowUp")) session.fire = true;
+        return;
+      }
+      if (game.phase !== "playing") return;
+      if (key === "ArrowLeft") {
+        heldKeys.add("left");
+        if (!event.repeat) { dasDir = -1; dasTime = 0; dasOn = false; shift(-1); }
+      } else if (key === "ArrowRight") {
+        heldKeys.add("right");
+        if (!event.repeat) { dasDir = 1; dasTime = 0; dasOn = false; shift(1); }
+      } else if (key === "ArrowDown") heldKeys.add("down");
+      else if (!event.repeat && (key === "ArrowUp" || key === "x" || key === "X")) doRotate(1);
+      else if (!event.repeat && (key === "z" || key === "Z")) doRotate(-1);
+      else if (!event.repeat && key === " ") doHard();
+      else if (!event.repeat && (key === "c" || key === "C" || key === "Shift")) doHold();
+    });
+
+    window.addEventListener("keyup", (event) => {
+      if (event.key === "ArrowLeft") { heldKeys.delete("left"); if (session) session.left = false; }
+      if (event.key === "ArrowRight") { heldKeys.delete("right"); if (session) session.right = false; }
+      if (event.key === "ArrowDown") heldKeys.delete("down");
+      if (!heldKeys.has("left") && !heldKeys.has("right")) dasDir = 0;
+    });
+
+    function bindPress(id, down, up) {
+      const el = document.querySelector(id);
+      el.addEventListener("pointerdown", (event) => { event.preventDefault(); down(); });
+      if (up) {
+        el.addEventListener("pointerup", up);
+        el.addEventListener("pointercancel", up);
+        el.addEventListener("pointerleave", up);
+      }
+    }
+
+    let leftTimer = 0;
+    let rightTimer = 0;
+    bindPress("#btn-left", () => {
+      if (session) { session.left = true; return; }
+      shift(-1);
+      leftTimer = window.setInterval(() => shift(-1), 70);
+    }, () => { if (session) session.left = false; window.clearInterval(leftTimer); });
+    bindPress("#btn-right", () => {
+      if (session) { session.right = true; return; }
+      shift(1);
+      rightTimer = window.setInterval(() => shift(1), 70);
+    }, () => { if (session) session.right = false; window.clearInterval(rightTimer); });
+    bindPress("#btn-rot", () => doRotate(1));
+    bindPress("#btn-hold", doHold);
+    bindPress("#btn-drop", doHard);
+
+    function ink() { return document.body.dataset.theme === "dark" ? "#f5f5f7" : "#1d1d1f"; }
+    function pieceColor(type) { return COLORS[type] || ink(); }
+
+    function roundTile(context, left, top, side, radius) {
+      context.beginPath();
+      context.roundRect(left, top, side, side, radius);
+    }
+
+    function tile(context, x, y, size, ghost) {
+      const pad = size > 24 ? 1.25 : 1;
+      const radius = CORNER * (size / CELL);
+      const left = x * size + pad;
+      const top = y * size + pad;
+      const side = size - pad * 2;
+      roundTile(context, left, top, side, radius);
+      if (ghost) {
+        const dark = document.body.dataset.theme === "dark";
+        context.fillStyle = dark ? "rgba(168,199,250,.08)" : "rgba(11,87,208,.06)";
+        context.fill();
+        context.strokeStyle = dark ? "rgba(168,199,250,.8)" : "rgba(11,87,208,.55)";
+        context.lineWidth = 1.25;
+        context.stroke();
+        return;
+      }
+      context.fill();
+    }
+
+    function drawBlob(context, cells, type, size, ghost, markIndex = null) {
+      cells.forEach(([x, y], index) => {
+        if (y < 0 || y >= ROWS || x < 0 || x >= COLS) return;
+        context.fillStyle = pieceColor(type);
+        tile(context, x, y, size, ghost);
+        if (!ghost && index === markIndex && (type === "B" || type === "X")) {
+          context.fillStyle = type === "B" ? "#1d1d1f" : "#ffffff";
+          context.beginPath();
+          context.arc(x * size + size / 2, y * size + size / 2, Math.max(2.5, size * 0.12), 0, Math.PI * 2);
+          context.fill();
+        }
+      });
+    }
+
+    function drawGridCells(context, grid, skip, size) {
+      const drawn = new Set();
+      for (let y = 0; y < ROWS; y += 1) {
+        for (let x = 0; x < COLS; x += 1) {
+          const cell = grid[y][x];
+          if (!cell || skip.has(cell.g) || drawn.has(cell.g)) continue;
+          drawn.add(cell.g);
+          const group = [];
+          for (let gy = 0; gy < ROWS; gy += 1) {
+            for (let gx = 0; gx < COLS; gx += 1) {
+              if (grid[gy][gx]?.g === cell.g) group.push([gx, gy]);
+            }
+          }
+          drawBlob(context, group, cell.type, size, false);
+        }
+      }
+      context.fillStyle = "#dfff45";
+      for (let y = 0; y < ROWS; y += 1) {
+        for (let x = 0; x < COLS; x += 1) {
+          const cell = grid[y][x];
+          if (!cell || skip.has(cell.g)) continue;
+          if (!cell.bomb && cell.reward !== "bbtan") continue;
+          context.fillStyle = cell.bomb ? "#1d1d1f" : "#ffffff";
+          context.beginPath();
+          context.arc(x * size + size / 2, y * size + size / 2, Math.max(3, size * 0.16), 0, Math.PI * 2);
+          context.fill();
+        }
+      }
+    }
+
+    function paintPreview(context, canvas, pieces) {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      const slots = Math.max(pieces.length, 1);
+      pieces.forEach((piece, index) => {
+        if (!piece?.type) return;
+        const cells = SHAPES[piece.type][0];
+        const xs = cells.map(([x]) => x);
+        const ys = cells.map(([, y]) => y);
+        const size = 22;
+        const ox = (canvas.width - (Math.max(...xs) - Math.min(...xs) + 1) * size) / 2 - Math.min(...xs) * size;
+        const slot = canvas.height / slots;
+        const oy = index * slot + (slot - (Math.max(...ys) - Math.min(...ys) + 1) * size) / 2 - Math.min(...ys) * size;
+        context.save();
+        context.translate(ox, oy);
+        drawBlob(context, cells, piece.type, size, false, piece.bombIndex);
+        context.restore();
+      });
+    }
+
+    function prepareBoard() {
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const cssW = board.clientWidth || 280;
+      const cssH = board.clientHeight || 560;
+      const nextW = Math.max(1, Math.round(cssW * dpr));
+      const nextH = Math.max(1, Math.round(cssH * dpr));
+      if (board.width !== nextW || board.height !== nextH) {
+        board.width = nextW;
+        board.height = nextH;
+      }
+      const scale = (cssW / (COLS * CELL)) * dpr;
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    }
+
+    function drawBoard() {
+      prepareBoard();
+      ctx.fillStyle = document.body.dataset.theme === "dark" ? "#0e1014" : "#ffffff";
+      ctx.fillRect(0, 0, COLS * CELL, ROWS * CELL);
+      const flipping = anim?.step.type === "flip" || anim?.step.type === "reward";
+      if (flipping) {
+        const turn = Math.min(1, anim.t / anim.dur);
+        const angle = Math.PI * (1 - Math.cos(Math.PI * turn)) / 2;
+        ctx.save();
+        ctx.translate((COLS * CELL) / 2, (ROWS * CELL) / 2);
+        ctx.rotate(angle);
+        ctx.translate(-(COLS * CELL) / 2, -(ROWS * CELL) / 2);
+      }
+      const skip = new Set();
+      if (anim?.step.type === "drop") for (const move of anim.step.moves) skip.add(move.g);
+      drawGridCells(ctx, game.grid, skip, CELL);
+      if (anim?.step.type === "drop") {
+        const turn = Math.min(1, anim.t / anim.dur);
+        const eased = 1 - (1 - turn) ** 2;
+        for (const move of anim.step.moves) {
+          const y = move.y0 + (move.y1 - move.y0) * eased;
+          ctx.fillStyle = pieceColor(move.type);
+          tile(ctx, move.x, y, CELL, false);
+        }
+      }
+      if (anim?.step.type === "clear") {
+        ctx.globalAlpha = 1 - anim.t / anim.dur;
+        for (const cell of anim.step.cells) {
+          ctx.fillStyle = pieceColor(cell.type);
+          tile(ctx, cell.x, cell.y, CELL, false);
+        }
+        ctx.globalAlpha = 1;
+        for (const cell of anim.step.blasts || []) {
+          ctx.fillStyle = "#dfff45";
+          ctx.beginPath();
+          ctx.arc(cell.x * CELL + CELL / 2, cell.y * CELL + CELL / 2, CELL * 0.72, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      if (game.active && game.phase === "playing") {
+        const gy = ghostY(game);
+        drawBlob(ctx, cellsOf(game.active.type, game.active.rot, game.active.x, gy), game.active.type, CELL, true);
+        drawBlob(ctx, cellsOf(game.active.type, game.active.rot, game.active.x, game.active.y), game.active.type, CELL, false, game.active.bombIndex);
+      }
+      if (session) drawSession(ctx, session, ink());
+      if (flipping) ctx.restore();
+    }
+
+    function elapsed() {
+      if (!startedAt) return 0;
+      if (frozenTime) return frozenTime - startedAt;
+      return performance.now() - startedAt;
+    }
+
+    function draw() {
+      if (document.querySelector("#game").hidden) return;
+      drawBoard();
+      holdCanvas.classList.toggle("used", game.holdLocked && game.phase === "playing");
+      document.querySelector("#hold-state").textContent = game.holdLocked && game.phase === "playing" ? t("holdUsed") : t("holdReady");
+      paintPreview(holdCtx, holdCanvas, [game.hold]);
+      paintPreview(nextCtx, nextCanvas, game.queue.slice(0, 3));
+      document.querySelector("#score").textContent = String(game.score + (session?.score || 0));
+      document.querySelector("#lines").textContent = game.mode === "sprint" ? `${game.lines}/40` : String(game.lines);
+      document.querySelector("#third-label").textContent = game.mode === "sprint" ? t("time") : t("stage");
+      document.querySelector("#third").textContent = game.mode === "sprint" ? formatTime(elapsed()) : String(game.stage);
+      const best = readBest();
+      document.querySelector("#best").textContent = game.mode === "sprint" ? (best ? formatTime(best) : "–") : String(Math.max(best, game.score));
+      const progress = game.mode === "sprint" ? game.lines / 40 : game.stageLines / game.stageGoal;
+      document.querySelector("#meter-bar").style.transform = `scaleX(${Math.max(0, Math.min(1, progress))})`;
+      document.querySelector("#btn-drop").textContent = session?.kind === "bbtan" ? t("fire") : t("drop");
+      if (paused && game.phase !== "over" && game.phase !== "done") showVeil(t("paused"), t("pauseHint"), t("resume"));
+      else if (!paused && (game.phase === "playing" || session)) veil.hidden = true;
+    }
+
+    function finishSession() {
+      game.score += session.score;
+      if (session.full) game.score += 2000 * game.stage;
+      session = null;
+      game.phase = "resolving";
+    }
+
+    function frame(now) {
+      const dt = Math.min(34, now - last);
+      last = now;
+      if (!document.querySelector("#game").hidden && !paused && game.phase === "playing" && game.active) {
+        if (dasDir && ((dasDir < 0 && heldKeys.has("left")) || (dasDir > 0 && heldKeys.has("right")))) {
+          dasTime += dt;
+          if (dasTime >= (dasOn ? 35 : 150)) {
+            dasTime = 0;
+            dasOn = true;
+            shift(dasDir);
+          }
+        }
+        if (heldKeys.has("down")) {
+          softAcc += dt;
+          while (softAcc >= 45) {
+            softAcc -= 45;
+            if (tryMove(game, 0, 1)) game.score += 1;
+          }
+        }
+        acc += dt;
+        while (acc >= gravityMs(game) && game.phase === "playing") {
+          acc -= gravityMs(game);
+          if (!tryMove(game, 0, 1)) break;
+          lockMs = 0;
+        }
+        if (game.active && !fits(game.grid, game.active.type, game.active.rot, game.active.x, game.active.y + 1)) {
+          lockMs += dt;
+          if (lockMs >= 480) {
+            lockActive(game);
+            resetTimers();
+            sound.blip(140, 0.04);
+          }
+        } else lockMs = 0;
+      }
+
+      if (!paused && session) {
+        const clearedBefore = session.cleared;
+        updateSession(session, dt);
+        if (session.cleared > clearedBefore) sound.blip(760, 0.035);
+        if (session.over) finishSession();
+      }
+
+      if (!paused && game.phase === "resolving") {
+        if (anim) {
+          anim.t += dt;
+          if (anim.t >= anim.dur) {
+            const step = anim.step;
+            anim = null;
+            if (step.type === "flip" || step.type === "reward") flipGrid(game);
+            if (step.type === "reward") {
+              session = createSession(step.reward, game.grid, game.stage, game.random);
+              game.phase = step.reward;
+            }
+          }
+        }
+        if (!anim && game.phase === "resolving") {
+          const step = pump(game);
+          if (step?.type === "clear" || step?.type === "drop" || step?.type === "flip" || step?.type === "reward") {
+            const distance = step.type === "drop" ? Math.max(0, ...step.moves.map((move) => move.y1 - move.y0)) : 0;
+            const dur = step.type === "clear" ? (step.blasts?.length ? 280 : 170) : step.type === "drop" ? 120 + distance * 18 : 460;
+            anim = { step, t: 0, dur };
+            if (step.type === "clear") sound.playClear(step.rows.length);
+            if (step.type === "flip" || step.type === "reward") sound.blip(180, 0.08);
+          } else if (step?.type === "done") {
+            frozenTime = performance.now();
+            const time = elapsed();
+            const best = readBest();
+            if (!best || time < best) localStorage.setItem(bestKey(), String(time));
+            showVeil(t("cleared"), formatTime(time), t("again"));
+          } else if (step?.type === "over" || game.phase === "over") {
+            const best = readBest();
+            if (game.score > best) localStorage.setItem(bestKey(), String(game.score));
+            showVeil(t("topped"), String(game.score), t("again"));
+          } else if (step?.type === "spawn") resetTimers();
+        }
+      }
+      const musicOn = !document.querySelector("#game").hidden && !paused && game.phase !== "ready" && game.phase !== "over" && game.phase !== "done";
+      if (musicOn) {
+        sound.start();
+        sound.tick();
+      } else sound.stop();
+      fitBoard();
+      draw();
+      requestAnimationFrame(frame);
+    }
+
+    function fitBoard() {
+      if (document.querySelector("#game").hidden) return;
+      const nav = document.querySelector(".nav").offsetHeight;
+      const stage = document.querySelector(".stage");
+      const stacked = window.innerWidth <= 760;
+      const pad = 0;
+      const rails = 220 + 236 + 32;
+      const availH = Math.max(420, window.innerHeight - nav - (stacked ? 280 : 64));
+      const availW = Math.max(180, stage.clientWidth - (stacked ? pad : pad + rails));
+      const scale = Math.max(0.85, Math.min(availH / (ROWS * CELL), availW / (COLS * CELL)));
+      const width = Math.round(COLS * CELL * scale);
+      const height = Math.round(ROWS * CELL * scale);
+      board.style.width = `${width}px`;
+      board.style.height = `${height}px`;
+      const radius = CORNER * scale;
+      board.style.borderRadius = `${radius}px`;
+      document.querySelector(".board-wrap").style.borderRadius = `${radius}px`;
+      veil.style.borderRadius = `${radius}px`;
+      document.documentElement.style.setProperty("--corner", `${radius}px`);
+    }
+
+    window.addEventListener("resize", fitBoard);
+
+    requestAnimationFrame(frame);
+    startHero();
+
+    function startHero() {
+      const canvas = document.querySelector("#hero3d");
+      const context = canvas.getContext("2d");
+      const forms = [
+        { cells: [[0, 0], [1, 0], [2, 0], [3, 0]], color: "#64d2ff", speed: 0.42, orbit: 0.2, x: 0.16, y: 0.28, scale: 34 },
+        { cells: [[0, 0], [1, 0], [0, 1], [1, 1]], color: "#ffd60a", speed: -0.28, orbit: 1.7, x: 0.84, y: 0.22, scale: 40 },
+        { cells: [[1, 0], [0, 1], [1, 1], [2, 1]], color: "#bf5af2", speed: 0.33, orbit: 3.1, x: 0.8, y: 0.74, scale: 38 },
+        { cells: [[0, 0], [0, 1], [0, 2], [1, 2]], color: "#ff9f0a", speed: -0.36, orbit: 4.4, x: 0.18, y: 0.76, scale: 36 },
+        { cells: [[1, 0], [2, 0], [0, 1], [1, 1]], color: "#30d158", speed: 0.24, orbit: 5.2, x: 0.5, y: 0.16, scale: 30 },
+        { cells: [[0, 0], [1, 0], [1, 1], [2, 1]], color: "#ff453a", speed: 0.3, orbit: 2.4, x: 0.52, y: 0.86, scale: 32 },
+      ];
+      const faces = [
+        { n: [0, 0, 1], p: [[-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]] },
+        { n: [0, 0, -1], p: [[-1, -1, -1], [-1, 1, -1], [1, 1, -1], [1, -1, -1]] },
+        { n: [0, -1, 0], p: [[-1, -1, -1], [1, -1, -1], [1, -1, 1], [-1, -1, 1]] },
+        { n: [0, 1, 0], p: [[-1, 1, -1], [-1, 1, 1], [1, 1, 1], [1, 1, -1]] },
+        { n: [1, 0, 0], p: [[1, -1, -1], [1, 1, -1], [1, 1, 1], [1, -1, 1]] },
+        { n: [-1, 0, 0], p: [[-1, -1, -1], [-1, -1, 1], [-1, 1, 1], [-1, 1, -1]] },
+      ];
+      const light = [0.32, -0.62, 0.72];
+      const lightLen = Math.hypot(...light);
+      const lit = light.map((value) => value / lightLen);
+      const spin = (v, ay, ax, az) => {
+        let x = v[0];
+        let y = v[1];
+        let z = v[2];
+        const cz = Math.cos(az);
+        const sz = Math.sin(az);
+        const x0 = x * cz - y * sz;
+        const y0 = x * sz + y * cz;
+        const cy = Math.cos(ay);
+        const sy = Math.sin(ay);
+        const x1 = x0 * cy + z * sy;
+        const z1 = -x0 * sy + z * cy;
+        const cx = Math.cos(ax);
+        const sx = Math.sin(ax);
+        return [x1, y0 * cx - z1 * sx, y0 * sx + z1 * cx];
+      };
+      const paint = (normal, color) => {
+        const ndot = Math.max(0, normal[0] * lit[0] + normal[1] * lit[1] + normal[2] * lit[2]);
+        const base = 0.34 + ndot * 0.78;
+        const spec = ndot ** 16 * 0.7;
+        const red = parseInt(color.slice(1, 3), 16);
+        const green = parseInt(color.slice(3, 5), 16);
+        const blue = parseInt(color.slice(5, 7), 16);
+        const mix = (channel) => Math.min(255, Math.round(channel * base + 255 * spec));
+        return `rgb(${mix(red)}, ${mix(green)}, ${mix(blue)})`;
+      };
+      const flyers = forms.map((form, index) => ({
+        form,
+        x: 0,
+        y: 0,
+        vx: (index % 2 === 0 ? 1 : -1) * (70 + index * 14),
+        vy: (index % 3 === 0 ? 1 : -1) * (42 + index * 9),
+        ay: form.orbit,
+        ready: false,
+      }));
+      let heroLast = 0;
+      const frameHero = (now) => {
+        if (!document.querySelector("#menu").hidden) {
+          const ratio = Math.min(2, window.devicePixelRatio || 1);
+          const width = canvas.clientWidth;
+          const height = canvas.clientHeight;
+          const nextW = Math.floor(width * ratio);
+          const nextH = Math.floor(height * ratio);
+          if (canvas.width !== nextW || canvas.height !== nextH) {
+            canvas.width = nextW;
+            canvas.height = nextH;
+          }
+          context.setTransform(ratio, 0, 0, ratio, 0, 0);
+          context.clearRect(0, 0, width, height);
+          const dt = heroLast ? Math.min(0.05, (now - heroLast) / 1000) : 0;
+          heroLast = now;
+          const margin = 90;
+          for (const flyer of flyers) {
+            if (!flyer.ready && width > 0) {
+              flyer.x = width * flyer.form.x;
+              flyer.y = height * flyer.form.y;
+              flyer.ready = true;
+            }
+            flyer.x += flyer.vx * dt;
+            flyer.y += flyer.vy * dt;
+            flyer.ay += flyer.form.speed * dt;
+            if (flyer.x < margin) { flyer.x = margin; flyer.vx = Math.abs(flyer.vx); }
+            if (flyer.x > width - margin) { flyer.x = width - margin; flyer.vx = -Math.abs(flyer.vx); }
+            if (flyer.y < margin) { flyer.y = margin; flyer.vy = Math.abs(flyer.vy); }
+            if (flyer.y > height - margin) { flyer.y = height - margin; flyer.vy = -Math.abs(flyer.vy); }
+          }
+          const scene = [...flyers].sort((a, b) => a.y - b.y);
+          for (const flyer of scene) {
+            const form = flyer.form;
+            const ay = flyer.ay;
+            const ax = 0.5 + Math.sin(flyer.ay * 0.7) * 0.35;
+            const az = Math.sin(flyer.ay * 0.45) * 0.3;
+            const ox = flyer.x;
+            const oy = flyer.y;
+            const quads = [];
+            for (const cell of form.cells) {
+              for (const face of faces) {
+                const normal = spin(face.n, ay, ax, az);
+                if (normal[2] < -0.04) continue;
+                const points = face.p.map((point) => {
+                  const world = spin([
+                    (cell[0] - 1.5) * 1.02 + point[0] * 0.46,
+                    (cell[1] - 0.5) * 1.02 + point[1] * 0.46,
+                    point[2] * 0.46,
+                  ], ay, ax, az);
+                  const depth = 7.2 / (7.2 - world[2]);
+                  return [ox + world[0] * form.scale * depth, oy + world[1] * form.scale * depth, world[2]];
+                });
+                quads.push({
+                  points,
+                  color: paint(normal, form.color),
+                  z: points.reduce((sum, point) => sum + point[2], 0),
+                });
+              }
+            }
+            quads.sort((a, b) => a.z - b.z);
+            for (const quad of quads) {
+              context.beginPath();
+              quad.points.forEach((point, i) => (i ? context.lineTo(point[0], point[1]) : context.moveTo(point[0], point[1])));
+              context.closePath();
+              context.fillStyle = quad.color;
+              context.fill();
+              context.strokeStyle = "rgba(0,0,0,.16)";
+              context.lineWidth = 1;
+              context.stroke();
+            }
+          }
+        }
+        requestAnimationFrame(frameHero);
+      };
+      requestAnimationFrame(frameHero);
+    }
+  </script>
+</body>
+</html>
