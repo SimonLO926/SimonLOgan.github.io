@@ -49,7 +49,11 @@ export const SHAPES = {
   ],
   D: bombShapesFrom([[0, 0], [1, 0], [0, 1], [1, 1], [0, 2]]),
   R: [[[0, 0]]],
+  C: [[[0, 0]]],
 };
+
+export const CURSES = ["seal", "reverse", "blind", "rush", "norotate"];
+export const CURSE_CHANCE = 1 / 30;
 
 function bombShapesFrom(base) {
   const shapes = [base.map((cell) => [...cell])];
@@ -122,11 +126,12 @@ export function createGame(options = {}) {
   let sinceBomb = 0;
   let mode = options.mode ?? "marathon";
 
-  function describe(type) {
+  function describe(type, curse = null) {
     const marked = type === "B" || type === "X";
     return {
       type,
       bombIndex: marked ? Math.floor(random() * SHAPES[type][0].length) : null,
+      curse,
     };
   }
 
@@ -136,6 +141,9 @@ export function createGame(options = {}) {
       return describe(sequence.shift());
     }
     if (mode === "marathon") {
+      if (random() < CURSE_CHANCE) {
+        return describe("C", CURSES[Math.floor(random() * CURSES.length)]);
+      }
       const roll = random();
       if (roll < 0.001) return describe("R");
       if (roll < 0.002) return describe("X");
@@ -214,6 +222,7 @@ function spawn(game, preset) {
     x: 3,
     y: 0,
     bombIndex: next.bombIndex ?? null,
+    curse: next.curse ?? null,
   };
   if (!fits(game.grid, piece.type, piece.rot, piece.x, piece.y)) {
     game.active = null;
@@ -251,7 +260,7 @@ export function tryRotate(game, dir) {
 
 export function hold(game) {
   if (game.phase !== "playing" || !game.active || game.holdLocked) return false;
-  const current = { type: game.active.type, bombIndex: game.active.bombIndex ?? null };
+  const current = { type: game.active.type, bombIndex: game.active.bombIndex ?? null, curse: game.active.curse ?? null };
   if (game.hold == null) {
     game.hold = current;
     game.holdLocked = true;
@@ -330,7 +339,7 @@ function explodeFrom(grid, bombs, random) {
       seen.add(key);
       const target = grid[cy][cx];
       if (!target) continue;
-      blasted.push({ x: cx, y: cy, type: target.type });
+      blasted.push({ x: cx, y: cy, type: target.type, curse: target.curse ?? null });
       grid[cy][cx] = null;
     }
   }
@@ -347,6 +356,7 @@ export function lockActive(game) {
       g: gid,
       bomb: game.active.type === "B" && index === game.active.bombIndex,
       reward: rewardOn(game.active, index),
+      curse: game.active.type === "C" ? game.active.curse : null,
     };
   });
   game.active = null;
@@ -366,6 +376,7 @@ export function flipGrid(game) {
           g: cell.g,
           bomb: !!cell.bomb,
           reward: cell.reward ?? null,
+          curse: cell.curse ?? null,
         };
       }
     }
@@ -410,6 +421,7 @@ export function unsupportedComponents(grid) {
           g: origin.g,
           bomb: !!grid[cy][cx].bomb,
           reward: grid[cy][cx].reward ?? null,
+          curse: grid[cy][cx].curse ?? null,
         });
         for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
           const nx = cx + dx;
@@ -444,16 +456,24 @@ export function dropComponents(grid, comps, nextGid) {
       let y = cell.y;
       while (y + 1 < ROWS && !grid[y + 1][x]) y += 1;
       const g = nextGid();
-      grid[y][x] = { type: cell.type, g, bomb: !!cell.bomb, reward: cell.reward ?? null };
+      grid[y][x] = { type: cell.type, g, bomb: !!cell.bomb, reward: cell.reward ?? null, curse: cell.curse ?? null };
       moves.push({ x, y0: cell.y, y1: y, type: cell.type, g });
     }
   }
   return moves;
 }
 
+export function clearingRows(grid) {
+  const rows = fullRows(grid);
+  if (!rows.length) return [];
+  const armed = rows.some((y) => grid[y].some((cell) => cell?.bomb));
+  if (armed) return rows;
+  return rows.filter((y) => !grid[y].some((cell) => cell?.curse === "seal"));
+}
+
 export function pump(game) {
   if (game.phase !== "resolving") return null;
-  const rows = fullRows(game.grid);
+  const rows = clearingRows(game.grid);
   if (rows.length) {
     const cells = [];
     const bombs = [];
@@ -463,7 +483,7 @@ export function pump(game) {
         const cell = game.grid[y][x];
         if (cell?.bomb) bombs.push({ x, y });
         if (cell?.reward) rewards.push(cell.reward);
-        if (cell) cells.push({ x, y, type: cell.type, reward: cell.reward ?? null });
+        if (cell) cells.push({ x, y, type: cell.type, reward: cell.reward ?? null, curse: cell.curse ?? null });
         game.grid[y][x] = null;
       }
     }
@@ -552,7 +572,7 @@ export function hitBrick(grid, x, y, random) {
   if (!cell) return [];
   if (cell.bomb) return chainBlast(grid, x, y, random);
   grid[y][x] = null;
-  return [{ x, y, type: cell.type, bomb: false }];
+  return [{ x, y, type: cell.type, bomb: false, curse: cell.curse ?? null }];
 }
 
 export function chainBlast(grid, x, y, random) {
@@ -566,7 +586,7 @@ export function chainBlast(grid, x, y, random) {
     exploded.add(key);
     const origin = grid[by]?.[bx];
     if (origin) {
-      removed.push({ x: bx, y: by, type: origin.type, bomb: !!origin.bomb });
+      removed.push({ x: bx, y: by, type: origin.type, bomb: !!origin.bomb, curse: origin.curse ?? null });
       grid[by][bx] = null;
     }
     for (const [dx, dy] of blastOffsets(random)) {
@@ -576,7 +596,7 @@ export function chainBlast(grid, x, y, random) {
       const target = grid[cy][cx];
       if (!target) continue;
       const wasBomb = !!target.bomb;
-      removed.push({ x: cx, y: cy, type: target.type, bomb: wasBomb });
+      removed.push({ x: cx, y: cy, type: target.type, bomb: wasBomb, curse: target.curse ?? null });
       grid[cy][cx] = null;
       if (wasBomb) queue.push([cx, cy]);
     }

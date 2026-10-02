@@ -176,6 +176,34 @@ test("reward modes prefer breakout, then bbtan, then pinball", () => {
   assert.equal(grid[5][8].type, "O");
 });
 
+test("one marathon pull in thirty is a penalty cell", () => {
+  const game = createGame({ mode: "marathon", random: () => 0 });
+  const piece = game.pull();
+  assert.equal(piece.type, "C");
+  assert.equal(piece.curse, "seal");
+  const sprint = createGame({ mode: "sprint", random: () => 0.5 });
+  assert.notEqual(sprint.pull().type, "C");
+});
+
+test("a sealed row stays until a bomb is cleared with it", () => {
+  const game = createGame({ mode: "marathon", random: () => 0.9 });
+  startGame(game);
+  game.active = null;
+  game.phase = "resolving";
+  for (let y = 0; y < 19; y += 1) game.grid[y].fill(null);
+  for (let x = 0; x < COLS; x += 1) {
+    game.grid[19][x] = { type: "O", g: 80 + x, bomb: false, reward: null, curse: x === 3 ? "seal" : null };
+  }
+  assert.notEqual(pump(game)?.type, "clear");
+  assert.equal(game.grid[19][3].curse, "seal");
+  game.active = null;
+  game.phase = "resolving";
+  game.grid[19][4].bomb = true;
+  game.grid[19][4].type = "B";
+  assert.equal(pump(game).type, "clear");
+  assert.equal(game.grid[19][3], null);
+});
+
 test("flipping the board turns it upside down", () => {
   const game = createGame();
   game.grid[19][0] = { type: "I", g: 4 };
