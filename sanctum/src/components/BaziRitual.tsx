@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { CITIES, cityById, offsetOf } from '../data/cities'
+import { toHans, useI18n, word } from '../i18n'
 import { castBazi, type BaziChart } from '../lib/bazi'
 import { parseDateTime } from '../lib/civil'
-import type { Element } from '../lib/ganzhi'
+import { BRANCHES, type Element } from '../lib/ganzhi'
 import { tick } from '../lib/sound'
 import type { Tier } from '../lib/storage'
+import { BRANCH_ANGLE, Compass, ELEMENT_ANGLE } from './Compass'
 import { QuestionField, RitualFrame, Veil, opened } from './Chrome'
 
 const COLORS: Record<Element, string> = {
@@ -37,11 +39,12 @@ export function BaziRitual({
   const [chart, setChart] = useState<BaziChart | null>(null)
   const [editing, setEditing] = useState(true)
   const [error, setError] = useState('')
+  const { t } = useI18n()
 
   const cast = () => {
     const civil = parseDateTime(when)
     if (!civil) {
-      setError('需要完整的日期與時間。')
+      setError(t('needDateTime'))
       return
     }
     const place = cityById(city)
@@ -59,26 +62,26 @@ export function BaziRitual({
   return (
     <RitualFrame id="bazi" wide onBack={onBack}>
       {editing ? <form onSubmit={(event) => { event.preventDefault(); cast() }}>
-        <label className="field"><span>出生年月日時</span><input type="datetime-local" value={when} onChange={(event) => setWhen(event.target.value)} required /></label>
+        <label className="field"><span>{t('birthClock')}</span><input type="datetime-local" value={when} onChange={(event) => setWhen(event.target.value)} required /></label>
         <label className="field">
-          <span>性別 · 只用於大運順逆</span>
+          <span>{t('genderNote')}</span>
           <select value={gender} onChange={(event) => setGender(event.target.value as '' | 'male' | 'female')}>
-            <option value="">不記</option>
-            <option value="female">女</option>
-            <option value="male">男</option>
+            <option value="">{t('genderSkip')}</option>
+            <option value="female">{t('genderF')}</option>
+            <option value="male">{t('genderM')}</option>
           </select>
         </label>
         <label className="field">
-          <span>出生地</span>
+          <span>{t('birthPlace')}</span>
           <select value={city} onChange={(event) => setCity(event.target.value)}>
             {CITIES.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
         </label>
         <QuestionField value={question} onChange={setQuestion} />
-        <button className="btn solid" type="submit">排四柱</button>
+        <button className="btn solid" type="submit">{t('castPillars')}</button>
         {error && <p className="error">{error}</p>}
-        <p className="fine">年柱以立春換，月柱以十二節換。二十三時起算次日。</p>
-      </form> : <button type="button" className="text-btn" onClick={() => setEditing(true)}>改出生時間</button>}
+        <p className="fine">{t('baziFine')}</p>
+      </form> : <button type="button" className="text-btn" onClick={() => setEditing(true)}>{t('editTime')}</button>}
       {chart && <Pillars chart={chart} question={question} tier={tier} onPatron={onPatron} onPrint={onPrint} />}
     </RitualFrame>
   )
@@ -97,16 +100,25 @@ function Pillars({
   onPatron: () => void
   onPrint: () => void
 }) {
+  const { lang, t } = useI18n()
   const max = Math.max(...Object.values(chart.scores))
+  const active = new Set(chart.pillars.map((item) => item.pillar.branch))
+  const labels = [t('pillarYear'), t('pillarMonth'), t('pillarDay'), t('pillarHour')]
   return (
     <div className="chart-block" aria-live="polite">
+      <Compass
+        caption={`${t('northUp')} · ${t('useful')} ${word(`el.${chart.useful[0]}`, lang)}`}
+        needle={ELEMENT_ANGLE[chart.useful[0]] ?? 0}
+        center={<><strong>{chart.dayMaster}</strong><span>{word(`el.${chart.dayElement}`, lang)}</span></>}
+        ticks={BRANCHES.map((branch) => ({ angle: BRANCH_ANGLE[branch], label: branch, active: active.has(branch) }))}
+      />
       <div className="pillars">
-        {chart.pillars.map((item) => (
+        {chart.pillars.map((item, index) => (
           <article key={item.label}>
-            <p>{item.label}</p>
+            <p>{labels[index]}</p>
             <strong>{item.pillar.stem}</strong>
             <strong>{item.pillar.branch}</strong>
-            <small>{item.pillar.tenGod}</small>
+            <small>{word(`god.${item.pillar.tenGod}`, lang)}</small>
             <small>{item.pillar.branchGod}</small>
             <em>{item.pillar.nayin}</em>
             <em className="hidden">{item.hidden}</em>
@@ -124,12 +136,12 @@ function Pillars({
         ))}
       </div>
       {question.trim() && <p className="asked">所問「{question.trim()}」</p>}
-      <p>{chart.reading}</p>
-      <p className="fine">{chart.strength} · 用{chart.useful.join('、')}</p>
+      <p>{lang === 'zh-Hant' ? chart.reading : lang === 'zh-Hans' ? toHans(chart.reading) : `${chart.dayMaster} ${word(`el.${chart.dayElement}`, lang)}, ${word(`str.${chart.strength}`, lang)}. ${t('favors')} ${chart.useful.map((element) => word(`el.${element}`, lang)).join(', ')}. ${t('notVerdict')}`}</p>
+      <p className="fine">{word(`str.${chart.strength}`, lang)} · {t('useful')}{chart.useful.map((element) => word(`el.${element}`, lang)).join('、')}</p>
       <Veil locked={!opened(tier)} onOpen={onPatron}>
-        <p className="master-copy">{chart.master}</p>
+        <p className="master-copy">{lang === 'zh-Hans' ? toHans(chart.master) : lang === 'zh-Hant' ? chart.master : `${t('avoid')} ${chart.avoid.map((element) => word(`el.${element}`, lang)).join(', ')}. ${chart.luck === '大運順行' ? t('luckForward') : chart.luck === '大運逆行' ? t('luckBack') : t('noGender')}`}</p>
       </Veil>
-      {tier === 'master' && <button type="button" className="btn" onClick={onPrint}>印成一紙</button>}
+      {tier === 'master' && <button type="button" className="btn" onClick={onPrint}>{t('print')}</button>}
     </div>
   )
 }

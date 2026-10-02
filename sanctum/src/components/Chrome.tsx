@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import type { DoorId } from '../data/doors'
 import { doorById } from '../data/doors'
+import { DOOR_COPY, useI18n } from '../i18n'
+import type { Lang, ThemeChoice } from '../i18n/types'
 import type { Tier } from '../lib/storage'
 
 export function TopBar({
@@ -19,15 +21,29 @@ export function TopBar({
   onSound: () => void
   onPatron: () => void
 }) {
+  const { lang, setLang, theme, setTheme, t } = useI18n()
   const door = view === 'atlas' ? null : doorById(view)
-  const tierLabel = tier === 'master' ? '宗師' : tier === 'patron' ? '檀越' : '典藏'
+  const copy = door ? DOOR_COPY[door.id][lang] : null
+  const tierLabel = tier === 'master' ? t('tierMaster') : tier === 'patron' ? t('tierPatron') : t('tierGuest')
+  const cycleTheme = () => {
+    const order: ThemeChoice[] = ['system', 'dark', 'light']
+    setTheme(order[(order.indexOf(theme) + 1) % order.length])
+  }
+  const themeLabel = theme === 'dark' ? t('themeDark') : theme === 'light' ? t('themeLight') : t('themeSystem')
   return (
     <header className="topbar">
-      <button type="button" className="brand" onClick={onHome}>承問</button>
-      <p className="top-meta">{door ? `${door.index} ${door.name}` : '七門'}</p>
+      <button type="button" className="brand" onClick={onHome}>{t('brand')}</button>
+      <p className="top-meta">{copy ? `${door?.index} ${copy.name}` : t('doorsMeta')}</p>
       <div className="top-actions">
+        <select className="icon-select" aria-label="language" value={lang} onChange={(event) => setLang(event.target.value as Lang)}>
+          <option value="zh-Hant">繁</option>
+          <option value="zh-Hans">简</option>
+          <option value="en">EN</option>
+          <option value="ja">日</option>
+        </select>
+        <button type="button" className="icon-btn" onClick={cycleTheme}>{themeLabel}</button>
         <button type="button" className="icon-btn" onClick={onSound} aria-pressed={sound}>
-          {sound ? '聲' : '靜'}
+          {sound ? t('soundOn') : t('soundOff')}
         </button>
         <button type="button" className="icon-btn gold" onClick={onPatron}>{tierLabel}</button>
       </div>
@@ -46,14 +62,16 @@ export function RitualFrame({
   onBack: () => void
   children: ReactNode
 }) {
+  const { lang, t } = useI18n()
   const door = doorById(id)
+  const copy = DOOR_COPY[door.id][lang]
   return (
     <section className={wide ? 'ritual wide' : 'ritual'}>
       <div className="ritual-copy">
-        <button type="button" className="text-btn" onClick={onBack}>回殿</button>
-        <p className="eyebrow">{door.index} {door.place} · {door.en}</p>
-        <h2>{door.name}</h2>
-        <p className="lede">{door.line}</p>
+        <button type="button" className="text-btn" onClick={onBack}>{t('back')}</button>
+        <p className="eyebrow">{door.index} {copy.place}</p>
+        <h2>{copy.name}</h2>
+        <p className="lede">{copy.line}</p>
       </div>
       <div className="panel" style={{ '--accent': door.accent } as React.CSSProperties}>
         {children}
@@ -63,33 +81,29 @@ export function RitualFrame({
 }
 
 export function QuestionField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const { t } = useI18n()
   return (
     <label className="field">
-      <span>所問</span>
-      <textarea value={value} maxLength={80} rows={2} placeholder="一件具體的事。可以留白。" onChange={(event) => onChange(event.target.value)} />
+      <span>{t('ask')}</span>
+      <textarea value={value} maxLength={80} rows={2} placeholder={t('askPh')} onChange={(event) => onChange(event.target.value)} />
     </label>
   )
 }
 
 export function Veil({ locked, onOpen, children }: { locked: boolean; onOpen: () => void; children: ReactNode }) {
+  const { t } = useI18n()
   return (
     <div className={locked ? 'veil locked' : 'veil'}>
       <div className="veil-body" aria-hidden={locked}>{children}</div>
       {locked && (
         <button type="button" className="veil-lock" onClick={onOpen}>
-          <span>典藏批註</span>
-          <small>開匣後展開</small>
+          <span>{t('veil')}</span>
+          <small>{t('veilHint')}</small>
         </button>
       )}
     </div>
   )
 }
-
-const TIERS: { id: Tier; name: string; price: string; note: string; points: string[] }[] = [
-  { id: 'guest', name: '清供', price: '免費', note: '每一次', points: ['籤詩與御神籤全文', '一張神諭', '星盤、四柱、十二宮'] },
-  { id: 'patron', name: '檀越', price: '360', note: '此裝置', points: ['典藏批註', '三牌之陣', '用神、流年、生氣方'] },
-  { id: 'master', name: '宗師', price: '3,600', note: '此裝置 · 可付印', points: ['檀越全部', '命盤可印成一紙', '更長的問史'] },
-]
 
 export function PatronSheet({
   tier,
@@ -100,34 +114,40 @@ export function PatronSheet({
   onClose: () => void
   onChoose: (tier: Tier) => void
 }) {
+  const { t } = useI18n()
   const closeRef = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     closeRef.current?.focus()
   }, [])
+  const tiers = [
+    { id: 'guest' as const, name: t('nameGuest'), price: t('priceFree'), note: t('tierNoteGuest'), points: [t('pointG1'), t('pointG2'), t('pointG3')] },
+    { id: 'patron' as const, name: t('namePatron'), price: '360', note: t('tierNotePatron'), points: [t('pointP1'), t('pointP2'), t('pointP3')] },
+    { id: 'master' as const, name: t('nameMaster'), price: '3,600', note: t('tierNoteMaster'), points: [t('pointM1'), t('pointM2'), t('pointM3')] },
+  ]
   return (
     <div className="sheet-back" role="presentation" onClick={onClose}>
       <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" onClick={(event) => event.stopPropagation()}>
         <div className="sheet-head">
-          <p className="eyebrow">禮金刻度</p>
-          <h3 id="sheet-title">願意留下的人，看更裡一層。</h3>
-          <button ref={closeRef} type="button" className="text-btn" onClick={onClose}>關閉</button>
+          <p className="eyebrow">{t('tierEyebrow')}</p>
+          <h3 id="sheet-title">{t('tierTitle')}</h3>
+          <button ref={closeRef} type="button" className="text-btn" onClick={onClose}>{t('close')}</button>
         </div>
         <div className="tier-grid">
-          {TIERS.map((item) => (
+          {tiers.map((item) => (
             <article key={item.id} className={item.id === 'patron' ? 'tier featured' : 'tier'}>
               <p className="eyebrow">{item.note}</p>
               <h4>{item.name}</h4>
-              <p className={item.price === '免費' ? 'price word' : 'price'}>{item.price === '免費' ? item.price : <><span>NT$</span> {item.price}</>}</p>
+              <p className={item.id === 'guest' ? 'price word' : 'price'}>{item.id === 'guest' ? item.price : <><span>NT$</span> {item.price}</>}</p>
               <ul>
                 {item.points.map((point) => <li key={point}>{point}</li>)}
               </ul>
               <button type="button" className={tier === item.id ? 'btn solid' : 'btn'} onClick={() => onChoose(item.id)}>
-                {tier === item.id ? '現在這層' : item.id === 'guest' ? '留在清供' : '以禮開匣'}
+                {tier === item.id ? t('tierNow') : item.id === 'guest' ? t('tierStay') : t('tierOpen')}
               </button>
             </article>
           ))}
         </div>
-        <p className="fine">價格是這座殿的禮金刻度。現在開匣只記在這臺裝置上，不會向你收款。</p>
+        <p className="fine">{t('tierFine')}</p>
       </div>
     </div>
   )

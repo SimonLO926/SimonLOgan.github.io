@@ -4,6 +4,7 @@ import { randomIndex } from '../lib/draw'
 import { shakeSound } from '../lib/sound'
 import type { Tier } from '../lib/storage'
 import { resetRitualMotion, sceneBus } from '../scene/store'
+import { useI18n } from '../i18n'
 import { QuestionField, RitualFrame, Veil, opened } from './Chrome'
 
 export function StickRitual({
@@ -22,6 +23,7 @@ export function StickRitual({
   const [question, setQuestion] = useState('')
   const [stick, setStick] = useState<Stick | null>(null)
   const [busy, setBusy] = useState(false)
+  const { t } = useI18n()
 
   useEffect(() => () => resetRitualMotion(), [])
 
@@ -46,7 +48,7 @@ export function StickRitual({
     <RitualFrame id="sticks" onBack={onBack}>
       <form onSubmit={(event) => { event.preventDefault(); draw() }}>
         <QuestionField value={question} onChange={setQuestion} />
-        <button className="btn solid" type="submit" disabled={busy}>{busy ? '筒在響' : stick ? '再搖一次' : '搖籤'}</button>
+        <button className="btn solid" type="submit" disabled={busy}>{busy ? t('shaking') : stick ? t('castSlipAgain') : t('castSlip')}</button>
       </form>
       <div aria-live="polite">
         {stick && (
@@ -60,9 +62,9 @@ export function StickRitual({
             <p className="verses">{stick.verses.join('\n')}</p>
             <p className="omen">{stick.omen}</p>
             <dl className="split">
-              <div><dt>事</dt><dd>{stick.affair}</dd></div>
-              <div><dt>情</dt><dd>{stick.heart}</dd></div>
-              <div><dt>身</dt><dd>{stick.body}</dd></div>
+              <div><dt>{t('affair')}</dt><dd>{stick.affair}</dd></div>
+              <div><dt>{t('heart')}</dt><dd>{stick.heart}</dd></div>
+              <div><dt>{t('body')}</dt><dd>{stick.body}</dd></div>
             </dl>
             <Veil locked={!opened(tier)} onOpen={onPatron}>
               <p className="master-copy">{stick.master}</p>

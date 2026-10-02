@@ -1,4 +1,5 @@
 import type { DoorId } from '../data/doors'
+import { isLang, type Lang, type ThemeChoice } from '../i18n/types'
 
 export type Tier = 'guest' | 'patron' | 'master'
 
@@ -13,20 +14,30 @@ type Save = {
   tier: Tier
   sound: boolean
   history: HistoryItem[]
+  lang: Lang
+  theme: ThemeChoice
 }
 
-const KEY = 'chengwen.v1'
+const KEY = 'chengwen.v2'
 
-const EMPTY: Save = { tier: 'guest', sound: true, history: [] }
+const EMPTY: Save = { tier: 'guest', sound: true, history: [], lang: 'zh-Hant', theme: 'system' }
+
+function normalize(parsed: Partial<Save>): Save {
+  const theme = parsed.theme === 'dark' || parsed.theme === 'light' || parsed.theme === 'system' ? parsed.theme : 'system'
+  return {
+    tier: parsed.tier === 'patron' || parsed.tier === 'master' ? parsed.tier : 'guest',
+    sound: parsed.sound !== false,
+    history: Array.isArray(parsed.history) ? parsed.history.slice(0, 12) : [],
+    lang: parsed.lang && isLang(parsed.lang) ? parsed.lang : 'zh-Hant',
+    theme,
+  }
+}
 
 export function loadSave(): Save {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = localStorage.getItem(KEY) ?? localStorage.getItem('chengwen.v1')
     if (!raw) return { ...EMPTY, history: [] }
-    const parsed = JSON.parse(raw) as Partial<Save>
-    const tier = parsed.tier === 'patron' || parsed.tier === 'master' ? parsed.tier : 'guest'
-    const history = Array.isArray(parsed.history) ? parsed.history.slice(0, 12) : []
-    return { tier, sound: parsed.sound !== false, history }
+    return normalize(JSON.parse(raw) as Partial<Save>)
   } catch {
     return { ...EMPTY, history: [] }
   }
@@ -34,6 +45,10 @@ export function loadSave(): Save {
 
 export function writeSave(save: Save) {
   localStorage.setItem(KEY, JSON.stringify(save))
+}
+
+export function patchSave(partial: Partial<Save>) {
+  writeSave({ ...loadSave(), ...partial })
 }
 
 export function historyLimit(tier: Tier): number {

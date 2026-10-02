@@ -34,6 +34,13 @@
   src: url("../node_modules/@fontsource/noto-serif-tc/files/noto-serif-tc-chinese-traditional-600-normal.woff2") format("woff2");
 }
 @font-face {
+  font-family: "Noto Serif SC";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../node_modules/@fontsource/noto-serif-sc/files/noto-serif-sc-chinese-simplified-500-normal.woff2") format("woff2");
+}
+@font-face {
   font-family: "Shippori Mincho";
   font-style: normal;
   font-weight: 500;
@@ -217,8 +224,18 @@ h2 {
   align-items: stretch;
 }
 .ritual.wide .ritual-copy { align-self: end; }
-.ritual.wide .ritual-copy h2 { font-size: clamp(48px, 5vw, 76px); }
+.ritual.wide .ritual-copy { min-width: 0; padding-right: 8px; }
+.ritual.wide .ritual-copy h2 { font-size: clamp(34px, 3vw, 52px); line-height: 1.05; }
 .price.word { font-style: normal; letter-spacing: 0.12em; font-size: 32px; }
+
+.icon-select {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+html[lang="zh-Hans"] body { font-family: "Noto Serif SC", "Noto Serif TC", serif; }
 
 .door {
   width: 100%;
@@ -226,7 +243,7 @@ h2 {
   grid-template-columns: 120px minmax(0, 560px);
   gap: 18px;
   align-items: center;
-  min-height: 30vh;
+  min-height: 18vh;
   padding: 28px 42vw 28px 24px;
   text-align: left;
   background: linear-gradient(90deg, rgba(8, 7, 5, 0.86), rgba(8, 7, 5, 0.55) 46%, rgba(8, 7, 5, 0.05) 74%);
@@ -589,6 +606,73 @@ h2 {
   .css-ring { animation: none; }
   .scrollcue { display: none; }
 }
+
+.compass { width: min(100%, 280px); display: block; margin: 0 auto; }
+.compass-wrap { position: relative; margin: 0 auto 8px; max-width: 300px; }
+.compass-center {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  pointer-events: none;
+  line-height: 1.2;
+}
+.compass-center strong { font-family: var(--display); font-size: 34px; font-weight: 500; }
+.compass-center span { font-size: 11px; letter-spacing: 0.08em; }
+.compass-needle { stroke: var(--gold); stroke-width: 2; }
+.hex { display: flex; flex-direction: column; gap: 8px; align-items: center; margin: 16px 0; }
+.yao { display: block; width: 148px; height: 10px; background: currentColor; }
+.yao.yin { background: linear-gradient(90deg, currentColor 0 42%, transparent 42% 58%, currentColor 58% 100%); }
+.yao[data-change] { box-shadow: 0 0 0 1px var(--gold); }
+
+[data-theme="light"] {
+  --bg: #f3eee6;
+  --ink: #1c1612;
+  --muted: rgba(28, 22, 18, 0.74);
+  --faint: rgba(28, 22, 18, 0.52);
+  --gold: #8a5a22;
+  --gold-2: #3e2a16;
+  --line: rgba(62, 42, 22, 0.28);
+  color-scheme: light;
+}
+[data-theme="light"] .topbar {
+  color: #1c1612;
+  background: linear-gradient(180deg, rgba(243, 238, 230, 0.92), rgba(243, 238, 230, 0));
+}
+[data-theme="light"] .hero,
+[data-theme="light"] .door,
+[data-theme="light"] .member,
+[data-theme="light"] .colophon {
+  background: linear-gradient(90deg, rgba(243, 238, 230, 0.94), rgba(243, 238, 230, 0.72) 58%, rgba(243, 238, 230, 0.15));
+}
+[data-theme="light"] .panel,
+[data-theme="light"] .sheet,
+[data-theme="light"] .oracle-card {
+  background: rgba(255, 250, 244, 0.88);
+  color: #1c1612;
+}
+[data-theme="light"] .btn.solid,
+[data-theme="light"] .btn:hover {
+  background: #1c1612;
+  color: #f6f1e8;
+  border-color: #1c1612;
+}
+[data-theme="light"] .palace,
+[data-theme="light"] .pillars article,
+[data-theme="light"] .star-cell {
+  background: rgba(255, 250, 244, 0.55);
+}
+[data-theme="light"] .veil-lock { background: rgba(255, 250, 244, 0.92); color: #1c1612; }
+[data-theme="light"] .wheel text,
+[data-theme="light"] .luopan text,
+[data-theme="light"] .star-name { fill: rgba(28, 22, 18, 0.72); }
+[data-theme="light"] .good-dir { fill: #8a5a22; }
+[data-theme="light"] .wheel-ring { stroke: rgba(62, 42, 22, 0.45); }
+[data-theme="light"] .wheel-core { fill: rgba(255, 250, 244, 0.72); stroke: rgba(62, 42, 22, 0.35); }
 
 @media print {
   .stage, .topbar, .spine, .grain, .vignette, .glow, .btn, .veil-lock, .sheet-back, .text-btn { display: none !important; }

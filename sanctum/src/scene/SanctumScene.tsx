@@ -1,5 +1,5 @@
 import { Environment, Sparkles } from '@react-three/drei'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Component, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import * as THREE from 'three'
 import type { Preview } from '../data/doors'
@@ -380,7 +380,17 @@ const ACCENT: Record<string, string> = {
   ziwei: '#d7b4ee',
 }
 
-function World({ artifact, still, mobile }: { artifact: string; still: boolean; mobile: boolean }) {
+function familyOf(artifact: string) {
+  if (artifact === 'hall' || artifact === 'sticks') return 'sticks'
+  if (artifact === 'omikuji') return 'omikuji'
+  if (artifact === 'oracle' || artifact === 'tarot' || artifact === 'blood') return 'oracle'
+  if (artifact === 'zodiac' || artifact === 'qizheng' || artifact === 'mansion') return 'zodiac'
+  if (artifact === 'fengshui' || artifact === 'bazi' || artifact === 'nine' || artifact === 'almanac') return 'fengshui'
+  if (artifact === 'yijing') return 'yijing'
+  return 'ziwei'
+}
+
+function World({ artifact, still, mobile, light }: { artifact: string; still: boolean; mobile: boolean; light: boolean }) {
   const rig = useRef<THREE.Group>(null)
   const pointer = useRef({ x: 0, y: 0 })
   const desired = useRef(new THREE.Vector3())
@@ -412,10 +422,17 @@ function World({ artifact, still, mobile }: { artifact: string; still: boolean; 
     }
   })
 
+  const { gl } = useThree()
+  const bg = light ? '#d8d0c4' : '#080705'
+  useLayoutEffect(() => {
+    gl.setClearColor(bg)
+  }, [bg, gl])
+  const family = familyOf(artifact)
+
   return (
     <>
-      <color attach="background" args={['#080705']} />
-      <fog attach="fog" args={['#080705', 8.5, 16]} />
+      <color attach="background" args={[bg]} />
+      <fog attach="fog" args={[bg, 8.5, 16]} />
       <hemisphereLight args={['#f3e0c8', '#1a120e', 0.42]} />
       <directionalLight position={[3.4, 4.6, 2.6]} intensity={2.6} color="#fff3df" />
       <directionalLight position={[-4.2, 1.2, -2]} intensity={1.15} color="#93a8c4" />
@@ -438,14 +455,14 @@ function World({ artifact, still, mobile }: { artifact: string; still: boolean; 
         <Shaft />
         <GoldRing radius={1.72} tilt={1.15} speed={0.05} />
         <GoldRing radius={2.05} tilt={1.42} speed={-0.035} />
-        {(artifact === 'hall' || artifact === 'sticks') && <StickTube hero={artifact === 'hall'} />}
-        {artifact === 'omikuji' && <Torii />}
-        {artifact === 'oracle' && <CardFan />}
-        {artifact === 'zodiac' && <Armillary />}
-        {artifact === 'fengshui' && <Luopan />}
-        {artifact === 'bazi' && <Steles />}
-        {artifact === 'ziwei' && <PalaceRing />}
-        {(artifact === 'hall' || artifact === 'sticks') && <Smoke />}
+        {family === 'sticks' && <StickTube hero={artifact === 'hall'} />}
+        {family === 'omikuji' && <Torii />}
+        {family === 'oracle' && <CardFan />}
+        {family === 'zodiac' && <Armillary />}
+        {family === 'fengshui' && <Luopan />}
+        {family === 'yijing' && <Steles />}
+        {family === 'ziwei' && <PalaceRing />}
+        {family === 'sticks' && <Smoke />}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.22, 0]}>
           <circleGeometry args={[3.4, 72]} />
           <meshStandardMaterial color="#0c0a08" metalness={0.82} roughness={0.32} />
@@ -480,10 +497,12 @@ export function SanctumScene({
   artifact,
   still,
   mobile,
+  light,
 }: {
   artifact: Preview
   still: boolean
   mobile: boolean
+  light: boolean
 }) {
   const webgl = useMemo(() => {
     try {
@@ -508,7 +527,7 @@ export function SanctumScene({
           gl.setClearColor('#080705')
         }}
       >
-        <World artifact={artifact} still={still} mobile={mobile} />
+        <World artifact={artifact} still={still} mobile={mobile} light={light} />
       </Canvas>
     </Boundary>
   )

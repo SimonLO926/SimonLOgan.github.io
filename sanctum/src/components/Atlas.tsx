@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { DOORS, type Preview } from '../data/doors'
+import { DOOR_COPY, useI18n, word } from '../i18n'
 import type { HistoryItem } from '../lib/storage'
 import type { TodayMark } from '../lib/today'
 
@@ -16,6 +17,9 @@ export function Atlas({
   onPreview: (preview: Preview) => void
   onPatron: () => void
 }) {
+  const { lang, t } = useI18n()
+  const title = t('heroTitle').split('\n')
+  const member = t('memberTitle').split('\n')
   useEffect(() => {
     const nodes = document.querySelectorAll<HTMLElement>('[data-preview]')
     const observer = new IntersectionObserver(
@@ -35,19 +39,21 @@ export function Atlas({
   return (
     <div className="atlas">
       <section className="hero" data-preview="hall">
-        <p className="eyebrow">{today.pillar}{today.animal} · {today.lunar ? `農曆${today.lunar}` : '臺北此刻'}</p>
-        <h1>把問題<br />放到燈下。</h1>
-        <p className="lede">中國靈籤、神社御神籤、西洋神諭。星座用星曆，八字用節氣，紫微排十二宮，風水看命卦與今年的飛星。</p>
-        <p className="now">此刻太陽在{today.sun}</p>
+        <p className="eyebrow">{today.pillar} · {word(`animal.${today.animal}`, lang)}{lang === 'en' || lang === 'ja' ? '' : today.lunar ? ` · ${t('heroLunar')} ${today.lunar}` : ''}</p>
+        <h1>{title[0]}<br />{title[1]}</h1>
+        <p className="lede">{t('heroLede')}</p>
+        <p className="now">{t('heroSun')} {word(`sign.${today.signId}`, lang)} {today.sunDeg}°</p>
         <div className="hero-actions">
-          <button type="button" className="btn solid" onClick={() => onOpen('sticks')}>搖一支籤</button>
-          <button type="button" className="btn" onClick={() => document.getElementById('doors')?.scrollIntoView({ behavior: 'smooth' })}>先看七門</button>
+          <button type="button" className="btn solid" onClick={() => onOpen('sticks')}>{t('heroDraw')}</button>
+          <button type="button" className="btn" onClick={() => document.getElementById('doors')?.scrollIntoView({ behavior: 'smooth' })}>{t('heroDoors')}</button>
         </div>
-        <div className="scrollcue" aria-hidden="true"><span>下</span></div>
+        <div className="scrollcue" aria-hidden="true"><span>↓</span></div>
       </section>
 
-      <section className="doors" id="doors" aria-label="七門">
-        {DOORS.map((door) => (
+      <section className="doors" id="doors" aria-label={t('doorsMeta')}>
+        {DOORS.map((door) => {
+          const copy = DOOR_COPY[door.id][lang]
+          return (
           <button
             key={door.id}
             type="button"
@@ -60,22 +66,23 @@ export function Atlas({
           >
             <span className="idx">{door.index}</span>
             <span className="door-copy">
-              <small>{door.place} · {door.en}</small>
-              <strong>{door.name}</strong>
-              <em>{door.line}</em>
+              <small>{copy.place}</small>
+              <strong>{copy.name}</strong>
+              <em>{copy.line}</em>
             </span>
             </button>
-        ))}
+          )
+        })}
       </section>
 
       <section className="member" data-preview="hall">
-        <p className="eyebrow">典藏</p>
-        <h2>看完籤詩的人，<br />還想看批註。</h2>
-        <p className="lede">清供已經能搖、能翻、能起盤。檀越打開每道門裡那層不對外人喧譁的話。</p>
-        <button type="button" className="btn solid" onClick={onPatron}>看禮金刻度</button>
+        <p className="eyebrow">{t('memberEyebrow')}</p>
+        <h2>{member[0]}<br />{member[1]}</h2>
+        <p className="lede">{t('memberLede')}</p>
+        <button type="button" className="btn solid" onClick={onPatron}>{t('memberBtn')}</button>
         {history.length > 0 && (
           <div className="history">
-            <p className="eyebrow">近日所問</p>
+            <p className="eyebrow">{t('history')}</p>
             <ul>
               {history.map((item) => (
                 <li key={item.at}>
@@ -91,8 +98,8 @@ export function Atlas({
       </section>
 
       <footer className="colophon">
-        <p>文化儀式與自我觀照。不是醫療、法律或投資建議。</p>
-        <p>星曆 Astronomy Engine · 紫微排盤 iztro · 八字以節氣換柱，子正換日。</p>
+        <p>{t('colophon1')}</p>
+        <p>{t('colophon2')}</p>
       </footer>
     </div>
   )

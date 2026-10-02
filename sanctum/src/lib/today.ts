@@ -7,7 +7,8 @@ import { castZiwei } from './ziwei'
 export type TodayMark = {
   pillar: string
   animal: string
-  sun: string
+  signId: string
+  sunDeg: number
   lunar: string
 }
 
@@ -24,7 +25,8 @@ export function readToday(): TodayMark {
   return {
     pillar: bazi.pillars[0].pillar.stem + bazi.pillars[0].pillar.branch,
     animal: bazi.animal,
-    sun: `${sky.sun.sign.name} ${sky.sun.deg}°`,
+    signId: sky.sun.sign.id,
+    sunDeg: sky.sun.deg,
     lunar,
   }
 }

@@ -1,16 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AlmanacRitual } from './components/AlmanacRitual'
 import { Atlas } from './components/Atlas'
 import { BaziRitual } from './components/BaziRitual'
+import { BloodRitual } from './components/BloodRitual'
 import { PatronSheet, TopBar } from './components/Chrome'
 import { FengshuiRitual } from './components/FengshuiRitual'
+import { MansionRitual } from './components/MansionRitual'
+import { NineRitual } from './components/NineRitual'
 import { OmikujiRitual } from './components/OmikujiRitual'
 import { OracleRitual } from './components/OracleRitual'
+import { QizhengRitual } from './components/QizhengRitual'
 import { StickRitual } from './components/StickRitual'
+import { TarotRitual } from './components/TarotRitual'
+import { YijingRitual } from './components/YijingRitual'
 import { ZodiacRitual } from './components/ZodiacRitual'
 import { ZiweiRitual } from './components/ZiweiRitual'
 import { DOORS, type DoorId, type Preview } from './data/doors'
+import { DICT, DOOR_COPY, useI18n } from './i18n'
 import { primeSound, setSoundEnabled } from './lib/sound'
-import { historyLimit, loadSave, writeSave, type Tier } from './lib/storage'
+import { historyLimit, loadSave, patchSave, type Tier } from './lib/storage'
+import { useMedia } from './lib/useMedia'
 import { readToday } from './lib/today'
 import { SanctumScene } from './scene/SanctumScene'
 
@@ -25,12 +34,13 @@ export default function App() {
   const [sound, setSound] = useState(stored.sound)
   const [history, setHistory] = useState(stored.history)
   const [patron, setPatron] = useState(false)
+  const { lang, resolved } = useI18n()
   const reduced = useMedia('(prefers-reduced-motion: reduce)')
   const mobile = useMedia('(max-width: 860px)')
 
   useEffect(() => {
     setSoundEnabled(sound)
-    writeSave({ tier, sound, history })
+    patchSave({ tier, sound, history })
   }, [tier, sound, history])
 
   useEffect(() => {
@@ -42,8 +52,8 @@ export default function App() {
   useEffect(() => {
     window.scrollTo(0, 0)
     const door = view === 'atlas' ? null : DOORS.find((item) => item.id === view)
-    document.title = door ? `${door.name} — 承問` : '承問'
-  }, [view])
+    document.title = door ? `${DOOR_COPY[door.id][lang].name} — ${DICT[lang].brand}` : DICT[lang].brand
+  }, [view, lang])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -53,8 +63,9 @@ export default function App() {
         if (patron) setPatron(false)
         else if (view !== 'atlas') setView('atlas')
       }
-      if (view === 'atlas' && event.key >= '1' && event.key <= '7') {
-        setView(DOORS[Number(event.key) - 1].id)
+      if (view === 'atlas' && event.key >= '1' && event.key <= '9') {
+        const door = DOORS[Number(event.key) - 1]
+        if (door) setView(door.id)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -80,12 +91,12 @@ export default function App() {
   return (
     <div className="app">
       <div className="stage" aria-hidden="true">
-        <SanctumScene artifact={artifact} still={reduced} mobile={mobile} />
+        <SanctumScene artifact={artifact} still={reduced} mobile={mobile} light={resolved === 'light'} />
         <div className="glow" />
         <div className="vignette" />
         <div className="grain" />
       </div>
-      <p className="spine">承問 · CHENGWEN</p>
+      <p className="spine">{DICT[lang].brand}</p>
       <TopBar
         view={view}
         tier={tier}
@@ -101,10 +112,17 @@ export default function App() {
         {view === 'sticks' && <StickRitual {...ritual} />}
         {view === 'omikuji' && <OmikujiRitual {...ritual} />}
         {view === 'oracle' && <OracleRitual {...ritual} />}
+        {view === 'tarot' && <TarotRitual {...ritual} />}
         {view === 'zodiac' && <ZodiacRitual {...ritual} />}
+        {view === 'qizheng' && <QizhengRitual {...ritual} />}
+        {view === 'mansion' && <MansionRitual {...ritual} />}
         {view === 'fengshui' && <FengshuiRitual {...ritual} />}
+        {view === 'nine' && <NineRitual {...ritual} />}
         {view === 'bazi' && <BaziRitual {...ritual} />}
         {view === 'ziwei' && <ZiweiRitual {...ritual} />}
+        {view === 'almanac' && <AlmanacRitual {...ritual} />}
+        {view === 'yijing' && <YijingRitual {...ritual} />}
+        {view === 'blood' && <BloodRitual {...ritual} />}
       </main>
       {patron && (
         <PatronSheet
@@ -118,15 +136,4 @@ export default function App() {
       )}
     </div>
   )
-}
-
-function useMedia(query: string) {
-  const [match, setMatch] = useState(() => window.matchMedia(query).matches)
-  useEffect(() => {
-    const media = window.matchMedia(query)
-    const onChange = () => setMatch(media.matches)
-    media.addEventListener('change', onChange)
-    return () => media.removeEventListener('change', onChange)
-  }, [query])
-  return match
 }
