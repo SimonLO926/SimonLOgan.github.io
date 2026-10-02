@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>架塊</title>
+  <meta name="description" content="免費的俄羅斯方塊變體。方塊可以架在空洞上，失去支撐才會碎開直落。有一個保留格。">
+  <style>
+    :root {
+      --ink: #17211b;
+      --paper: #f3f0e7;
+      --well: #f7f3ea;
+      --line: rgba(23, 33, 27, .16);
+      --acid: #dfff45;
+      --orange: #ff6b3d;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(223, 255, 69, .45), transparent 28%),
+        var(--paper);
+      font-family: Arial, "Noto Sans TC", sans-serif;
+    }
+
+    .page {
+      width: min(980px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 28px 0 40px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: end;
+      margin-bottom: 22px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 52px;
+      letter-spacing: -.06em;
+      line-height: .9;
+    }
+
+    h1 span {
+      background: var(--acid);
+      padding: 0 6px;
+    }
+
+    .lede {
+      max-width: 460px;
+      margin: 8px 0 0;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .ghost-link {
+      color: inherit;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-columns: 148px auto 168px;
+      gap: 18px;
+      align-items: start;
+      justify-content: center;
+    }
+
+    .panel {
+      display: grid;
+      gap: 14px;
+    }
+
+    .box {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, .35);
+      padding: 10px;
+    }
+
+    .box h2 {
+      margin: 0 0 8px;
+      font-size: 12px;
+      letter-spacing: .12em;
+    }
+
+    .hint {
+      margin: 6px 0 0;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .stat {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-variant-numeric: tabular-nums;
+      font-size: 14px;
+    }
+
+    .stat b { font-size: 18px; }
+
+    .board-wrap {
+      position: relative;
+      width: max-content;
+      justify-self: center;
+    }
+
+    canvas {
+      display: block;
+      background: var(--well);
+      border: 2px solid var(--ink);
+      image-rendering: pixelated;
+    }
+
+    #hold-canvas.used { opacity: .38; }
+
+    .veil {
+      position: absolute;
+      inset: 2px;
+      display: grid;
+      align-content: center;
+      gap: 10px;
+      padding: 22px;
+      background: rgba(243, 240, 231, .92);
+      text-align: left;
+    }
+
+    .veil[hidden] { display: none; }
+
+    .veil h2 { margin: 0; font-size: 28px; letter-spacing: -.04em; }
+
+    .veil p { margin: 0; font-size: 14px; line-height: 1.5; }
+
+    button {
+      border: 1px solid var(--ink);
+      background: var(--acid);
+      color: var(--ink);
+      font: inherit;
+      font-weight: 700;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+
+    button:active { transform: translateY(1px); }
+
+    .pad {
+      display: none;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .keys {
+      margin: 16px 0 0;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    kbd {
+      border: 1px solid var(--line);
+      padding: 0 5px;
+      background: white;
+      font-family: inherit;
+    }
+
+    @media (max-width: 760px) {
+      h1 { font-size: 40px; }
+      .stage { grid-template-columns: 1fr; }
+      .panel { grid-template-columns: 1fr 1fr; }
+      .pad { display: grid; }
+      .keys { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div>
+        <h1><span>架塊</span></h1>
+        <p class="lede">方塊在空中跟俄羅斯方塊一樣。落地後可以橫跨空洞。支撐被消掉，才碎成一格格直直落下。保留格只放一塊，落下前只能換一次。</p>
+      </div>
+      <a class="ghost-link" href="../index.html">回作品列表</a>
+    </header>
+
+    <div class="stage">
+      <aside class="panel">
+        <section class="box">
+          <h2>保留</h2>
+          <canvas id="hold-canvas" width="112" height="96"></canvas>
+          <p class="hint" id="hold-state">可保留</p>
+        </section>
+      </aside>
+
+      <div class="board-wrap">
+        <canvas id="board" width="280" height="560"></canvas>
+        <div class="veil" id="veil">
+          <h2 id="veil-title">架塊</h2>
+          <p id="veil-copy">左右移動，上轉，空白鍵直落。C 或 Shift 放進保留格。</p>
+          <button id="veil-btn" type="button">開始</button>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <section class="box">
+          <h2>下一個</h2>
+          <canvas id="next-canvas" width="112" height="250"></canvas>
+        </section>
+        <section class="box" id="stats">
+          <div class="stat"><span>分數</span><b id="score">0</b></div>
+          <div class="stat"><span>消除</span><b id="lines">0</b></div>
+          <div class="stat"><span>等級</span><b id="level">1</b></div>
+          <div class="stat"><span>最高</span><b id="best">0</b></div>
+        </section>
+      </aside>
+    </div>
+
+    <div class="pad">
+      <button type="button" id="btn-left">左</button>
+      <button type="button" id="btn-right">右</button>
+      <button type="button" id="btn-rot">轉</button>
+      <button type="button" id="btn-hold">留</button>
+      <button type="button" id="btn-drop">落</button>
+    </div>
+    <p class="keys">
+      <kbd>←</kbd><kbd>→</kbd> 移動
+      <kbd>↑</kbd> / <kbd>X</kbd> 順時針
+      <kbd>Z</kbd> 逆時針
+      <kbd>↓</kbd> 加速
+      <kbd>空白鍵</kbd> 直落
+      <kbd>C</kbd> / <kbd>Shift</kbd> 保留
+      <kbd>P</kbd> 暫停
+    </p>
+  </div>
+
+  <script type="module">
+    import {
+      COLS,
+      ROWS,
+      SHAPES,
+      cellsOf,
+      createGame,
+      fits,
+      ghostY,
+      gravityMs,
+      hardDrop,
+      hold,
+      lockActive,
+      pump,
+      startGame,
+      tryMove,
+      tryRotate,
+    } from "./logic.mjs";
+
+    const COLORS = {
+      I: "#1f8aa8",
+      O: "#e2a322",
+      T: "#b14d9a",
+      S: "#3f8f4e",
+      Z: "#d4533a",
+      J: "#3d62b5",
+      L: "#e07a2f",
+    };
+
+    const CELL = 28;
+    const board = document.querySelector("#board");
+    const holdCanvas = document.querySelector("#hold-canvas");
+    const nextCanvas = document.querySelector("#next-canvas");
+    const ctx = board.getContext("2d");
+    const holdCtx = holdCanvas.getContext("2d");
+    const nextCtx = nextCanvas.getContext("2d");
+    const veil = document.querySelector("#veil");
+    const veilTitle = document.querySelector("#veil-title");
+    const veilCopy = document.querySelector("#veil-copy");
+    const veilBtn = document.querySelector("#veil-btn");
+    const holdState = document.querySelector("#hold-state");
+
+    const game = createGame();
+    let paused = false;
+    let acc = 0;
+    let softAcc = 0;
+    let lockMs = 0;
+    let lockResets = 0;
+    let anim = null;
+    let last = performance.now();
+    let best = 0;
+    try {
+      best = Number(localStorage.getItem("bridge-best") || 0);
+    } catch {
+      best = 0;
+    }
+    const heldKeys = new Set();
+    let dasDir = 0;
+    let dasTime = 0;
+    let dasOn = false;
+    let audio;
+
+    document.querySelector("#best").textContent = String(best);
+
+    function blip(freq, dur) {
+      try {
+        audio ??= new AudioContext();
+        const osc = audio.createOscillator();
+        const gain = audio.createGain();
+        osc.frequency.value = freq;
+        osc.type = "square";
+        gain.gain.value = 0.025;
+        osc.connect(gain);
+        gain.connect(audio.destination);
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + dur);
+        osc.stop(audio.currentTime + dur);
+      } catch {
+        audio = null;
+      }
+    }
+
+    function resetTimers() {
+      acc = 0;
+      softAcc = 0;
+      lockMs = 0;
+      lockResets = 0;
+    }
+
+    function saveBest() {
+      if (game.score > best) {
+        best = game.score;
+        try {
+          localStorage.setItem("bridge-best", String(best));
+        } catch {
+          /* 沒有本地儲存時就只留在這一局。 */
+        }
+      }
+    }
+
+    function showVeil(title, copy, label) {
+      veil.hidden = false;
+      veilTitle.textContent = title;
+      veilCopy.textContent = copy;
+      veilBtn.textContent = label;
+    }
+
+    function hideVeil() {
+      veil.hidden = true;
+    }
+
+    function start() {
+      startGame(game);
+      paused = false;
+      resetTimers();
+      heldKeys.clear();
+      dasDir = 0;
+      anim = null;
+      hideVeil();
+    }
+
+    function onManeuver() {
+      if (!game.active) return;
+      const { type, rot, x, y } = game.active;
+      if (!fits(game.grid, type, rot, x, y + 1) && lockResets < 12) {
+        lockMs = 0;
+        lockResets += 1;
+      }
+    }
+
+    function doHold() {
+      if (paused || !hold(game)) return;
+      resetTimers();
+      blip(520, 0.04);
+      if (game.phase === "over") {
+        saveBest();
+        showVeil("到頂了", `分數 ${game.score}`, "再一局");
+      }
+    }
+
+    function doRotate(dir) {
+      if (paused || !tryRotate(game, dir)) return;
+      onManeuver();
+      blip(700, 0.02);
+    }
+
+    function doHard() {
+      if (paused || game.phase !== "playing") return;
+      hardDrop(game);
+      resetTimers();
+      blip(160, 0.05);
+    }
+
+    function shift(dir) {
+      if (paused || !tryMove(game, dir, 0)) return;
+      onManeuver();
+    }
+
+    veilBtn.addEventListener("click", () => {
+      if (game.phase === "ready" || game.phase === "over") start();
+      else if (paused) paused = false;
+    });
+
+    window.addEventListener("keydown", (event) => {
+      const key = event.key;
+      if (["ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp", " "].includes(key)) event.preventDefault();
+      if (key === "Enter" && (game.phase === "ready" || game.phase === "over")) start();
+      if (key === "p" || key === "P" || key === "Escape") {
+        if (game.phase === "playing" || game.phase === "resolving") paused = !paused;
+        return;
+      }
+      if (paused || game.phase !== "playing") return;
+      if (key === "ArrowLeft") {
+        heldKeys.add("left");
+        if (!event.repeat) {
+          dasDir = -1;
+          dasTime = 0;
+          dasOn = false;
+          shift(-1);
+        }
+      } else if (key === "ArrowRight") {
+        heldKeys.add("right");
+        if (!event.repeat) {
+          dasDir = 1;
+          dasTime = 0;
+          dasOn = false;
+          shift(1);
+        }
+      } else if (key === "ArrowDown") {
+        heldKeys.add("down");
+      } else if (!event.repeat && (key === "ArrowUp" || key === "x" || key === "X")) {
+        doRotate(1);
+      } else if (!event.repeat && (key === "z" || key === "Z")) {
+        doRotate(-1);
+      } else if (!event.repeat && key === " ") {
+        doHard();
+      } else if (!event.repeat && (key === "c" || key === "C" || key === "Shift")) {
+        doHold();
+      }
+    });
+
+    window.addEventListener("keyup", (event) => {
+      if (event.key === "ArrowLeft") heldKeys.delete("left");
+      if (event.key === "ArrowRight") heldKeys.delete("right");
+      if (event.key === "ArrowDown") heldKeys.delete("down");
+      if (!heldKeys.has("left") && !heldKeys.has("right")) dasDir = 0;
+    });
+
+    function bindPress(id, down, up) {
+      const el = document.querySelector(id);
+      el.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        down();
+      });
+      if (up) {
+        el.addEventListener("pointerup", up);
+        el.addEventListener("pointercancel", up);
+        el.addEventListener("pointerleave", up);
+      }
+    }
+
+    let leftTimer = 0;
+    let rightTimer = 0;
+    bindPress("#btn-left", () => {
+      shift(-1);
+      leftTimer = window.setInterval(() => shift(-1), 70);
+    }, () => window.clearInterval(leftTimer));
+    bindPress("#btn-right", () => {
+      shift(1);
+      rightTimer = window.setInterval(() => shift(1), 70);
+    }, () => window.clearInterval(rightTimer));
+    bindPress("#btn-rot", () => doRotate(1));
+    bindPress("#btn-hold", doHold);
+    bindPress("#btn-drop", doHard);
+
+    function drawBlob(context, cells, type, size, ghost) {
+      const set = new Set(cells.map(([x, y]) => `${x},${y}`));
+      context.fillStyle = COLORS[type];
+      context.strokeStyle = "#17211b";
+      context.lineWidth = 2;
+      for (const [x, y] of cells) {
+        if (y < 0 || y >= ROWS) continue;
+        const neighbors = [
+          set.has(`${x - 1},${y}`),
+          set.has(`${x + 1},${y}`),
+          set.has(`${x},${y - 1}`),
+          set.has(`${x},${y + 1}`),
+        ];
+        const inset = 1.5;
+        const left = x * size + (neighbors[0] ? 0 : inset);
+        const top = y * size + (neighbors[2] ? 0 : inset);
+        const right = (x + 1) * size - (neighbors[1] ? 0 : inset);
+        const bottom = (y + 1) * size - (neighbors[3] ? 0 : inset);
+        if (ghost) {
+          context.strokeRect(x * size + 4, y * size + 4, size - 8, size - 8);
+        } else {
+          context.fillRect(left, top, right - left, bottom - top);
+        }
+      }
+    }
+
+    function drawGridCells(context, grid, skip, size) {
+      const drawn = new Set();
+      for (let y = 0; y < ROWS; y += 1) {
+        for (let x = 0; x < COLS; x += 1) {
+          const cell = grid[y][x];
+          if (!cell || skip.has(cell.g) || drawn.has(cell.g)) continue;
+          drawn.add(cell.g);
+          const group = [];
+          for (let gy = 0; gy < ROWS; gy += 1) {
+            for (let gx = 0; gx < COLS; gx += 1) {
+              const other = grid[gy][gx];
+              if (other && other.g === cell.g) group.push([gx, gy]);
+            }
+          }
+          drawBlob(context, group, cell.type, size, false);
+        }
+      }
+    }
+
+    function paintPreview(context, canvas, types) {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      const slots = Math.max(types.length, 1);
+      types.forEach((type, index) => {
+        if (!type) return;
+        const cells = SHAPES[type][0];
+        const xs = cells.map(([x]) => x);
+        const ys = cells.map(([, y]) => y);
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+        const size = 22;
+        const ox = (canvas.width - (maxX - minX + 1) * size) / 2 - minX * size;
+        const slot = canvas.height / slots;
+        const oy = index * slot + (slot - (maxY - minY + 1) * size) / 2 - minY * size;
+        context.save();
+        context.translate(ox, oy);
+        drawBlob(context, cells, type, size, false);
+        context.restore();
+      });
+    }
+
+    function drawBoard() {
+      ctx.clearRect(0, 0, board.width, board.height);
+      ctx.strokeStyle = "rgba(23,33,27,.08)";
+      for (let x = 1; x < COLS; x += 1) {
+        ctx.beginPath();
+        ctx.moveTo(x * CELL + .5, 0);
+        ctx.lineTo(x * CELL + .5, board.height);
+        ctx.stroke();
+      }
+      for (let y = 1; y < ROWS; y += 1) {
+        ctx.beginPath();
+        ctx.moveTo(0, y * CELL + .5);
+        ctx.lineTo(board.width, y * CELL + .5);
+        ctx.stroke();
+      }
+
+      const skip = new Set();
+      if (anim?.step.type === "drop") {
+        for (const move of anim.step.moves) skip.add(move.g);
+      }
+      drawGridCells(ctx, game.grid, skip, CELL);
+
+      if (anim?.step.type === "drop") {
+        const t = Math.min(1, anim.t / anim.dur);
+        const eased = 1 - (1 - t) * (1 - t);
+        for (const move of anim.step.moves) {
+          const y = move.y0 + (move.y1 - move.y0) * eased;
+          ctx.fillStyle = COLORS[move.type];
+          ctx.fillRect(move.x * CELL + 1.5, y * CELL + 1.5, CELL - 3, CELL - 3);
+        }
+      }
+
+      if (anim?.step.type === "clear") {
+        ctx.globalAlpha = 1 - anim.t / anim.dur;
+        for (const cell of anim.step.cells) {
+          ctx.fillStyle = COLORS[cell.type];
+          ctx.fillRect(cell.x * CELL + 1.5, cell.y * CELL + 1.5, CELL - 3, CELL - 3);
+        }
+        ctx.globalAlpha = 1;
+        if (anim.step.combo > 1) {
+          ctx.fillStyle = "#17211b";
+          ctx.font = "700 22px Arial";
+          ctx.fillText(`${anim.step.combo} 連消`, 12, 36);
+        }
+      }
+
+      if (game.active && game.phase === "playing") {
+        const gy = ghostY(game);
+        ctx.globalAlpha = .9;
+        drawBlob(ctx, cellsOf(game.active.type, game.active.rot, game.active.x, gy), game.active.type, CELL, true);
+        ctx.globalAlpha = 1;
+        drawBlob(ctx, cellsOf(game.active.type, game.active.rot, game.active.x, game.active.y), game.active.type, CELL, false);
+      }
+    }
+
+    function draw() {
+      drawBoard();
+      holdCanvas.classList.toggle("used", game.holdLocked && game.phase === "playing");
+      holdState.textContent = game.holdLocked && game.phase === "playing" ? "落下前不能再換" : "可保留";
+      paintPreview(holdCtx, holdCanvas, [game.hold]);
+      paintPreview(nextCtx, nextCanvas, game.queue.slice(0, 3));
+      document.querySelector("#score").textContent = String(game.score);
+      document.querySelector("#lines").textContent = String(game.lines);
+      document.querySelector("#level").textContent = String(game.level);
+      document.querySelector("#best").textContent = String(Math.max(best, game.score));
+      if (paused && game.phase !== "over") showVeil("暫停", "P 或 Esc 繼續。", "繼續");
+      else if (!paused && game.phase === "playing") hideVeil();
+    }
+
+    function frame(now) {
+      const dt = Math.min(34, now - last);
+      last = now;
+
+      if (!paused && game.phase === "playing" && game.active) {
+        if (dasDir && ((dasDir < 0 && heldKeys.has("left")) || (dasDir > 0 && heldKeys.has("right")))) {
+          dasTime += dt;
+          const wait = dasOn ? 35 : 150;
+          if (dasTime >= wait) {
+            dasTime = 0;
+            dasOn = true;
+            shift(dasDir);
+          }
+        }
+        if (heldKeys.has("down")) {
+          softAcc += dt;
+          while (softAcc >= 45) {
+            softAcc -= 45;
+            if (tryMove(game, 0, 1)) game.score += 1;
+          }
+        }
+        acc += dt;
+        const interval = gravityMs(game.level);
+        while (acc >= interval && game.phase === "playing") {
+          acc -= interval;
+          if (!tryMove(game, 0, 1)) break;
+          lockMs = 0;
+        }
+        if (game.active && !fits(game.grid, game.active.type, game.active.rot, game.active.x, game.active.y + 1)) {
+          lockMs += dt;
+          if (lockMs >= 480) {
+            lockActive(game);
+            lockMs = 0;
+            lockResets = 0;
+            acc = 0;
+            blip(140, 0.04);
+          }
+        } else {
+          lockMs = 0;
+        }
+      }
+
+      if (!paused && game.phase === "resolving") {
+        if (anim) {
+          anim.t += dt;
+          if (anim.t >= anim.dur) anim = null;
+        }
+        if (!anim) {
+          const step = pump(game);
+          if (step?.type === "clear" || step?.type === "drop") {
+            const distance = step.type === "drop"
+              ? Math.max(0, ...step.moves.map((move) => move.y1 - move.y0))
+              : 0;
+            anim = { step, t: 0, dur: step.type === "clear" ? 170 : 120 + distance * 18 };
+            if (step.type === "clear") blip(240 + step.rows.length * 80, 0.06);
+          } else if (step?.type === "over" || game.phase === "over") {
+            saveBest();
+            showVeil("到頂了", `分數 ${game.score}`, "再一局");
+          } else if (step?.type === "spawn") {
+            resetTimers();
+          }
+        }
+      }
+
+      draw();
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+    showVeil("架塊", "方塊可以架在空洞上。支撐沒了就碎開直落。C 或 Shift 保留一塊。", "開始");
+  </script>
+</body>
+</html>
