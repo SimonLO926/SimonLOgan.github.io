@@ -466,6 +466,26 @@
     }
 
     .veil[hidden] { display: none; }
+
+    .coach {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 14px;
+      padding: 28px;
+      text-align: center;
+      pointer-events: none;
+      color: white;
+      background: rgba(8, 12, 20, .58);
+      border-radius: inherit;
+    }
+
+    .coach[hidden] { display: none !important; }
+    .coach b { font-size: 72px; line-height: 1; }
+    .coach p { max-width: 12em; margin: 0; font-size: 24px; line-height: 1.35; }
     .veil h2 { margin: 0; font-size: 40px; font-weight: 600; letter-spacing: -.04em; }
     .veil p { margin: 0; color: var(--muted); }
     .veil .primary, .veil .text-btn { margin-top: 6px; }
@@ -816,6 +836,10 @@
               <button id="veil-btn" class="primary" type="button"></button>
               <button id="veil-menu" class="text-btn" type="button" data-i18n="menu">Menu</button>
             </div>
+            <div id="coach" class="coach" hidden>
+              <b id="coach-count"></b>
+              <p id="coach-copy" hidden></p>
+            </div>
           </div>
           <aside class="rail">
             <section class="box">
@@ -879,6 +903,7 @@
     let dasTime = 0;
     let dasOn = false;
     const sound = createSound(() => settings.volume);
+    const fx = [];
     const CORNER = 4;
 
     applySettings();
@@ -1186,8 +1211,60 @@
       ctx.setTransform(scale, 0, 0, scale, 0, 0);
     }
 
+    function burst(cell, big) {
+      const sparks = [];
+      const count = big ? 16 : 8;
+      for (let i = 0; i < count; i += 1) {
+        sparks.push({
+          a: (Math.PI * 2 * i) / count,
+          sp: (big ? 110 : 60) + (i % 3) * 18,
+          color: big ? (i % 2 ? "#ffd60a" : "#ff453a") : "#7ee0ff",
+        });
+      }
+      fx.push({
+        x: cell.x * CELL + CELL / 2,
+        y: cell.y * CELL + CELL / 2,
+        t: 0,
+        life: big ? 620 : 340,
+        big,
+        sparks,
+      });
+    }
+
+    function drawFx() {
+      for (const item of fx) {
+        const p = item.t / item.life;
+        const radius = (item.big ? 10 : 6) + p * (item.big ? 54 : 26);
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, 1 - p);
+        ctx.lineWidth = item.big ? 5 : 2;
+        ctx.strokeStyle = item.big ? "#ffd60a" : "#ffffff";
+        ctx.beginPath();
+        ctx.arc(item.x, item.y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+        if (item.big) {
+          ctx.strokeStyle = "#ff453a";
+          ctx.beginPath();
+          ctx.arc(item.x, item.y, radius * 0.62, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.arc(item.x, item.y, Math.max(1, (1 - p) * (item.big ? 18 : 8)), 0, Math.PI * 2);
+        ctx.fill();
+        for (const spark of item.sparks) {
+          const dist = spark.sp * (item.t / 1000);
+          ctx.fillStyle = spark.color;
+          ctx.fillRect(item.x + Math.cos(spark.a) * dist - 2, item.y + Math.sin(spark.a) * dist - 2, 4, 4);
+        }
+        ctx.restore();
+      }
+    }
+
     function drawBoard() {
       prepareBoard();
+      const shaking = fx.some((item) => item.big && item.t < 200);
+      if (shaking) ctx.translate((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
       ctx.fillStyle = document.body.dataset.theme === "dark" ? "#0e1014" : "#ffffff";
       ctx.fillRect(0, 0, COLS * CELL, ROWS * CELL);
       const flipping = anim?.step.type === "flip" || anim?.step.type === "reward";
@@ -1218,13 +1295,8 @@
           tile(ctx, cell.x, cell.y, CELL, false);
         }
         ctx.globalAlpha = 1;
-        for (const cell of anim.step.blasts || []) {
-          ctx.fillStyle = "#dfff45";
-          ctx.beginPath();
-          ctx.arc(cell.x * CELL + CELL / 2, cell.y * CELL + CELL / 2, CELL * 0.72, 0, Math.PI * 2);
-          ctx.fill();
-        }
       }
+      drawFx();
       if (game.active && game.phase === "playing") {
         const gy = ghostY(game);
         drawBlob(ctx, cellsOf(game.active.type, game.active.rot, game.active.x, gy), game.active.type, CELL, true);
@@ -1256,6 +1328,16 @@
       const progress = game.mode === "sprint" ? game.lines / 40 : game.stageLines / game.stageGoal;
       document.querySelector("#meter-bar").style.transform = `scaleX(${Math.max(0, Math.min(1, progress))})`;
       document.querySelector("#btn-drop").textContent = session?.kind === "bbtan" ? t("fire") : t("drop");
+      const coach = document.querySelector("#coach");
+      const coaching = session && session.prep > 0 && !paused;
+      coach.hidden = !coaching;
+      if (coaching) {
+        document.querySelector("#coach-count").textContent = String(Math.max(1, Math.ceil(session.prep / 1000)));
+        const copy = document.querySelector("#coach-copy");
+        const teachName = { breakout: "teachBreakout", bbtan: "teachBbtan", pinball: "teachPinball" }[session.kind];
+        copy.hidden = !session.teach;
+        if (session.teach) copy.textContent = t(teachName);
+      }
       if (paused && game.phase !== "over" && game.phase !== "done") showVeil(t("paused"), t("pauseHint"), t("resume"));
       else if (!paused && (game.phase === "playing" || session)) veil.hidden = true;
     }
@@ -1302,6 +1384,9 @@
         } else lockMs = 0;
       }
 
+      for (const item of fx) item.t += dt;
+      for (let i = fx.length - 1; i >= 0; i -= 1) if (fx[i].t >= fx[i].life) fx.splice(i, 1);
+
       if (!paused && session) {
         const clearedBefore = session.cleared;
         updateSession(session, dt);
@@ -1318,6 +1403,9 @@
             if (step.type === "flip" || step.type === "reward") flipGrid(game);
             if (step.type === "reward") {
               session = createSession(step.reward, game.grid, game.stage, game.random);
+              const taughtKey = `bridge-taught-${session.kind}`;
+              session.teach = localStorage.getItem(taughtKey) !== "1";
+              if (session.teach) localStorage.setItem(taughtKey, "1");
               game.phase = step.reward;
             }
           }
@@ -1326,9 +1414,14 @@
           const step = pump(game);
           if (step?.type === "clear" || step?.type === "drop" || step?.type === "flip" || step?.type === "reward") {
             const distance = step.type === "drop" ? Math.max(0, ...step.moves.map((move) => move.y1 - move.y0)) : 0;
-            const dur = step.type === "clear" ? (step.blasts?.length ? 280 : 170) : step.type === "drop" ? 120 + distance * 18 : 460;
+            const dur = step.type === "clear" ? (step.blasts?.length ? 520 : 240) : step.type === "drop" ? 120 + distance * 18 : step.type === "reward" ? 720 : 460;
             anim = { step, t: 0, dur };
-            if (step.type === "clear") sound.playClear(step.rows.length);
+            if (step.type === "clear") {
+              sound.playClear(step.rows.length);
+              for (const cell of step.cells) burst(cell, false);
+              for (const cell of step.blasts || []) burst(cell, true);
+              if (step.blasts?.length) sound.playBoom();
+            }
             if (step.type === "flip" || step.type === "reward") sound.blip(180, 0.08);
           } else if (step?.type === "done") {
             frozenTime = performance.now();

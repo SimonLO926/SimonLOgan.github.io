@@ -1,18 +1,20 @@
-export const TEMPO = 92;
+export const TEMPO = 112;
 export const STEP = 60 / TEMPO / 2;
 
+export const MIX = { music: 0.78, sfx: 1, lead: 0.34, bass: 0.24, blip: 0.55, clear: 0.48 };
+
 export const LEAD = [
-  64, null, 67, null, 69, null, 67, null,
-  72, null, null, null, 71, null, 67, null,
-  69, null, 65, null, 67, null, 64, null,
-  62, null, 64, null, 60, null, null, null,
+  64, 67, 72, 67, 69, 67, 64, null,
+  72, 76, 79, 76, 72, null, 67, 64,
+  69, 72, 76, 72, 69, 67, 64, null,
+  62, 64, 67, 64, 60, null, null, 64,
 ];
 
 export const BASS = [
-  48, null, null, null, null, null, null, null,
-  41, null, null, null, null, null, 48, null,
-  45, null, null, null, null, null, null, null,
-  43, null, null, null, 48, null, null, null,
+  48, null, null, null, 48, null, null, null,
+  43, null, null, null, 43, null, 48, null,
+  45, null, null, null, 45, null, null, null,
+  41, null, null, null, 48, null, null, null,
 ];
 
 export function midi(note) {
@@ -40,10 +42,10 @@ export function createSound(getVolume) {
       master = ctx.createGain();
       master.connect(ctx.destination);
       musicGain = ctx.createGain();
-      musicGain.gain.value = 0.18;
+      musicGain.gain.value = MIX.music;
       musicGain.connect(master);
       sfxGain = ctx.createGain();
-      sfxGain.gain.value = 0.5;
+      sfxGain.gain.value = MIX.sfx;
       sfxGain.connect(master);
     }
     master.gain.value = Math.max(0, getVolume());
@@ -71,17 +73,46 @@ export function createSound(getVolume) {
 
   function blip(freq, dur = 0.05) {
     if (!ensure()) return;
-    beep(freq, ctx.currentTime, dur, "triangle", 0.18, sfxGain);
+    beep(freq, ctx.currentTime, dur, "square", MIX.blip, sfxGain);
   }
 
   function playClear(rows) {
     if (!ensure()) return;
     const pitches = clearPitches(rows);
     const start = ctx.currentTime;
-    beep(midi(pitches[0] - 12), start, 0.22, "triangle", 0.1, sfxGain);
+    beep(midi(pitches[0] - 12), start, 0.28, "square", MIX.clear * 0.7, sfxGain);
     pitches.forEach((note, index) => {
-      beep(midi(note), start + index * 0.07, 0.16, "square", 0.14, sfxGain);
+      beep(midi(note), start + index * 0.07, 0.2, "square", MIX.clear, sfxGain);
     });
+  }
+
+  function playBoom() {
+    if (!ensure()) return;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(220, now);
+    osc.frequency.exponentialRampToValueAtTime(48, now + 0.32);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.62, now + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.34);
+    osc.connect(gain);
+    gain.connect(sfxGain);
+    osc.start(now);
+    osc.stop(now + 0.36);
+    const length = Math.floor(ctx.sampleRate * 0.22);
+    const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i += 1) data[i] = (Math.random() * 2 - 1) * (1 - i / length);
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.5, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+    noise.connect(noiseGain);
+    noiseGain.connect(sfxGain);
+    noise.start(now);
   }
 
   function mark() {
@@ -115,12 +146,12 @@ export function createSound(getVolume) {
       const index = step % LEAD.length;
       const lead = LEAD[index];
       const bass = BASS[index];
-      if (lead != null) beep(midi(lead), nextTime, STEP * 1.55, "triangle", 0.08, musicGain);
-      if (bass != null) beep(midi(bass), nextTime, STEP * 3.4, "triangle", 0.06, musicGain);
+      if (lead != null) beep(midi(lead), nextTime, STEP * 0.92, "square", MIX.lead, musicGain);
+      if (bass != null) beep(midi(bass), nextTime, STEP * 1.7, "square", MIX.bass, musicGain);
       nextTime += STEP;
       step += 1;
     }
   }
 
-  return { setVolume, blip, playClear, start, restart, stop, tick, get playing() { return playing; } };
+  return { setVolume, blip, playClear, playBoom, start, restart, stop, tick, get playing() { return playing; } };
 }
