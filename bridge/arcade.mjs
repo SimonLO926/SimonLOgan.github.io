@@ -11,7 +11,7 @@ export function createSession(kind, grid, stage, random) {
     grid,
     stage: Math.max(1, stage),
     random,
-    prep: 1000,
+    prep: 4000,
     baseSpeed: speed,
     speed,
     cleared: 0,
@@ -262,12 +262,21 @@ function paintBall(ctx, ball) {
 
 export function drawSession(ctx, session, ink) {
   for (const flash of session.flashes) {
-    ctx.globalAlpha = Math.max(0, flash.life / 200);
+    const age = 1 - Math.max(0, flash.life / 200);
+    const cx = flash.x * CELL + CELL / 2;
+    const cy = flash.y * CELL + CELL / 2;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 1 - age);
+    ctx.strokeStyle = "#ffd60a";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, CELL * (0.25 + age * 1.1), 0, Math.PI * 2);
+    ctx.stroke();
     ctx.fillStyle = "#fff";
     ctx.beginPath();
-    ctx.arc(flash.x * CELL + CELL / 2, flash.y * CELL + CELL / 2, CELL * 0.42, 0, Math.PI * 2);
+    ctx.arc(cx, cy, CELL * (0.45 * (1 - age)), 0, Math.PI * 2);
     ctx.fill();
-    ctx.globalAlpha = 1;
+    ctx.restore();
   }
   if (session.kind === "breakout") {
     const x = session.paddleX - session.paddleW / 2;
