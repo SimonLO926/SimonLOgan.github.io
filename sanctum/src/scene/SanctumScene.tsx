@@ -184,13 +184,25 @@ function Torii() {
 
 function CardFan() {
   const group = useRef<THREE.Group>(null)
-  useFrame((state) => {
-    if (group.current) group.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.25) * 0.12
+  const cards = useRef<(THREE.Mesh | null)[]>([])
+  useFrame((state, dt) => {
+    const energy = sceneBus.pulse
+    if (sceneBus.pulse > 0) sceneBus.pulse *= Math.exp(-dt * 1.5)
+    const t = state.clock.elapsedTime
+    if (group.current) group.current.rotation.y = Math.sin(t * 0.25) * 0.12 + Math.sin(t * 14) * 0.25 * energy
+    cards.current.forEach((card, index) => {
+      if (!card) return
+      const spread = (index - 1) * (0.55 + energy * 0.45)
+      card.position.x = THREE.MathUtils.damp(card.position.x, spread, 4, dt)
+      card.position.y = Math.sin(t * 16 + index) * 0.18 * energy + (index === 1 ? 0.08 : 0)
+      card.rotation.z = spread * 0.35
+      card.rotation.y = THREE.MathUtils.damp(card.rotation.y, energy > 0.2 ? Math.PI * energy : spread * 0.28, 3, dt)
+    })
   })
   return (
     <group ref={group}>
-      {[-0.55, 0, 0.55].map((rot, index) => (
-        <mesh key={rot} position={[(index - 1) * 0.42, (index === 1 ? 0.08 : 0), index === 1 ? 0.2 : 0]} rotation={[0.08, rot * 0.45, rot * 0.08]}>
+      {[0, 1, 2].map((index) => (
+        <mesh key={index} ref={(node) => { cards.current[index] = node }} position={[(index - 1) * 0.42, index === 1 ? 0.08 : 0, index === 1 ? 0.2 : 0]}>
           <boxGeometry args={[0.72, 1.12, 0.025]} />
           <meshPhysicalMaterial color={index === 1 ? '#1a1614' : '#120f0d'} metalness={0.7} roughness={0.22} clearcoat={1} clearcoatRoughness={0.08} sheen={0.8} sheenColor="#d9d4ea" />
         </mesh>
@@ -203,7 +215,8 @@ function Armillary() {
   const group = useRef<THREE.Group>(null)
   const sun = useRef<THREE.Mesh>(null)
   useFrame((_, dt) => {
-    if (group.current) group.current.rotation.y += dt * 0.08
+    if (sceneBus.pulse > 0) sceneBus.pulse *= Math.exp(-dt * 1.5)
+    if (group.current) group.current.rotation.y += dt * (0.08 + sceneBus.pulse * 2.2)
     if (sun.current) {
       const a = (sceneBus.sun * Math.PI) / 180
       sun.current.position.set(Math.cos(a) * 1.16, Math.sin(a * 0.15) * 0.08, Math.sin(a) * 1.16)
@@ -237,9 +250,10 @@ function Armillary() {
 
 function Luopan() {
   const needle = useRef<THREE.Group>(null)
-  useFrame((_, dt) => {
+  useFrame((state, dt) => {
     if (!needle.current) return
-    needle.current.rotation.y = THREE.MathUtils.damp(needle.current.rotation.y, sceneBus.needle, 2.2, dt)
+    if (sceneBus.pulse > 0) sceneBus.pulse *= Math.exp(-dt * 1.5)
+    needle.current.rotation.y = THREE.MathUtils.damp(needle.current.rotation.y, sceneBus.needle + Math.sin(state.clock.elapsedTime * 12) * sceneBus.pulse, 2.2, dt)
   })
   return (
     <group rotation={[0.55, 0, 0]}>
@@ -266,8 +280,13 @@ function Luopan() {
 }
 
 function Steles() {
+  const group = useRef<THREE.Group>(null)
+  useFrame((state, dt) => {
+    if (sceneBus.pulse > 0) sceneBus.pulse *= Math.exp(-dt * 1.5)
+    if (group.current) group.current.position.y = Math.sin(state.clock.elapsedTime * 10) * 0.16 * sceneBus.pulse
+  })
   return (
-    <group>
+    <group ref={group}>
       {[-0.96, -0.32, 0.32, 0.96].map((x, index) => (
         <group key={x} position={[x, 0, 0]}>
           <mesh position={[0, -0.04 * index, 0]}>

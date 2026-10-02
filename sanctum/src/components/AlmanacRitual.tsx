@@ -6,6 +6,7 @@ import { parseDate, taipeiNow } from '../lib/civil'
 import { tick } from '../lib/sound'
 import type { Tier } from '../lib/storage'
 import { moonLongitude } from '../lib/sky'
+import { pulseScene, sceneBus } from '../scene/store'
 import { BRANCH_ANGLE, Compass } from './Compass'
 import { RitualFrame } from './Chrome'
 
@@ -59,6 +60,8 @@ export function AlmanacRitual({
     const dateUtc = new Date(Date.UTC(civil.year, civil.month - 1, civil.day, 4, 0))
     const mansion = mansionOf(moonLongitude(dateUtc))
     const branch = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'][branches.dayBranch]
+    sceneBus.needle = (BRANCH_ANGLE[branch] * Math.PI) / 180
+    pulseScene()
     setView({ duty, roku, clash: clashAnimal(branches.dayBranch), branch, mansion: mansion.name, group: mansion.group })
     if (sound) tick()
     onRecord(ROKUYO[roku], JIANCHU[duty])

@@ -6,6 +6,7 @@ import { taipeiNow } from '../lib/civil'
 import { tick } from '../lib/sound'
 import type { Tier } from '../lib/storage'
 import { moonLongitude } from '../lib/sky'
+import { pulseScene, sceneBus } from '../scene/store'
 import { Compass } from './Compass'
 import { RitualFrame } from './Chrome'
 
@@ -36,6 +37,8 @@ export function MansionRitual({
     const civil = useNow || !when ? taipeiNow() : fromLocal(when)
     const date = new Date(Date.UTC(civil.year, civil.month - 1, civil.day, civil.hour, civil.minute) - 480 * 60_000)
     const next = mansionOf(moonLongitude(date))
+    sceneBus.sun = (next.index / 28) * 360
+    pulseScene()
     setHit(next)
     if (sound) tick()
     onRecord(next.name, next.group)

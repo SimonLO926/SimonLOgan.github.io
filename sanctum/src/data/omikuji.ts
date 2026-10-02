@@ -1,3 +1,5 @@
+import { MORE_OMIKUJI } from './omikuji-more'
+
 export type Omikuji = {
   id: string
   grade: string
@@ -11,7 +13,7 @@ export type Omikuji = {
   master: string
 }
 
-export const OMIKUJI: Omikuji[] = [
+const BASE: Omikuji[] = [
   {
     id: 'dai', grade: '大吉', kana: 'だいきち',
     jp: '風は、もう扉の側にいる。',
@@ -83,3 +85,5 @@ export const OMIKUJI: Omikuji[] = [
     master: '大凶不嚇你，它只要你停。列出今天原定要推進的事，全部改期，只留吃飯與睡覺。',
   },
 ]
+
+export const OMIKUJI: Omikuji[] = [...BASE, ...MORE_OMIKUJI]
