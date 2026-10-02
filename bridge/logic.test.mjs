@@ -4,11 +4,15 @@ import {
   COLS,
   createGame,
   dropComponents,
+  cellsOf,
+  chainBlast,
   emptyGrid,
   flipGrid,
   fullRows,
   hardDrop,
   hold,
+  lockActive,
+  pickReward,
   pump,
   startGame,
   unsupportedComponents,
@@ -88,10 +92,10 @@ test("hold stores one piece and cannot be used again until lock", () => {
   startGame(game);
   assert.equal(game.active.type, "T");
   assert.equal(hold(game), true);
-  assert.equal(game.hold, "T");
+  assert.equal(game.hold.type, "T");
   assert.equal(game.active.type, "I");
   assert.equal(hold(game), false);
-  assert.equal(game.hold, "T");
+  assert.equal(game.hold.type, "T");
   assert.equal(game.active.type, "I");
 });
 
@@ -109,20 +113,30 @@ test("hold swaps the stored piece back out", () => {
   assert.equal(game.phase, "playing");
   assert.equal(hold(game), true);
   assert.equal(game.active.type, "T");
-  assert.equal(game.hold, "O");
+  assert.equal(game.hold.type, "O");
 });
 
-test("a bomb removes itself and the cells around it", () => {
-  const game = createGame({ sequence: ["B", "I", "O", "T", "L", "J", "S", "Z", "I", "O", "T", "L"] });
+test("a bomb is one hidden cell inside a five-cell piece and waits for a line clear", () => {
+  const game = createGame({
+    sequence: ["B", "I", "O", "T", "L", "J", "S", "Z", "I", "O", "T", "L"],
+    random: () => 0,
+  });
   startGame(game);
-  game.grid[19][3] = { type: "O", g: 9 };
-  game.grid[19][0] = { type: "S", g: 8 };
-  hardDrop(game);
+  assert.equal(game.active.type, "B");
+  assert.equal(cellsOf("B", 0, 0, 0).length, 5);
+  game.active.bombIndex = 3;
+  game.active.x = 0;
+  game.active.y = 18;
+  for (let x = 2; x < COLS; x += 1) game.grid[19][x] = { type: "O", g: 20 + x };
+  game.grid[18][3] = { type: "S", g: 7 };
+  lockActive(game);
+  assert.equal(game.grid[19][0].bomb, true);
+  assert.equal(game.grid[18][3].type, "S");
   const step = pump(game);
-  assert.equal(step.type, "boom");
-  assert.equal(game.grid[19][3], null);
-  assert.equal(game.grid[19][4], null);
-  assert.equal(game.grid[19][0].type, "S");
+  assert.equal(step.type, "clear");
+  assert.equal(game.grid[19][0], null);
+  assert.equal(game.grid[18][0], null);
+  assert.equal(game.grid[18][3].type, "S");
 });
 
 test("the board flips once after every 10 cleared lines", () => {
@@ -131,6 +145,9 @@ test("the board flips once after every 10 cleared lines", () => {
   game.active = null;
   game.phase = "resolving";
   game.lines = 9;
+  game.stage = 1;
+  game.stageLines = 9;
+  game.stageGoal = 10;
   game.comboArmed = true;
   fillRow(game.grid, 19);
   const kinds = [];
@@ -140,8 +157,23 @@ test("the board flips once after every 10 cleared lines", () => {
   }
   assert.deepEqual(kinds, ["clear", "flip"]);
   assert.equal(game.lines, 10);
-  assert.equal(game.stage, 1);
+  assert.equal(game.stage, 2);
+  assert.equal(game.stageGoal, 20);
+  assert.equal(game.stageLines, 0);
   assert.equal(game.active, null);
+});
+
+test("reward modes prefer breakout, then bbtan, then pinball", () => {
+  assert.equal(pickReward(["pinball", "bbtan"]), "bbtan");
+  assert.equal(pickReward(["pinball", "breakout"]), "breakout");
+  const grid = emptyGrid();
+  grid[5][5] = { type: "B", g: 1, bomb: true };
+  grid[5][6] = { type: "B", g: 2, bomb: true };
+  grid[5][8] = { type: "O", g: 3, bomb: false };
+  chainBlast(grid, 5, 5, () => 0);
+  assert.equal(grid[5][5], null);
+  assert.equal(grid[5][6], null);
+  assert.equal(grid[5][8].type, "O");
 });
 
 test("flipping the board turns it upside down", () => {
