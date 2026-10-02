@@ -26,10 +26,6 @@ export function OracleRitual({
   const [cards, setCards] = useState<Drawn[]>([])
 
   const draw = (count: number) => {
-    if (count === 3 && !opened(tier)) {
-      onPatron()
-      return
-    }
     const drawn = drawMany(ORACLE, count).map((card) => ({ card, reversed: randomIndex(2) === 1 }))
     setCards(drawn)
     if (sound) tick()

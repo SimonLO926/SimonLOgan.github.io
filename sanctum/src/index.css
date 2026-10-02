@@ -391,6 +391,9 @@ html[lang="zh-Hans"] body { font-family: "Noto Serif SC", "Noto Serif TC", serif
   gap: 14px;
   margin-top: 16px;
 }
+.tarot-grid.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
 .tarot-card {
   padding: 12px 12px 16px;
   border: 1px solid rgba(230, 201, 138, 0.35);
