@@ -55,12 +55,11 @@
       --md-well: #0e1014;
     }
 
-    @font-face {
-      font-family: "Silkscreen";
-      src: url("./fonts/Silkscreen-Regular.ttf") format("truetype");
-      font-weight: 400;
-      font-display: swap;
-    }
+    @font-face { font-family: "Pixel Latin"; src: url("./fonts/fusion-pixel-latin.woff2") format("woff2"); font-display: swap; }
+    @font-face { font-family: "Pixel Hant"; src: url("./fonts/fusion-pixel-zh-hant.woff2") format("woff2"); font-display: swap; }
+    @font-face { font-family: "Pixel Hans"; src: url("./fonts/fusion-pixel-zh-hans.woff2") format("woff2"); font-display: swap; }
+    @font-face { font-family: "Pixel Ja"; src: url("./fonts/fusion-pixel-ja.woff2") format("woff2"); font-display: swap; }
+    @font-face { font-family: "Pixel Ko"; src: url("./fonts/fusion-pixel-ko.woff2") format("woff2"); font-display: swap; }
 
     * { box-sizing: border-box; }
 
@@ -71,9 +70,8 @@
       min-height: 100vh;
       color: var(--ink);
       background: var(--paper);
-      font-family: Inter, "Noto Sans", "WenQuanYi Micro Hei", "Droid Sans Fallback", sans-serif;
-      font-feature-settings: "ss01", "cv11";
-      -webkit-font-smoothing: antialiased;
+      font-family: "Pixel Latin", "WenQuanYi Micro Hei", sans-serif;
+      -webkit-font-smoothing: none;
     }
 
     body::before, body::after {
@@ -113,6 +111,7 @@
       border-radius: 980px;
       background: transparent;
       padding: 12px 22px;
+      font-size: 24px;
       cursor: pointer;
     }
 
@@ -242,9 +241,7 @@
       letter-spacing: .18em;
     }
 
-    h1, .wordmark {
-      font-family: "Noto Sans Display", Inter, "WenQuanYi Micro Hei", sans-serif;
-    }
+    h1, .wordmark { font-family: inherit; }
 
     h1 {
       margin: 0;
@@ -280,7 +277,7 @@
       gap: 8px;
       padding: 16px 0;
       border-top: 1px solid var(--line);
-      font-size: 13px;
+      font-size: 24px;
       color: var(--muted);
     }
 
@@ -292,7 +289,7 @@
       border: 0;
       background: transparent;
       color: var(--ink);
-      font-size: 17px;
+      font-size: 24px;
       padding: 0;
     }
 
@@ -314,7 +311,6 @@
       flex-direction: column;
       background: var(--md-surface);
       color: var(--md-on-surface);
-      font-family: Silkscreen, "WenQuanYi Micro Hei", sans-serif;
       letter-spacing: 0;
     }
 
@@ -333,8 +329,9 @@
 
     #game .box h2,
     #game .stat span,
-    #game .md-tonal {
-      font-size: 16px;
+    #game .md-tonal,
+    #game .hint {
+      font-size: 24px;
       letter-spacing: 0;
     }
 
@@ -367,7 +364,7 @@
 
     .console {
       display: grid;
-      grid-template-columns: 168px auto 184px;
+      grid-template-columns: 220px auto 236px;
       gap: 16px;
       align-items: start;
       width: max-content;
@@ -409,13 +406,13 @@
     .stat { display: grid; gap: 2px; }
     .stat span { color: var(--md-on-variant); font-size: 12px; font-weight: 500; letter-spacing: .01em; text-transform: none; }
     .stat b {
-      font-size: 24px;
+      font-size: 36px;
       font-weight: 400;
       letter-spacing: 0;
       font-variant-numeric: tabular-nums;
       color: var(--md-on-surface);
     }
-    .stat.hero-stat b { font-size: 32px; line-height: 1.1; color: var(--md-primary); }
+    .stat.hero-stat b { font-size: 48px; line-height: 1.1; color: var(--md-primary); }
     .meter {
       height: 4px;
       margin-top: 12px;
@@ -903,6 +900,8 @@
     function applySettings() {
       document.body.dataset.theme = settings.theme;
       document.documentElement.lang = settings.lang;
+      const pixelFonts = { "zh-Hant": "Pixel Hant", "zh-Hans": "Pixel Hans", ja: "Pixel Ja", ko: "Pixel Ko" };
+      document.body.style.fontFamily = `"${pixelFonts[settings.lang] || "Pixel Latin"}", "WenQuanYi Micro Hei", sans-serif`;
       document.title = t("title");
       for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
       document.querySelector("#lang").value = settings.lang;
@@ -1360,7 +1359,7 @@
       const stage = document.querySelector(".stage");
       const stacked = window.innerWidth <= 760;
       const pad = 0;
-      const rails = 168 + 184 + 32;
+      const rails = 220 + 236 + 32;
       const availH = Math.max(420, window.innerHeight - nav - (stacked ? 280 : 64));
       const availW = Math.max(180, stage.clientWidth - (stacked ? pad : pad + rails));
       const scale = Math.max(0.85, Math.min(availH / (ROWS * CELL), availW / (COLS * CELL)));
