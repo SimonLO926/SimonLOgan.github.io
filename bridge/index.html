@@ -278,6 +278,9 @@
       min-height: calc(100vh - 28px);
       display: flex;
       flex-direction: column;
+      background:
+        radial-gradient(42% 36% at 22% 18%, rgba(80, 160, 255, .38), transparent 70%),
+        radial-gradient(40% 36% at 82% 84%, rgba(186, 130, 255, .32), transparent 72%);
     }
 
     .nav {
@@ -292,29 +295,63 @@
     .stage {
       flex: 1;
       display: grid;
-      grid-template-columns: 148px minmax(0, 1fr) 164px;
-      gap: 16px;
       align-items: center;
       justify-content: center;
     }
 
-    .panel {
+    .console {
       display: grid;
+      grid-template-columns: 148px auto 168px;
       gap: 18px;
-      padding: 16px 14px 18px;
-      border-radius: 22px;
+      align-items: stretch;
+      width: max-content;
+      max-width: 100%;
+      padding: 18px;
+      border-radius: 32px;
     }
+
+    .console.glass::after { display: none; }
+
+    .rail {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .pocket {
+      display: grid;
+      justify-items: center;
+      padding: 10px 8px 12px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, .34);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), inset 0 10px 18px rgba(30, 50, 80, .05);
+    }
+
+    body[data-theme="dark"] .pocket {
+      background: rgba(0, 0, 0, .28);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12);
+    }
+
     .box h2 {
-      margin: 0 0 10px;
+      margin: 0 0 8px;
       color: var(--muted);
       font-size: 11px;
       font-weight: 600;
-      letter-spacing: .14em;
+      letter-spacing: .16em;
       text-transform: uppercase;
     }
     .stat { display: grid; gap: 2px; }
-    .stat span { color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
-    .stat b { font-size: 32px; font-weight: 600; letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
+    .stat span { color: var(--muted); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+    .stat b {
+      font-family: "Noto Sans Display", Inter, sans-serif;
+      font-size: 34px;
+      font-weight: 700;
+      letter-spacing: -.05em;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat.hero-stat b { font-size: 48px; line-height: .9; }
     .meter {
       height: 4px;
       margin-top: 12px;
@@ -344,13 +381,10 @@
       display: block;
       width: 280px;
       height: 560px;
-      background: var(--well);
+      background: #1a2230;
       border: 0;
       border-radius: var(--corner, 8px);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .85), 0 16px 40px rgba(40, 70, 120, .1);
-    }
-    body[data-theme="dark"] #board {
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 16px 40px rgba(0, 0, 0, .45);
+      box-shadow: inset 0 18px 32px rgba(0, 0, 0, .38), inset 0 0 0 1px rgba(255, 255, 255, .08);
     }
     #hold-canvas, #next-canvas { display: block; background: transparent; border: 0; }
     #hold-canvas.used { opacity: .35; }
@@ -399,9 +433,9 @@
 
     @media (max-width: 760px) {
       h1 { font-size: 64px; }
-      .hero-actions, .stage { display: grid; }
-      .stage { grid-template-columns: 1fr; }
-      .panel { grid-template-columns: 1fr 1fr; }
+      .hero-actions, .stage, .console { display: grid; }
+      .console { grid-template-columns: 1fr 1fr; width: 100%; }
+      .board-wrap { grid-column: 1 / -1; order: -1; }
       .pad { display: grid; }
       .keys { display: none; }
     }
@@ -699,35 +733,43 @@
         <button id="game-menu" class="chip" type="button" data-i18n="menu">Menu</button>
       </div>
       <div class="stage">
-        <aside class="panel glass">
-          <section class="box">
-            <h2 data-i18n="hold">Hold</h2>
-            <canvas id="hold-canvas" width="112" height="96"></canvas>
-            <p class="hint" id="hold-state"></p>
-          </section>
-        </aside>
-        <div class="board-wrap">
-          <canvas id="board" width="280" height="560"></canvas>
-          <div class="veil" id="veil" hidden>
-            <h2 id="veil-title"></h2>
-            <p id="veil-copy"></p>
-            <button id="veil-btn" class="primary" type="button"></button>
-            <button id="veil-menu" class="text-btn" type="button" data-i18n="menu">Menu</button>
+        <div class="console glass">
+          <aside class="rail">
+            <section class="box">
+              <h2 data-i18n="hold">Hold</h2>
+              <div class="pocket">
+                <canvas id="hold-canvas" width="120" height="88"></canvas>
+              </div>
+              <p class="hint" id="hold-state"></p>
+            </section>
+            <section class="box">
+              <div class="stat"><span data-i18n="lines">Lines</span><b id="lines">0</b></div>
+              <div class="stat"><span id="third-label" data-i18n="stage">Stage</span><b id="third">1</b></div>
+            </section>
+          </aside>
+          <div class="board-wrap">
+            <canvas id="board" width="280" height="560"></canvas>
+            <div class="veil" id="veil" hidden>
+              <h2 id="veil-title"></h2>
+              <p id="veil-copy"></p>
+              <button id="veil-btn" class="primary" type="button"></button>
+              <button id="veil-menu" class="text-btn" type="button" data-i18n="menu">Menu</button>
+            </div>
           </div>
+          <aside class="rail">
+            <section class="box">
+              <h2 data-i18n="next">Next</h2>
+              <div class="pocket">
+                <canvas id="next-canvas" width="120" height="236"></canvas>
+              </div>
+            </section>
+            <section class="box">
+              <div class="stat hero-stat"><span data-i18n="score">Score</span><b id="score">0</b></div>
+              <div class="stat"><span data-i18n="best">Best</span><b id="best">0</b></div>
+              <div class="meter" aria-hidden="true"><i id="meter-bar"></i></div>
+            </section>
+          </aside>
         </div>
-        <aside class="panel glass">
-          <section class="box">
-            <h2 data-i18n="next">Next</h2>
-            <canvas id="next-canvas" width="112" height="250"></canvas>
-          </section>
-          <section class="box">
-            <div class="stat"><span data-i18n="score">Score</span><b id="score">0</b></div>
-            <div class="stat"><span data-i18n="lines">Lines</span><b id="lines">0</b></div>
-            <div class="stat"><span id="third-label" data-i18n="stage">Stage</span><b id="third">1</b></div>
-            <div class="stat"><span data-i18n="best">Best</span><b id="best">0</b></div>
-            <div class="meter" aria-hidden="true"><i id="meter-bar"></i></div>
-          </section>
-        </aside>
       </div>
       <div class="pad">
         <button type="button" id="btn-left" data-i18n="left">Left</button>
@@ -993,9 +1035,9 @@
       const side = size - pad * 2;
       roundTile(context, left, top, side, radius);
       if (ghost) {
-        context.fillStyle = document.body.dataset.theme === "dark" ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.04)";
+        context.fillStyle = "rgba(255,255,255,.05)";
         context.fill();
-        context.strokeStyle = document.body.dataset.theme === "dark" ? "rgba(255,255,255,.7)" : "rgba(29,29,31,.45)";
+        context.strokeStyle = "rgba(255,255,255,.62)";
         context.lineWidth = 1.25;
         context.stroke();
         return;
@@ -1082,7 +1124,7 @@
 
     function drawBoard() {
       prepareBoard();
-      ctx.fillStyle = document.body.dataset.theme === "dark" ? "#1c1c1e" : "#ffffff";
+      ctx.fillStyle = "#1a2230";
       ctx.fillRect(0, 0, COLS * CELL, ROWS * CELL);
       const flipping = anim?.step.type === "flip" || anim?.step.type === "reward";
       if (flipping) {
@@ -1252,11 +1294,10 @@
       const nav = document.querySelector(".nav").offsetHeight;
       const stage = document.querySelector(".stage");
       const stacked = window.innerWidth <= 760;
-      const panels = [...stage.querySelectorAll(":scope > .panel")];
-      const gap = 16;
-      const availH = Math.max(420, window.innerHeight - nav - (stacked ? 220 : 36));
-      const panelW = stacked ? 0 : panels.reduce((sum, el) => sum + el.offsetWidth, 0);
-      const availW = Math.max(180, stage.clientWidth - panelW - (stacked ? 0 : gap * 2));
+      const pad = 36;
+      const rails = 148 + 168 + 36;
+      const availH = Math.max(420, window.innerHeight - nav - (stacked ? 280 : 64));
+      const availW = Math.max(180, stage.clientWidth - (stacked ? pad : pad + rails));
       const scale = Math.max(0.85, Math.min(availH / (ROWS * CELL), availW / (COLS * CELL)));
       const width = Math.round(COLS * CELL * scale);
       const height = Math.round(ROWS * CELL * scale);
