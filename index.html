@@ -221,12 +221,17 @@
       }
     }
 
-    .project:focus-visible .project-preview {
+    .project:focus-visible .project-preview,
+    .project.is-previewing .project-preview {
       filter: blur(.5px) saturate(1.1);
       transform: scale(1.02);
     }
 
     .project:focus-visible { outline: 3px solid #42695a; outline-offset: 4px; }
+
+    @media (hover: none) {
+      .project { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+    }
 
     .project-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 
@@ -454,6 +459,60 @@
     });
     cards.forEach(card => {
       resizePreviews.observe(card.querySelector('.project-preview'));
+      let press = null;
+      let pressTimer;
+      let resetTimer;
+      let suppressClickUntil = 0;
+      const cancelPress = () => {
+        clearTimeout(pressTimer);
+        press = null;
+      };
+      const hidePreview = () => {
+        clearTimeout(resetTimer);
+        card.classList.remove('is-previewing');
+      };
+      card.addEventListener('pointerdown', event => {
+        if (event.pointerType !== 'touch' || !event.isPrimary) return;
+        cancelPress();
+        hidePreview();
+        suppressClickUntil = 0;
+        press = { id: event.pointerId, x: event.clientX, y: event.clientY, revealed: false };
+        pressTimer = setTimeout(() => {
+          if (!press) return;
+          press.revealed = true;
+          card.classList.add('is-previewing');
+        }, 400);
+      }, { passive: true });
+      card.addEventListener('pointermove', event => {
+        if (!press || event.pointerId !== press.id) return;
+        if (Math.hypot(event.clientX - press.x, event.clientY - press.y) > 12) {
+          if (press.revealed) suppressClickUntil = Date.now() + 1000;
+          cancelPress();
+          hidePreview();
+        }
+      }, { passive: true });
+      card.addEventListener('pointerup', event => {
+        if (!press || event.pointerId !== press.id) return;
+        if (press.revealed) {
+          suppressClickUntil = Date.now() + 1000;
+          resetTimer = setTimeout(hidePreview, 1200);
+        }
+        cancelPress();
+      });
+      card.addEventListener('pointercancel', () => {
+        cancelPress();
+        hidePreview();
+      });
+      card.addEventListener('click', event => {
+        // A long press previews; a fresh short tap follows the link normally.
+        if (event.detail !== 0 && Date.now() < suppressClickUntil) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }, true);
+      card.addEventListener('contextmenu', event => {
+        if (press || card.classList.contains('is-previewing')) event.preventDefault();
+      });
       card.addEventListener('pointermove', event => {
         if (event.pointerType !== 'mouse') return;
         const bounds = card.getBoundingClientRect();
