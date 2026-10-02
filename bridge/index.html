@@ -65,11 +65,50 @@
     .page { width: min(1080px, calc(100% - 48px)); margin: 0 auto; padding: 28px 0 64px; }
 
     .hero, .settings-wrap {
+      position: relative;
       min-height: calc(100vh - 92px);
       display: grid;
       align-content: center;
       justify-items: center;
       text-align: center;
+      overflow: hidden;
+    }
+
+    .hero {
+      background:
+        radial-gradient(42% 32% at 16% 24%, rgba(100, 210, 255, .34), transparent 70%),
+        radial-gradient(36% 30% at 84% 18%, rgba(255, 214, 10, .22), transparent 72%),
+        radial-gradient(40% 36% at 78% 82%, rgba(191, 90, 242, .28), transparent 70%),
+        radial-gradient(34% 28% at 18% 78%, rgba(48, 209, 88, .16), transparent 72%);
+    }
+
+    body[data-theme="dark"] .hero {
+      background:
+        radial-gradient(42% 32% at 16% 24%, rgba(10, 132, 255, .28), transparent 70%),
+        radial-gradient(36% 30% at 84% 18%, rgba(255, 214, 10, .12), transparent 72%),
+        radial-gradient(40% 36% at 78% 82%, rgba(191, 90, 242, .22), transparent 70%),
+        radial-gradient(34% 28% at 18% 78%, rgba(48, 209, 88, .1), transparent 72%);
+    }
+
+    #hero3d {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .hero-copy {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      justify-items: center;
+      padding: 42px 56px 30px;
+      border-radius: 36px;
+      background: color-mix(in srgb, var(--paper) 78%, transparent);
+      border: 1px solid var(--line);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .08);
+      backdrop-filter: blur(22px) saturate(1.4);
     }
 
     .eyebrow {
@@ -152,13 +191,23 @@
 
     .stage {
       display: grid;
-      grid-template-columns: 132px auto 150px;
-      gap: 28px;
-      align-items: center;
+      grid-template-columns: 176px auto 196px;
+      gap: 22px;
+      align-items: start;
       justify-content: center;
+      padding-top: 8px;
     }
 
-    .panel { display: grid; gap: 28px; }
+    .panel {
+      display: grid;
+      gap: 22px;
+      padding: 18px 16px 20px;
+      border-radius: 28px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, .06);
+      backdrop-filter: blur(18px) saturate(1.3);
+    }
     .box h2 {
       margin: 0 0 10px;
       color: var(--muted);
@@ -170,13 +219,41 @@
     .stat { display: grid; gap: 2px; }
     .stat span { color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
     .stat b { font-size: 28px; font-weight: 600; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
-    .board-wrap { position: relative; width: max-content; justify-self: center; }
+    .meter {
+      height: 4px;
+      margin-top: 12px;
+      border-radius: 99px;
+      background: var(--line);
+      overflow: hidden;
+    }
+    .meter i {
+      display: block;
+      height: 100%;
+      width: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #64d2ff, var(--blue));
+      transform: scaleX(0);
+      transform-origin: left center;
+    }
+    .board-wrap {
+      position: relative;
+      width: max-content;
+      justify-self: center;
+      padding: 12px;
+      border-radius: 40px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, .92), rgba(255, 255, 255, .45));
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, .95);
+    }
+    body[data-theme="dark"] .board-wrap {
+      background: linear-gradient(180deg, #3a3a3c, #0e0e10);
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, .16);
+    }
     #board {
       display: block;
       background: var(--well);
       border: 0;
       border-radius: 28px;
-      box-shadow: var(--shadow);
+      box-shadow: inset 0 0 0 1px var(--line);
     }
     #hold-canvas, #next-canvas { display: block; background: transparent; border: 0; }
     #hold-canvas.used { opacity: .35; }
@@ -206,6 +283,7 @@
 
     @media (max-width: 760px) {
       h1 { font-size: 48px; }
+      .hero-copy { padding: 28px 22px 18px; }
       .hero-actions, .stage { display: grid; }
       .stage { grid-template-columns: 1fr; }
       .panel { grid-template-columns: 1fr 1fr; }
@@ -217,15 +295,16 @@
 <body data-theme="light">
   <div class="page">
     <section id="menu" class="hero">
-      <p class="eyebrow">BRIDGE</p>
-      <h1 data-i18n="title">架塊</h1>
-      <p class="lede" data-i18n="lede"></p>
-      <p class="hint" data-i18n="menuHint"></p>
-      <div class="hero-actions">
-        <button id="go-marathon" class="primary" type="button" data-i18n="marathon">馬拉松</button>
-        <button id="go-sprint" class="secondary" type="button" data-i18n="sprint">40 行競速</button>
+      <canvas id="hero3d" aria-hidden="true"></canvas>
+      <div class="hero-copy">
+        <p class="eyebrow">BRIDGE</p>
+        <h1 data-i18n="title">架塊</h1>
+        <div class="hero-actions">
+          <button id="go-marathon" class="primary" type="button" data-i18n="marathon">馬拉松</button>
+          <button id="go-sprint" class="secondary" type="button" data-i18n="sprint">40 行競速</button>
+        </div>
+        <button id="go-settings" class="text-btn" type="button" data-i18n="settings">設定</button>
       </div>
-      <button id="go-settings" class="text-btn" type="button" data-i18n="settings">設定</button>
     </section>
 
     <section id="settings" class="settings-wrap" hidden>
@@ -289,6 +368,7 @@
             <div class="stat"><span data-i18n="lines">消除</span><b id="lines">0</b></div>
             <div class="stat"><span id="third-label" data-i18n="stage">階段</span><b id="third">1</b></div>
             <div class="stat"><span data-i18n="best">最高</span><b id="best">0</b></div>
+            <div class="meter" aria-hidden="true"><i id="meter-bar"></i></div>
           </section>
         </aside>
       </div>
@@ -299,7 +379,6 @@
         <button type="button" id="btn-hold" data-i18n="keep">留</button>
         <button type="button" id="btn-drop" data-i18n="drop">落</button>
       </div>
-      <p class="keys" data-i18n="keys"></p>
     </section>
   </div>
   <script type="module">
@@ -557,29 +636,49 @@
     bindPress("#btn-drop", doHard);
 
     function ink() { return document.body.dataset.theme === "dark" ? "#f5f5f7" : "#1d1d1f"; }
-    function well() { return document.body.dataset.theme === "dark" ? "#1c1c1e" : "#ffffff"; }
     function pieceColor(type) { return COLORS[type] || ink(); }
 
+    function roundTile(context, left, top, side, radius) {
+      context.beginPath();
+      context.roundRect(left, top, side, side, radius);
+    }
+
     function tile(context, x, y, size, ghost) {
-      const pad = size > 24 ? 3 : 2;
-      const radius = Math.max(4, size * 0.22);
+      const pad = size > 24 ? 2.4 : 1.7;
+      const radius = Math.max(5, size * 0.28);
       const left = x * size + pad;
       const top = y * size + pad;
       const side = size - pad * 2;
-      context.beginPath();
-      context.roundRect(left, top, side, side, radius);
+      roundTile(context, left, top, side, radius);
       if (ghost) {
-        context.strokeStyle = document.body.dataset.theme === "dark" ? "rgba(255,255,255,.45)" : "rgba(0,0,0,.28)";
-        context.lineWidth = 1.5;
+        context.fillStyle = document.body.dataset.theme === "dark" ? "rgba(255,255,255,.07)" : "rgba(0,0,0,.045)";
+        context.fill();
+        context.strokeStyle = document.body.dataset.theme === "dark" ? "rgba(255,255,255,.62)" : "rgba(29,29,31,.4)";
+        context.lineWidth = 1.4;
         context.stroke();
         return;
       }
+      const base = context.fillStyle;
+      context.save();
+      context.shadowColor = "rgba(0,0,0,.22)";
+      context.shadowBlur = size > 24 ? 10 : 5;
+      context.shadowOffsetY = size > 24 ? 4 : 2;
       context.fill();
-      const gloss = context.createLinearGradient(left, top, left, top + side);
-      gloss.addColorStop(0, "rgba(255,255,255,.38)");
-      gloss.addColorStop(0.42, "rgba(255,255,255,0)");
+      context.restore();
+      context.fillStyle = base;
+      roundTile(context, left, top, side, radius);
+      context.fill();
+      const gloss = context.createLinearGradient(left, top, left + side * 0.15, top + side);
+      gloss.addColorStop(0, "rgba(255,255,255,.62)");
+      gloss.addColorStop(0.34, "rgba(255,255,255,.08)");
+      gloss.addColorStop(1, "rgba(0,0,0,.2)");
       context.fillStyle = gloss;
+      roundTile(context, left, top, side, radius);
       context.fill();
+      context.strokeStyle = "rgba(255,255,255,.42)";
+      context.lineWidth = 1;
+      roundTile(context, left + 0.5, top + 0.5, side - 1, radius);
+      context.stroke();
     }
 
     function drawBlob(context, cells, type, size, ghost, markIndex = null) {
@@ -646,8 +745,20 @@
     }
 
     function drawBoard() {
-      ctx.fillStyle = well();
+      const dark = document.body.dataset.theme === "dark";
+      const wash = ctx.createLinearGradient(0, 0, board.width, board.height);
+      wash.addColorStop(0, dark ? "#323234" : "#ffffff");
+      wash.addColorStop(1, dark ? "#141416" : "#ececf1");
+      ctx.fillStyle = wash;
       ctx.fillRect(0, 0, board.width, board.height);
+      ctx.strokeStyle = dark ? "rgba(255,255,255,.045)" : "rgba(0,0,0,.04)";
+      ctx.lineWidth = 1;
+      for (let y = 1; y < ROWS; y += 1) {
+        ctx.beginPath();
+        ctx.moveTo(16, y * CELL + 0.5);
+        ctx.lineTo(board.width - 16, y * CELL + 0.5);
+        ctx.stroke();
+      }
       const flipping = anim?.step.type === "flip" || anim?.step.type === "reward";
       if (flipping) {
         const turn = Math.min(1, anim.t / anim.dur);
@@ -705,12 +816,14 @@
       document.querySelector("#hold-state").textContent = game.holdLocked && game.phase === "playing" ? t("holdUsed") : t("holdReady");
       paintPreview(holdCtx, holdCanvas, [game.hold]);
       paintPreview(nextCtx, nextCanvas, game.queue.slice(0, 3));
-      document.querySelector("#score").textContent = String(game.score);
+      document.querySelector("#score").textContent = String(game.score + (session?.score || 0));
       document.querySelector("#lines").textContent = game.mode === "sprint" ? `${game.lines}/40` : String(game.lines);
       document.querySelector("#third-label").textContent = game.mode === "sprint" ? t("time") : t("stage");
       document.querySelector("#third").textContent = game.mode === "sprint" ? formatTime(elapsed()) : String(game.stage);
       const best = readBest();
       document.querySelector("#best").textContent = game.mode === "sprint" ? (best ? formatTime(best) : "–") : String(Math.max(best, game.score));
+      const progress = game.mode === "sprint" ? game.lines / 40 : game.stageLines / game.stageGoal;
+      document.querySelector("#meter-bar").style.transform = `scaleX(${Math.max(0, Math.min(1, progress))})`;
       document.querySelector("#btn-drop").textContent = session?.kind === "bbtan" ? t("fire") : t("drop");
       if (paused && game.phase !== "over" && game.phase !== "done") showVeil(t("paused"), t("pauseHint"), t("resume"));
       else if (!paused && (game.phase === "playing" || session)) veil.hidden = true;
@@ -802,6 +915,127 @@
     }
 
     requestAnimationFrame(frame);
+    startHero();
+
+    function startHero() {
+      const canvas = document.querySelector("#hero3d");
+      const context = canvas.getContext("2d");
+      const forms = [
+        { cells: [[0, 0], [1, 0], [2, 0], [3, 0]], color: "#64d2ff", speed: 0.42, orbit: 0.2, x: 0.16, y: 0.28, scale: 34 },
+        { cells: [[0, 0], [1, 0], [0, 1], [1, 1]], color: "#ffd60a", speed: -0.28, orbit: 1.7, x: 0.84, y: 0.22, scale: 40 },
+        { cells: [[1, 0], [0, 1], [1, 1], [2, 1]], color: "#bf5af2", speed: 0.33, orbit: 3.1, x: 0.8, y: 0.74, scale: 38 },
+        { cells: [[0, 0], [0, 1], [0, 2], [1, 2]], color: "#ff9f0a", speed: -0.36, orbit: 4.4, x: 0.18, y: 0.76, scale: 36 },
+        { cells: [[1, 0], [2, 0], [0, 1], [1, 1]], color: "#30d158", speed: 0.24, orbit: 5.2, x: 0.5, y: 0.16, scale: 30 },
+        { cells: [[0, 0], [1, 0], [1, 1], [2, 1]], color: "#ff453a", speed: 0.3, orbit: 2.4, x: 0.52, y: 0.86, scale: 32 },
+      ];
+      const faces = [
+        { n: [0, 0, 1], p: [[-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]] },
+        { n: [0, 0, -1], p: [[-1, -1, -1], [-1, 1, -1], [1, 1, -1], [1, -1, -1]] },
+        { n: [0, -1, 0], p: [[-1, -1, -1], [1, -1, -1], [1, -1, 1], [-1, -1, 1]] },
+        { n: [0, 1, 0], p: [[-1, 1, -1], [-1, 1, 1], [1, 1, 1], [1, 1, -1]] },
+        { n: [1, 0, 0], p: [[1, -1, -1], [1, 1, -1], [1, 1, 1], [1, -1, 1]] },
+        { n: [-1, 0, 0], p: [[-1, -1, -1], [-1, -1, 1], [-1, 1, 1], [-1, 1, -1]] },
+      ];
+      const light = [0.32, -0.62, 0.72];
+      const lightLen = Math.hypot(...light);
+      const lit = light.map((value) => value / lightLen);
+      const spin = (v, ay, ax, az) => {
+        let x = v[0];
+        let y = v[1];
+        let z = v[2];
+        const cz = Math.cos(az);
+        const sz = Math.sin(az);
+        const x0 = x * cz - y * sz;
+        const y0 = x * sz + y * cz;
+        const cy = Math.cos(ay);
+        const sy = Math.sin(ay);
+        const x1 = x0 * cy + z * sy;
+        const z1 = -x0 * sy + z * cy;
+        const cx = Math.cos(ax);
+        const sx = Math.sin(ax);
+        return [x1, y0 * cx - z1 * sx, y0 * sx + z1 * cx];
+      };
+      const paint = (normal, color) => {
+        const ndot = Math.max(0, normal[0] * lit[0] + normal[1] * lit[1] + normal[2] * lit[2]);
+        const base = 0.34 + ndot * 0.78;
+        const spec = ndot ** 16 * 0.7;
+        const red = parseInt(color.slice(1, 3), 16);
+        const green = parseInt(color.slice(3, 5), 16);
+        const blue = parseInt(color.slice(5, 7), 16);
+        const mix = (channel) => Math.min(255, Math.round(channel * base + 255 * spec));
+        return `rgb(${mix(red)}, ${mix(green)}, ${mix(blue)})`;
+      };
+      const frameHero = (now) => {
+        if (!document.querySelector("#menu").hidden) {
+          const ratio = Math.min(2, window.devicePixelRatio || 1);
+          const width = canvas.clientWidth;
+          const height = canvas.clientHeight;
+          const nextW = Math.floor(width * ratio);
+          const nextH = Math.floor(height * ratio);
+          if (canvas.width !== nextW || canvas.height !== nextH) {
+            canvas.width = nextW;
+            canvas.height = nextH;
+          }
+          context.setTransform(ratio, 0, 0, ratio, 0, 0);
+          context.clearRect(0, 0, width, height);
+          const time = now / 1000;
+          const scene = forms.map((form) => ({
+            form,
+            depth: Math.sin(time * 0.35 + form.orbit),
+          })).sort((a, b) => a.depth - b.depth);
+          for (const item of scene) {
+            const form = item.form;
+            const ay = time * form.speed + form.orbit;
+            const ax = 0.55 + Math.sin(time * 0.4 + form.orbit) * 0.45;
+            const az = Math.sin(time * 0.2 + form.orbit) * 0.25;
+            const bob = Math.sin(time * 0.9 + form.orbit) * 14;
+            const ox = width * form.x + Math.cos(time * 0.17 + form.orbit) * 22;
+            const oy = height * form.y + bob;
+            context.save();
+            context.fillStyle = "rgba(0,0,0,.14)";
+            context.filter = "blur(8px)";
+            context.beginPath();
+            context.ellipse(ox, oy + form.scale * 2.3, form.scale * 1.7, form.scale * 0.38, 0, 0, Math.PI * 2);
+            context.fill();
+            context.restore();
+            const quads = [];
+            for (const cell of form.cells) {
+              for (const face of faces) {
+                const normal = spin(face.n, ay, ax, az);
+                if (normal[2] < -0.04) continue;
+                const points = face.p.map((point) => {
+                  const world = spin([
+                    (cell[0] - 1.5) * 1.02 + point[0] * 0.46,
+                    (cell[1] - 0.5) * 1.02 + point[1] * 0.46,
+                    point[2] * 0.46,
+                  ], ay, ax, az);
+                  const depth = 7.2 / (7.2 - world[2]);
+                  return [ox + world[0] * form.scale * depth, oy + world[1] * form.scale * depth, world[2]];
+                });
+                quads.push({
+                  points,
+                  color: paint(normal, form.color),
+                  z: points.reduce((sum, point) => sum + point[2], 0),
+                });
+              }
+            }
+            quads.sort((a, b) => a.z - b.z);
+            for (const quad of quads) {
+              context.beginPath();
+              quad.points.forEach((point, i) => (i ? context.lineTo(point[0], point[1]) : context.moveTo(point[0], point[1])));
+              context.closePath();
+              context.fillStyle = quad.color;
+              context.fill();
+              context.strokeStyle = "rgba(0,0,0,.16)";
+              context.lineWidth = 1;
+              context.stroke();
+            }
+          }
+        }
+        requestAnimationFrame(frameHero);
+      };
+      requestAnimationFrame(frameHero);
+    }
   </script>
 </body>
 </html>

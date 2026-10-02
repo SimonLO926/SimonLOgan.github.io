@@ -245,33 +245,100 @@ export function updateSession(session, dtMs) {
   return session;
 }
 
+function paintBall(ctx, ball) {
+  ctx.save();
+  ctx.shadowColor = "rgba(10,132,255,.35)";
+  ctx.shadowBlur = 10;
+  const gloss = ctx.createRadialGradient(ball.x - ball.r * 0.35, ball.y - ball.r * 0.4, 1, ball.x, ball.y, ball.r);
+  gloss.addColorStop(0, "#ffffff");
+  gloss.addColorStop(0.42, "#d7ebff");
+  gloss.addColorStop(1, "#0071e3");
+  ctx.fillStyle = gloss;
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 export function drawSession(ctx, session, ink) {
+  for (const flash of session.flashes) {
+    ctx.globalAlpha = Math.max(0, flash.life / 200);
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(flash.x * CELL + CELL / 2, flash.y * CELL + CELL / 2, CELL * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
   if (session.kind === "breakout") {
-    ctx.fillStyle = ink;
-    ctx.fillRect(session.paddleX - session.paddleW / 2, H - 30, session.paddleW, 12);
+    const x = session.paddleX - session.paddleW / 2;
+    const y = H - 34;
+    const gloss = ctx.createLinearGradient(x, y, x, y + 12);
+    gloss.addColorStop(0, "#9bdcff");
+    gloss.addColorStop(1, "#0071e3");
+    ctx.save();
+    ctx.shadowColor = "rgba(0,113,227,.4)";
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = gloss;
+    ctx.beginPath();
+    ctx.roundRect(x, y, session.paddleW, 12, 8);
+    ctx.fill();
+    ctx.restore();
   }
   if (session.kind === "pinball") {
-    ctx.strokeStyle = ink;
-    ctx.lineWidth = 6;
+    ctx.save();
+    ctx.strokeStyle = "rgba(0,113,227,.28)";
+    ctx.lineWidth = 8;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(16, H - 118);
+    ctx.lineTo(16, H - 28);
+    ctx.lineTo(54, H - 18);
+    ctx.moveTo(W - 16, H - 118);
+    ctx.lineTo(W - 16, H - 28);
+    ctx.lineTo(W - 54, H - 18);
+    ctx.stroke();
+    ctx.lineWidth = 12;
     for (const side of ["left", "right"]) {
       const segment = flipper(side, side === "left" ? session.left : session.right);
+      const gloss = ctx.createLinearGradient(segment.x1, segment.y1, segment.x2, segment.y2);
+      gloss.addColorStop(0, "#64d2ff");
+      gloss.addColorStop(1, "#0071e3");
+      ctx.strokeStyle = gloss;
       ctx.beginPath();
       ctx.moveTo(segment.x1, segment.y1);
       ctx.lineTo(segment.x2, segment.y2);
       ctx.stroke();
+      ctx.fillStyle = ink;
+      ctx.beginPath();
+      ctx.arc(segment.x1, segment.y1, 6, 0, Math.PI * 2);
+      ctx.fill();
     }
+    ctx.restore();
   }
   if (session.kind === "bbtan" && session.aiming) {
-    ctx.strokeStyle = ink;
+    const x2 = W / 2 + Math.cos(session.aim) * 92;
+    const y2 = H - 24 + Math.sin(session.aim) * 92;
+    ctx.save();
+    ctx.strokeStyle = "rgba(0,113,227,.85)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 6]);
     ctx.beginPath();
     ctx.moveTo(W / 2, H - 24);
-    ctx.lineTo(W / 2 + Math.cos(session.aim) * 70, H - 24 + Math.sin(session.aim) * 70);
+    ctx.lineTo(x2, y2);
     ctx.stroke();
-  }
-  ctx.fillStyle = ink;
-  for (const ball of session.balls) {
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#0071e3";
     ctx.beginPath();
-    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+    ctx.arc(W / 2, H - 24, 5, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+    const left = session.chances;
+    for (let i = 0; i < 3; i += 1) {
+      ctx.beginPath();
+      ctx.fillStyle = i < left ? "#0071e3" : "rgba(0,113,227,.2)";
+      ctx.arc(18 + i * 16, H - 18, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
+  for (const ball of session.balls) paintBall(ctx, ball);
 }
