@@ -6,94 +6,207 @@
   <title>架塊</title>
   <style>
     :root {
-      --ink: #17211b;
-      --paper: #f4f1e8;
-      --well: #f7f4ec;
-      --line: rgba(23, 33, 27, .18);
-      --acid: #dfff45;
-      --panel: rgba(255, 255, 255, .45);
+      --ink: #1d1d1f;
+      --muted: #6e6e73;
+      --paper: #f5f5f7;
+      --card: rgba(255, 255, 255, .72);
+      --well: #ffffff;
+      --line: rgba(0, 0, 0, .08);
+      --blue: #0071e3;
+      --blue-press: #0077ed;
+      --shadow: 0 24px 60px rgba(0, 0, 0, .12);
     }
 
     body[data-theme="dark"] {
-      --ink: #f4f1e8;
-      --paper: #111111;
-      --well: #1a1a1a;
-      --line: rgba(244, 241, 232, .2);
-      --acid: #dfff45;
-      --panel: rgba(255, 255, 255, .06);
+      --ink: #f5f5f7;
+      --muted: #a1a1a6;
+      --paper: #000000;
+      --card: rgba(28, 28, 30, .78);
+      --well: #1c1c1e;
+      --line: rgba(255, 255, 255, .12);
+      --blue: #0a84ff;
+      --blue-press: #409cff;
+      --shadow: 0 24px 80px rgba(0, 0, 0, .45);
     }
 
     * { box-sizing: border-box; }
+
+    [hidden] { display: none !important; }
 
     body {
       margin: 0;
       min-height: 100vh;
       color: var(--ink);
       background: var(--paper);
-      font-family: Arial, "Noto Sans TC", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Noto Sans TC", "Noto Sans JP", "Noto Sans KR", sans-serif;
+      -webkit-font-smoothing: antialiased;
     }
 
     button, select, input { font: inherit; color: inherit; }
 
     button {
-      border: 1px solid var(--ink);
-      background: var(--acid);
-      color: #17211b;
-      font-weight: 700;
-      padding: 12px 14px;
+      border: 0;
+      border-radius: 980px;
+      background: transparent;
+      padding: 12px 22px;
       cursor: pointer;
     }
 
-    .page { width: min(980px, calc(100% - 28px)); margin: 0 auto; padding: 28px 0 40px; }
+    .primary { background: var(--blue); color: white; min-width: 168px; }
+    .primary:hover { background: var(--blue-press); }
+    .secondary {
+      background: transparent;
+      color: var(--blue);
+      box-shadow: inset 0 0 0 1px var(--blue);
+      min-width: 168px;
+    }
+    .text-btn { color: var(--blue); padding-left: 0; }
 
-    h1 { margin: 0; font-size: 56px; letter-spacing: -.06em; line-height: .9; }
-    h1 span { background: var(--acid); color: #17211b; padding: 0 8px; }
+    .page { width: min(1080px, calc(100% - 48px)); margin: 0 auto; padding: 28px 0 64px; }
 
-    .lede, .hint { line-height: 1.5; }
-    .menu-actions, .settings-grid { display: grid; gap: 10px; max-width: 360px; margin-top: 22px; }
-    .settings-grid label { display: grid; gap: 6px; font-size: 14px; }
+    .hero, .settings-wrap {
+      min-height: calc(100vh - 92px);
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      text-align: center;
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .18em;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 80px;
+      font-weight: 600;
+      letter-spacing: -.045em;
+      line-height: 1;
+    }
+
+    .lede {
+      max-width: 520px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 21px;
+      line-height: 1.4;
+      font-weight: 400;
+    }
+
+    .hint { margin: 10px 0 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+
+    .hero-actions { display: flex; gap: 14px; margin-top: 32px; }
+
+    .settings-card {
+      width: min(420px, 100%);
+      margin-top: 28px;
+      padding: 8px 22px 18px;
+      text-align: left;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      backdrop-filter: blur(24px);
+      box-shadow: var(--shadow);
+    }
+
+    .settings-card label, .settings-card .field {
+      display: grid;
+      gap: 8px;
+      padding: 16px 0;
+      border-top: 1px solid var(--line);
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .settings-card label:first-child, .settings-card .field:first-child { border-top: 0; }
+
     select, input[type="range"] { width: 100%; }
-    .theme-row { display: flex; gap: 8px; }
-    .theme-row button[aria-pressed="true"] { outline: 2px solid var(--ink); }
+    select {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      font-size: 17px;
+      padding: 0;
+    }
 
-    .top-link { font-size: 13px; font-weight: 700; color: inherit; }
+    .theme-row { display: flex; gap: 8px; }
+    .theme-row button {
+      color: var(--ink);
+      box-shadow: inset 0 0 0 1px var(--line);
+    }
+    .theme-row button[aria-pressed="true"] { background: var(--blue); color: white; box-shadow: none; }
+
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .wordmark { font-weight: 600; letter-spacing: -.03em; font-size: 17px; }
 
     .stage {
       display: grid;
-      grid-template-columns: 148px auto 168px;
-      gap: 18px;
-      align-items: start;
+      grid-template-columns: 132px auto 150px;
+      gap: 28px;
+      align-items: center;
       justify-content: center;
     }
 
-    .panel { display: grid; gap: 14px; }
-    .box { border: 1px solid var(--line); background: var(--panel); padding: 10px; }
-    .box h2 { margin: 0 0 8px; font-size: 12px; letter-spacing: .12em; }
-    .stat { display: flex; justify-content: space-between; gap: 12px; font-variant-numeric: tabular-nums; }
-    .stat b { font-size: 18px; }
+    .panel { display: grid; gap: 28px; }
+    .box h2 {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    .stat { display: grid; gap: 2px; }
+    .stat span { color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+    .stat b { font-size: 28px; font-weight: 600; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
     .board-wrap { position: relative; width: max-content; justify-self: center; }
-    canvas { display: block; background: var(--well); border: 2px solid var(--ink); }
-    #hold-canvas.used { opacity: .38; }
+    #board {
+      display: block;
+      background: var(--well);
+      border: 0;
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+    }
+    #hold-canvas, #next-canvas { display: block; background: transparent; border: 0; }
+    #hold-canvas.used { opacity: .35; }
+    #hold-state { margin: 8px 0 0; }
 
     .veil {
       position: absolute;
-      inset: 2px;
+      inset: 0;
       display: grid;
       align-content: center;
-      gap: 10px;
-      padding: 22px;
-      background: color-mix(in srgb, var(--paper) 92%, transparent);
+      justify-items: center;
+      gap: 12px;
+      padding: 28px;
+      text-align: center;
+      background: color-mix(in srgb, var(--well) 88%, transparent);
+      border-radius: 28px;
+      backdrop-filter: blur(16px);
     }
 
     .veil[hidden] { display: none; }
-    .veil h2 { margin: 0; font-size: 28px; }
-    .veil p { margin: 0; line-height: 1.5; }
-    .pad { display: none; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 16px; }
-    .keys { font-size: 13px; line-height: 1.6; }
-    kbd { border: 1px solid var(--line); padding: 0 5px; }
+    .veil h2 { margin: 0; font-size: 40px; font-weight: 600; letter-spacing: -.04em; }
+    .veil p { margin: 0; color: var(--muted); }
+    .veil .primary, .veil .text-btn { margin-top: 6px; }
+    .pad { display: none; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 18px; }
+    .pad button { color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+    .keys { margin: 22px 0 0; color: var(--muted); font-size: 13px; text-align: center; }
 
     @media (max-width: 760px) {
-      h1 { font-size: 40px; }
+      h1 { font-size: 48px; }
+      .hero-actions, .stage { display: grid; }
       .stage { grid-template-columns: 1fr; }
       .panel { grid-template-columns: 1fr 1fr; }
       .pad { display: grid; }
@@ -103,21 +216,22 @@
 </head>
 <body data-theme="light">
   <div class="page">
-    <section id="menu">
-      <h1><span data-i18n="title">架塊</span></h1>
+    <section id="menu" class="hero">
+      <p class="eyebrow">BRIDGE</p>
+      <h1 data-i18n="title">架塊</h1>
       <p class="lede" data-i18n="lede"></p>
       <p class="hint" data-i18n="menuHint"></p>
-      <div class="menu-actions">
-        <button id="go-marathon" type="button" data-i18n="marathon">馬拉松</button>
-        <button id="go-sprint" type="button" data-i18n="sprint">40 行競速</button>
-        <button id="go-settings" type="button" data-i18n="settings">設定</button>
-        <a class="top-link" href="../index.html" data-i18n="back">回作品列表</a>
+      <div class="hero-actions">
+        <button id="go-marathon" class="primary" type="button" data-i18n="marathon">馬拉松</button>
+        <button id="go-sprint" class="secondary" type="button" data-i18n="sprint">40 行競速</button>
       </div>
+      <button id="go-settings" class="text-btn" type="button" data-i18n="settings">設定</button>
     </section>
 
-    <section id="settings" hidden>
-      <h1><span data-i18n="settings">設定</span></h1>
-      <div class="settings-grid">
+    <section id="settings" class="settings-wrap" hidden>
+      <p class="eyebrow">BRIDGE</p>
+      <h1 data-i18n="settings">設定</h1>
+      <div class="settings-card">
         <label><span data-i18n="language">語言</span>
           <select id="lang">
             <option value="zh-Hant">繁體中文</option>
@@ -132,18 +246,22 @@
         <label><span data-i18n="volume">音量</span>
           <input id="volume" type="range" min="0" max="100" value="70">
         </label>
-        <div>
-          <div data-i18n="theme">背景</div>
+        <div class="field">
+          <span data-i18n="theme">背景</span>
           <div class="theme-row">
             <button id="theme-light" type="button" data-i18n="light">白底</button>
             <button id="theme-dark" type="button" data-i18n="dark">黑底</button>
           </div>
         </div>
-        <button id="settings-back" type="button" data-i18n="close">返回</button>
       </div>
+      <button id="settings-back" class="text-btn" type="button" data-i18n="close">返回</button>
     </section>
 
     <section id="game" hidden>
+      <div class="nav">
+        <div class="wordmark" data-i18n="title">架塊</div>
+        <button id="game-menu" class="text-btn" type="button" data-i18n="menu">回選單</button>
+      </div>
       <div class="stage">
         <aside class="panel">
           <section class="box">
@@ -157,8 +275,8 @@
           <div class="veil" id="veil" hidden>
             <h2 id="veil-title"></h2>
             <p id="veil-copy"></p>
-            <button id="veil-btn" type="button"></button>
-            <button id="veil-menu" type="button" data-i18n="menu">回選單</button>
+            <button id="veil-btn" class="primary" type="button"></button>
+            <button id="veil-menu" class="text-btn" type="button" data-i18n="menu">回選單</button>
           </div>
         </div>
         <aside class="panel">
@@ -172,7 +290,6 @@
             <div class="stat"><span id="third-label" data-i18n="stage">階段</span><b id="third">1</b></div>
             <div class="stat"><span data-i18n="best">最高</span><b id="best">0</b></div>
           </section>
-          <button id="game-menu" type="button" data-i18n="menu">回選單</button>
         </aside>
       </div>
       <div class="pad">
@@ -194,8 +311,8 @@
     } from "./logic.mjs";
 
     const COLORS = {
-      I: "#1f8aa8", O: "#e2a322", T: "#b14d9a", S: "#3f8f4e", Z: "#d4533a",
-      J: "#3d62b5", L: "#e07a2f", B: "#17211b", X: "#243b73", D: "#c46a2b", R: "#ff4d6d",
+      I: "#64d2ff", O: "#ffd60a", T: "#bf5af2", S: "#30d158", Z: "#ff453a",
+      J: "#0a84ff", L: "#ff9f0a", B: "#8e8e93", X: "#5e5ce6", D: "#ff9f0a", R: "#ff375f",
     };
     const CELL = 28;
     const board = document.querySelector("#board");
@@ -439,35 +556,42 @@
     bindPress("#btn-hold", doHold);
     bindPress("#btn-drop", doHard);
 
-    function ink() { return document.body.dataset.theme === "dark" ? "#f4f1e8" : "#17211b"; }
-    function well() { return document.body.dataset.theme === "dark" ? "#1a1a1a" : "#f7f4ec"; }
-    function pieceColor(type) {
-      if (type === "B" && document.body.dataset.theme === "dark") return "#e6e0d4";
-      return COLORS[type] || ink();
+    function ink() { return document.body.dataset.theme === "dark" ? "#f5f5f7" : "#1d1d1f"; }
+    function well() { return document.body.dataset.theme === "dark" ? "#1c1c1e" : "#ffffff"; }
+    function pieceColor(type) { return COLORS[type] || ink(); }
+
+    function tile(context, x, y, size, ghost) {
+      const pad = size > 24 ? 3 : 2;
+      const radius = Math.max(4, size * 0.22);
+      const left = x * size + pad;
+      const top = y * size + pad;
+      const side = size - pad * 2;
+      context.beginPath();
+      context.roundRect(left, top, side, side, radius);
+      if (ghost) {
+        context.strokeStyle = document.body.dataset.theme === "dark" ? "rgba(255,255,255,.45)" : "rgba(0,0,0,.28)";
+        context.lineWidth = 1.5;
+        context.stroke();
+        return;
+      }
+      context.fill();
+      const gloss = context.createLinearGradient(left, top, left, top + side);
+      gloss.addColorStop(0, "rgba(255,255,255,.38)");
+      gloss.addColorStop(0.42, "rgba(255,255,255,0)");
+      context.fillStyle = gloss;
+      context.fill();
     }
 
     function drawBlob(context, cells, type, size, ghost, markIndex = null) {
-      const set = new Set(cells.map(([x, y]) => `${x},${y}`));
-      context.fillStyle = pieceColor(type);
-      context.strokeStyle = ink();
-      context.lineWidth = 2;
       cells.forEach(([x, y], index) => {
         if (y < 0 || y >= ROWS || x < 0 || x >= COLS) return;
-        const neighbors = [set.has(`${x - 1},${y}`), set.has(`${x + 1},${y}`), set.has(`${x},${y - 1}`), set.has(`${x},${y + 1}`)];
-        const inset = 1.5;
-        const left = x * size + (neighbors[0] ? 0 : inset);
-        const top = y * size + (neighbors[2] ? 0 : inset);
-        const right = (x + 1) * size - (neighbors[1] ? 0 : inset);
-        const bottom = (y + 1) * size - (neighbors[3] ? 0 : inset);
-        if (ghost) context.strokeRect(x * size + 4, y * size + 4, size - 8, size - 8);
-        else {
-          context.fillRect(left, top, right - left, bottom - top);
-          if (index === markIndex && (type === "B" || type === "X")) {
-            context.fillStyle = type === "B" ? "#dfff45" : "#7ee0ff";
-            context.beginPath();
-            context.arc(x * size + size / 2, y * size + size / 2, Math.max(3, size * 0.16), 0, Math.PI * 2);
-            context.fill();
-          }
+        context.fillStyle = pieceColor(type);
+        tile(context, x, y, size, ghost);
+        if (!ghost && index === markIndex && (type === "B" || type === "X")) {
+          context.fillStyle = type === "B" ? "#1d1d1f" : "#ffffff";
+          context.beginPath();
+          context.arc(x * size + size / 2, y * size + size / 2, Math.max(2.5, size * 0.12), 0, Math.PI * 2);
+          context.fill();
         }
       });
     }
@@ -494,7 +618,7 @@
           const cell = grid[y][x];
           if (!cell || skip.has(cell.g)) continue;
           if (!cell.bomb && cell.reward !== "bbtan") continue;
-          context.fillStyle = cell.bomb ? "#dfff45" : "#7ee0ff";
+          context.fillStyle = cell.bomb ? "#1d1d1f" : "#ffffff";
           context.beginPath();
           context.arc(x * size + size / 2, y * size + size / 2, Math.max(3, size * 0.16), 0, Math.PI * 2);
           context.fill();
@@ -533,13 +657,6 @@
         ctx.rotate(angle);
         ctx.translate(-board.width / 2, -board.height / 2);
       }
-      ctx.strokeStyle = document.body.dataset.theme === "dark" ? "rgba(244,241,232,.08)" : "rgba(23,33,27,.08)";
-      for (let x = 1; x < COLS; x += 1) {
-        ctx.beginPath(); ctx.moveTo(x * CELL + .5, 0); ctx.lineTo(x * CELL + .5, board.height); ctx.stroke();
-      }
-      for (let y = 1; y < ROWS; y += 1) {
-        ctx.beginPath(); ctx.moveTo(0, y * CELL + .5); ctx.lineTo(board.width, y * CELL + .5); ctx.stroke();
-      }
       const skip = new Set();
       if (anim?.step.type === "drop") for (const move of anim.step.moves) skip.add(move.g);
       drawGridCells(ctx, game.grid, skip, CELL);
@@ -549,14 +666,14 @@
         for (const move of anim.step.moves) {
           const y = move.y0 + (move.y1 - move.y0) * eased;
           ctx.fillStyle = pieceColor(move.type);
-          ctx.fillRect(move.x * CELL + 1.5, y * CELL + 1.5, CELL - 3, CELL - 3);
+          tile(ctx, move.x, y, CELL, false);
         }
       }
       if (anim?.step.type === "clear") {
         ctx.globalAlpha = 1 - anim.t / anim.dur;
         for (const cell of anim.step.cells) {
           ctx.fillStyle = pieceColor(cell.type);
-          ctx.fillRect(cell.x * CELL + 1.5, cell.y * CELL + 1.5, CELL - 3, CELL - 3);
+          tile(ctx, cell.x, cell.y, CELL, false);
         }
         ctx.globalAlpha = 1;
         for (const cell of anim.step.blasts || []) {
