@@ -384,6 +384,43 @@ html[lang="zh-Hans"] body { font-family: "Noto Serif SC", "Noto Serif TC", serif
 .kana, .jp, .latin, .place, .side { letter-spacing: 0.18em; }
 .jp { font-family: var(--jp); }
 .kana, .latin, .place, .side { font-size: 12px; color: #7a6248; }
+.tarot-answer { white-space: pre-wrap; }
+.tarot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+.tarot-card {
+  padding: 12px 12px 16px;
+  border: 1px solid rgba(230, 201, 138, 0.35);
+  background: rgba(16, 12, 10, 0.55);
+  animation: deal 0.7s both;
+}
+.tarot-card h3 { margin: 8px 0 0; font-size: 22px; }
+.tarot-art {
+  color: var(--gold-2);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(230, 201, 138, 0.16), transparent 55%),
+    #14110e;
+}
+.tarot-art.reversed { transform: rotate(180deg); }
+.tarot-mark { width: 100%; height: auto; display: block; }
+@keyframes deal {
+  from { opacity: 0; transform: translateY(36px) rotate(-6deg); }
+  to { opacity: 1; transform: none; }
+}
+.hex .yao { animation: yao-in 0.45s both; }
+.hex .yao:nth-child(6) { animation-delay: 0.05s; }
+.hex .yao:nth-child(5) { animation-delay: 0.14s; }
+.hex .yao:nth-child(4) { animation-delay: 0.23s; }
+.hex .yao:nth-child(3) { animation-delay: 0.32s; }
+.hex .yao:nth-child(2) { animation-delay: 0.41s; }
+.hex .yao:nth-child(1) { animation-delay: 0.5s; }
+@keyframes yao-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
 .spread { display: grid; gap: 12px; margin-top: 18px; }
 .oracle-card {
   padding: 16px 16px 8px;
@@ -651,6 +688,8 @@ html[lang="zh-Hans"] body { font-family: "Noto Serif SC", "Noto Serif TC", serif
 }
 [data-theme="light"] .panel,
 [data-theme="light"] .sheet,
+[data-theme="light"] .tarot-card,
+[data-theme="light"] .tarot-art { background: #fffaf3; color: #1c1612; }
 [data-theme="light"] .oracle-card {
   background: rgba(255, 250, 244, 0.88);
   color: #1c1612;

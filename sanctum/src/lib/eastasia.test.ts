@@ -3,7 +3,8 @@ import { toHans } from '../i18n/hans'
 import { DICT } from '../i18n/dict'
 import { clashAnimal, jianchuIndex, mansionOf, nineMonthStar, nineYearStar, rokuyoIndex } from './almanac'
 import { castQizheng } from './qizheng'
-import { tarotDeck } from './tarot'
+import { OMIKUJI } from '../data/omikuji'
+import { tarotAnswer, tarotDeck } from './tarot'
 import { castYijing, hexagramFromLines, hexCount, type Line } from './yijing'
 
 function line(yang: boolean): Line {
@@ -58,5 +59,18 @@ describe('language and east asian charts', () => {
   it('builds a seventy-eight card tarot deck', () => {
     expect(tarotDeck()).toHaveLength(78)
     expect(tarotDeck()[0].title.en).toBe('The Fool')
+  })
+
+  it('answers the question with the drawn cards', () => {
+    const fool = tarotDeck()[0]
+    const text = tarotAnswer('這份工作要不要接', [{ card: fool, reversed: false }], 'zh-Hant')
+    expect(text).toContain('這份工作要不要接')
+    expect(text).toContain('愚者')
+    expect(text).toContain('可以')
+  })
+
+  it('keeps omikuji slips distinct', () => {
+    expect(OMIKUJI.length).toBeGreaterThanOrEqual(30)
+    expect(new Set(OMIKUJI.map((slip) => slip.id)).size).toBe(OMIKUJI.length)
   })
 })

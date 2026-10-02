@@ -124,6 +124,72 @@ export function drawTarot(count: number): DrawnCard[] {
   return drawMany(tarotDeck(), count).map((card) => ({ card, reversed: randomIndex(2) === 1 }))
 }
 
+const PLACE: Record<Lang, [string, string, string]> = {
+  'zh-Hant': ['過去', '現在', '未來'],
+  'zh-Hans': ['过去', '现在', '未来'],
+  en: ['Past', 'Present', 'Future'],
+  ja: ['過去', '現在', '未来'],
+}
+
+function stanceOf(cards: DrawnCard[]) {
+  const score = cards.reduce((sum, item) => sum + (item.reversed ? -1 : 1), 0)
+  if (score > 0) return 'go'
+  if (score < 0) return 'stop'
+  return 'wait'
+}
+
+function closing(stance: 'go' | 'wait' | 'stop', domain: Domain, question: string, lang: Lang) {
+  const q = question
+  const table: Record<typeof stance, Record<Domain, Record<Lang, string>>> = {
+    go: {
+      love: L(`所以「${q}」可以往前，但只把感情說成一個具體的約定。`, `所以「${q}」可以往前，但只把感情说成一个具体的约定。`, `So “${q}” can go forward, as one concrete promise.`, `だから「${q}」は進めてよい。ただし約束は一つに。`),
+      work: L(`所以「${q}」牌面偏向可以做，只做牌上那一步，不要一次押上整個決定。`, `所以「${q}」牌面偏向可以做，只做牌上那一步，不要一次押上整个决定。`, `So “${q}” leans yes. Do only the step the cards name, not the whole decision at once.`, `だから「${q}」は進めてよい。牌が言う一歩だけ。`),
+      money: L(`所以「${q}」可以小額前進，數目要能一句話說明。`, `所以「${q}」可以小额前进，数目要能一句话说明。`, `So “${q}” can move in a small amount you can explain in one sentence.`, `だから「${q}」は小さい額なら進めてよい。一言で説明できる分だけ。`),
+      health: L(`所以「${q}」方向是對的，但今天先做休息和一個預約，不做猛的治療決定。`, `所以「${q}」方向是对的，但今天先做休息和一个预约，不做猛的治疗决定。`, `So “${q}” is aimed right, but today only rest and one appointment.`, `だから「${q}」の方向は合っている。今日は休息と予約だけ。`),
+      general: L(`所以「${q}」可以動。照牌上的那一句做，做完再看要不要加碼。`, `所以「${q}」可以动。照牌上的那一句做，做完再看要不要加码。`, `So “${q}” can move. Follow the sentence on the card, then decide whether to add more.`, `だから「${q}」は動いてよい。牌の一文どおりに。`),
+    },
+    wait: {
+      love: L(`所以「${q}」先不要答是或否。把話留到兩個人都空的時候。`, `所以「${q}」先不要答是或否。把话留到两个人都空的时候。`, `So “${q}” is not a yes or a no yet. Speak when both of you are actually free.`, `だから「${q}」はまだ是非を出さない。二人とも空いたときに。`),
+      work: L(`所以「${q}」先不要接，也不要拒。缺的是一個日期和一個條件。`, `所以「${q}」先不要接，也不要拒。缺的是一个日期和一个条件。`, `So “${q}” should be neither accepted nor refused yet. You still need a date and a condition.`, `だから「${q}」はまだ受けず、拒まない。日付と条件が足りない。`),
+      money: L(`所以「${q}」先不要進出。等你能把數目寫下來。`, `所以「${q}」先不要进出。等你能把数目写下来。`, `So “${q}” should not move money yet. Wait until the number is written down.`, `だから「${q}」はまだ金を動かさない。額を書いてから。`),
+      health: L(`所以「${q}」今天只觀察，不改大方向。`, `所以「${q}」今天只观察，不改大方向。`, `So “${q}” is for watching today, not for changing the whole plan.`, `だから「${q}」は今日は観察だけ。大きな方向は変えない。`),
+      general: L(`所以「${q}」先停在半空。牌要你換角度，不是要你立刻表態。`, `所以「${q}」先停在半空。牌要你换角度，不是要你立刻表态。`, `So “${q}” stays in mid-air. The cards want another angle, not an instant verdict.`, `だから「${q}」は空中で止まる。すぐ態度を決めるのではなく、角度を変える。`),
+    },
+    stop: {
+      love: L(`所以「${q}」現在不要攤牌，也不要追問。先把最後那句話留到明天。`, `所以「${q}」现在不要摊牌，也不要追问。先把最后那句话留到明天。`, `So “${q}” should not be forced open now. Keep the last sentence until tomorrow.`, `だから「${q}」は今は突きつけない。最後の一言は明日まで。`),
+      work: L(`所以「${q}」現在不要接。牌說這結構還會掉，先收，不要補。`, `所以「${q}」现在不要接。牌说这结构还会掉，先收，不要补。`, `So “${q}” is a no for now. The structure is still falling. Gather it in. Do not patch it.`, `だから「${q}」は今は受けない。構造はまだ落ちる。直すより収める。`),
+      money: L(`所以「${q}」不要進場。先處理已經漏的那一筆。`, `所以「${q}」不要进场。先处理已经漏的那一笔。`, `So “${q}” should not enter. Deal with the leak you already have.`, `だから「${q}」は入らない。すでに漏れている分を先に。`),
+      health: L(`所以「${q}」不要硬撐。今天的回答是停，並讓人知道你停了。`, `所以「${q}」不要硬撑。今天的回答是停，并让人知道你停了。`, `So “${q}” should not be pushed through. Today’s answer is to stop, and to say that you stopped.`, `だから「${q}」は無理に進まない。今日の答は止まること。`),
+      general: L(`所以「${q}」現在的回答是不要。等牌上說的那件結束，再重新問。`, `所以「${q}」现在的回答是不要。等牌上说的那件结束，再重新问。`, `So the answer to “${q}” is not now. Ask again after the thing the cards named has ended.`, `だから「${q}」への答は、今は否。牌が言うものが終わってから、もう一度。`),
+    },
+  }
+  return table[stance][domain][lang]
+}
+
+export function tarotAnswer(question: string, cards: DrawnCard[], lang: Lang) {
+  const asked = question.trim()
+  const subject = asked || (lang === 'en' ? 'the thing you would not write down' : lang === 'ja' ? '書かれなかった一件' : lang === 'zh-Hans' ? '你没有写下的那件事' : '你沒有寫下的那件事')
+  const domain = detectDomain(asked)
+  const open = lang === 'en'
+    ? `You asked “${subject}”.`
+    : lang === 'ja'
+      ? `問いは「${subject}」。`
+      : lang === 'zh-Hans'
+        ? `你问的是「${subject}」。`
+        : `你問的是「${subject}」。`
+  const lines = cards.map((item, index) => {
+    const place = cards.length === 3 ? `${PLACE[lang][index]}，` : ''
+    const title = item.card.title[lang]
+    const side = item.reversed ? (lang === 'en' ? 'reversed' : lang === 'ja' ? '逆' : '逆位') : (lang === 'en' ? 'upright' : lang === 'ja' ? '正' : '正位')
+    const meaning = item.reversed ? item.card.reversed[lang] : item.card.upright[lang]
+    if (lang === 'en') return `${place}${title} (${side}) answers “${subject}” like this: ${meaning}`
+    if (lang === 'ja') return `${place}${title}（${side}）は「${subject}」にこう答える。${meaning}`
+    if (lang === 'zh-Hans') return `${place}${title}（${side}）直接回答「${subject}」：${meaning}`
+    return `${place}${title}（${side}）直接回答「${subject}」：${meaning}`
+  })
+  return [open, ...lines, closing(stanceOf(cards), domain, subject, lang)].join('\n')
+}
+
 export function detectDomain(question: string): Domain {
   const text = question.toLowerCase()
   const table: [Domain, string[]][] = [

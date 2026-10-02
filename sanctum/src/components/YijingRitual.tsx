@@ -4,6 +4,7 @@ import { toHans } from '../i18n/hans'
 import { tick } from '../lib/sound'
 import type { Tier } from '../lib/storage'
 import { castYijing, type Line } from '../lib/yijing'
+import { pulseScene } from '../scene/store'
 import { QuestionField, RitualFrame } from './Chrome'
 
 const TRI_LINE: Record<string, Record<string, string>> = {
@@ -35,6 +36,7 @@ export function YijingRitual({
 
   const go = () => {
     const next = castYijing()
+    pulseScene()
     setCast(next)
     if (sound) tick()
     onRecord(next.primary.hant, String(next.primary.no))
