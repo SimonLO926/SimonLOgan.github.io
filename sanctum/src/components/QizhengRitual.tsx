@@ -6,6 +6,7 @@ import { castQizheng, type SkyBody } from '../lib/qizheng'
 import { tick } from '../lib/sound'
 import type { Tier } from '../lib/storage'
 import { Compass } from './Compass'
+import { pulseScene, sceneBus } from '../scene/store'
 import { QuestionField, RitualFrame } from './Chrome'
 
 export function QizhengRitual({
@@ -37,6 +38,8 @@ export function QizhengRitual({
     const place = cityById(city)
     const date = new Date(Date.UTC(civil.year, civil.month - 1, civil.day, civil.hour, civil.minute) - offsetOf(place, civil) * 60_000)
     const chart = castQizheng(date)
+    sceneBus.sun = chart.bodies[0].lon
+    pulseScene()
     setBodies(chart.bodies)
     setMansion(chart.mansion.name)
     setError('')

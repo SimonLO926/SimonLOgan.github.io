@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { OMIKUJI, type Omikuji } from '../data/omikuji'
+import { useI18n } from '../i18n'
 import { randomIndex } from '../lib/draw'
 import { bell } from '../lib/sound'
 import type { Tier } from '../lib/storage'
-import { resetRitualMotion, sceneBus } from '../scene/store'
+import { pulseScene, resetRitualMotion, sceneBus } from '../scene/store'
 import { QuestionField, RitualFrame, Veil, opened } from './Chrome'
 
 export function OmikujiRitual({
@@ -22,6 +23,8 @@ export function OmikujiRitual({
   const [question, setQuestion] = useState('')
   const [slip, setSlip] = useState<Omikuji | null>(null)
   const [busy, setBusy] = useState(false)
+  const recent = useRef<string[]>([])
+  const { t } = useI18n()
 
   useEffect(() => () => resetRitualMotion(), [])
 
@@ -30,9 +33,12 @@ export function OmikujiRitual({
     setBusy(true)
     setSlip(null)
     sceneBus.lidOpen = false
+    pulseScene()
     if (sound) bell()
     window.setTimeout(() => {
-      const next = OMIKUJI[randomIndex(OMIKUJI.length)]
+      const pool = OMIKUJI.filter((item) => !recent.current.includes(item.id))
+      const next = (pool.length ? pool : OMIKUJI)[randomIndex((pool.length ? pool : OMIKUJI).length)]
+      recent.current = [next.id, ...recent.current].slice(0, 12)
       sceneBus.lidOpen = true
       setSlip(next)
       setBusy(false)
@@ -44,21 +50,21 @@ export function OmikujiRitual({
     <RitualFrame id="omikuji" onBack={onBack}>
       <form onSubmit={(event) => { event.preventDefault(); draw() }}>
         <QuestionField value={question} onChange={setQuestion} />
-        <button className="btn solid" type="submit" disabled={busy}>{busy ? '鈴還在' : slip ? '再求一張' : '搖鈴求籤'}</button>
+        <button className="btn solid" type="submit" disabled={busy}>{busy ? t('omikujiWait') : slip ? t('omikujiAgain') : t('castOmikuji')}</button>
       </form>
       <div aria-live="polite">
         {slip && (
           <article className="paper omikuji" key={slip.id}>
-            <p className="kana">{slip.kana}</p>
+            <p className="kana">{slip.kana} · {OMIKUJI.findIndex((item) => item.id === slip.id) + 1}/{OMIKUJI.length}</p>
             <h3 className="jp-grade">{slip.grade}</h3>
             <p className="jp">{slip.jp}</p>
             {question.trim() && <p className="asked">所問「{question.trim()}」</p>}
             <p>{slip.reading}</p>
             <dl className="split">
-              <div><dt>願事</dt><dd>{slip.wish}</dd></div>
-              <div><dt>戀愛</dt><dd>{slip.love}</dd></div>
-              <div><dt>旅行</dt><dd>{slip.travel}</dd></div>
-              <div><dt>失物</dt><dd>{slip.lost}</dd></div>
+              <div><dt>{t('wish')}</dt><dd>{slip.wish}</dd></div>
+              <div><dt>{t('love')}</dt><dd>{slip.love}</dd></div>
+              <div><dt>{t('travel')}</dt><dd>{slip.travel}</dd></div>
+              <div><dt>{t('lost')}</dt><dd>{slip.lost}</dd></div>
             </dl>
             <Veil locked={!opened(tier)} onOpen={onPatron}>
               <p className="master-copy">{slip.master}</p>

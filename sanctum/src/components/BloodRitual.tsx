@@ -3,6 +3,7 @@ import { useI18n } from '../i18n'
 import type { Lang } from '../i18n/types'
 import { tick } from '../lib/sound'
 import type { Tier } from '../lib/storage'
+import { pulseScene } from '../scene/store'
 import { RitualFrame } from './Chrome'
 
 const TYPES = ['A', 'B', 'O', 'AB'] as const
@@ -60,6 +61,7 @@ export function BloodRitual({
             className={type === item ? 'btn solid' : 'btn'}
             onClick={() => {
               setType(item)
+              pulseScene()
               if (sound) tick()
               onRecord(item, 'blood')
             }}

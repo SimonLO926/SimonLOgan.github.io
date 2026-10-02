@@ -6,6 +6,7 @@ import { MONTH_BRANCHES, monthBranchFromSun, sunLongitude } from '../lib/sky'
 import { civilToUtc } from '../lib/civil'
 import { tick } from '../lib/sound'
 import type { Tier } from '../lib/storage'
+import { pulseScene, sceneBus } from '../scene/store'
 import { Compass } from './Compass'
 import { RitualFrame } from './Chrome'
 
@@ -41,6 +42,8 @@ export function NineRitual({
     const monthName = MONTH_BRANCHES[monthBranchFromSun(sunLongitude(civilToUtc(clock, 480)))]
     const monthFromYin = MONTH_BRANCHES.indexOf(monthName)
     const month = nineMonthStar(yearStar, monthFromYin)
+    sceneBus.needle = ([0, 0, 225, 90, 135, 0, 315, 270, 45, 180][yearStar] * Math.PI) / 180
+    pulseScene()
     setResult({ year: yearStar, month })
     setError('')
     if (sound) tick()
