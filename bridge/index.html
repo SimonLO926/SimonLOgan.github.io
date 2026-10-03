@@ -375,18 +375,21 @@
     .pace-slider input { width: min(220px, 46vw); }
     .pace-slider b, .board-line b { font-variant-numeric: tabular-nums; }
     .menu-links { display: flex; gap: 8px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
-    .board-card { width: min(420px, 100%); margin-top: 28px; padding: 8px 22px; text-align: left; }
+    .board-card { width: min(440px, 100%); margin-top: 18px; padding: 8px 22px 16px; text-align: left; }
+    .board-group { padding: 14px 0 4px; border-top: 1px solid var(--line); }
+    .board-group:first-child { border-top: 0; padding-top: 6px; }
+    .board-group h2 { margin: 0 0 4px; font-size: 20px; font-weight: 700; letter-spacing: 0; text-align: left; }
     .board-line {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
       gap: 16px;
-      padding: 18px 0;
-      border-top: 1px solid var(--line);
-      font-size: 22px;
+      padding: 7px 0;
+      font-size: 18px;
     }
-    .board-line:first-child { border-top: 0; }
-    .board-line b { font-size: 40px; color: var(--blue); }
+    .board-line span { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .board-line b { font-size: 22px; color: var(--blue); }
+    #boards.settings-wrap { overflow: auto; align-content: start; max-height: 100vh; padding: 28px 0 48px; }
     .stat.is-live b { color: var(--md-primary); }
     .callout {
       position: absolute;
@@ -1082,15 +1085,7 @@
 
     <section id="boards" class="settings-wrap" hidden>
       <h1 data-i18n="boards">Ranks</h1>
-      <div class="board-card glass" id="board-card">
-        <div id="board-tetris">
-          <div class="board-line"><span data-i18n="normal">Normal</span><b id="board-normal">0</b></div>
-          <div class="board-line"><span><span data-i18n="hard">Hard</span> ×2</span><b id="board-hard">0</b></div>
-        </div>
-        <div class="board-line" id="board-single" hidden>
-          <span id="board-single-name">Score</span><b id="board-single-score">0</b>
-        </div>
-      </div>
+      <div class="board-card glass" id="board-card"></div>
       <button id="boards-back" class="text-btn" type="button" data-i18n="close">Back</button>
     </section>
 
@@ -1264,6 +1259,7 @@
     import { brickWall, createSession, drawSession, updateSession } from "./arcade.mjs";
     import { translate } from "./i18n.mjs";
     import { createTen, createTwenty, tenCycle, tenMove, tenPlace, twentyBest, twentyMove } from "./puzzle.mjs";
+    import { loadBoard, rememberScore } from "./ranks.mjs";
     import { VERSION } from "./version.mjs";
     import {
       COLS, ROWS, SAND_DROPS, SAND_SCALE, SHAPES, beginSand, cellsOf, createGame, fits, flipGrid, ghostY, gravityMs, sandPaintsFor,
@@ -1368,13 +1364,8 @@
       document.querySelector("#version-label").textContent = VERSION;
     }
 
-    function readStored(key) {
-      const value = Number(localStorage.getItem(key) || 0);
-      return Number.isFinite(value) ? value : 0;
-    }
-
-    function normalBest() {
-      return Math.max(readStored("bridge-best-marathon-normal"), readStored("bridge-best-marathon"));
+    function boardRaws(key, legacy = []) {
+      return [localStorage.getItem(key), ...legacy.map((name) => localStorage.getItem(name))];
     }
 
     function syncPace() {
@@ -1387,8 +1378,6 @@
       document.querySelector("#pace-slider").hidden = name !== "custom";
       document.querySelector("#pace-range").value = String(speed);
       document.querySelector("#pace-value").textContent = `×${speed}`;
-      document.querySelector("#board-normal").textContent = String(normalBest());
-      document.querySelector("#board-hard").textContent = String(readStored("bridge-best-marathon-hard"));
     }
 
     function coarseDevice() {
@@ -1418,12 +1407,59 @@
       return `bridge-best-${game.mode}`;
     }
 
+    function boardLegacy() {
+      if (game.mode === "marathon" && game.paceName !== "hard" && game.paceName !== "custom") return ["bridge-best-marathon"];
+      return [];
+    }
+
+    function readBoard(key, { lower = false, legacy = [] } = {}) {
+      return loadBoard(boardRaws(key, legacy), { lower });
+    }
+
     function readBest() {
-      if (game.mode === "marathon" && game.paceName === "hard") return readStored("bridge-best-marathon-hard");
-      if (game.mode === "marathon" && game.paceName === "custom") return readStored(bestKey());
-      if (game.mode === "marathon") return normalBest();
-      const raw = Number(localStorage.getItem(bestKey()) || 0);
-      return Number.isFinite(raw) ? raw : 0;
+      return readBoard(bestKey(), { lower: game.mode === "sprint", legacy: boardLegacy() })[0] || 0;
+    }
+
+    function remember(value) {
+      const lower = game.mode === "sprint";
+      const legacy = boardLegacy();
+      const key = bestKey();
+      const next = rememberScore(boardRaws(key, legacy), value, { lower });
+      localStorage.setItem(key, JSON.stringify(next));
+      for (const name of legacy) localStorage.removeItem(name);
+      return next;
+    }
+
+    function renderBoards() {
+      const id = currentGame();
+      const card = document.querySelector("#board-card");
+      card.replaceChildren();
+      const groups = id === "bridge"
+        ? [
+          [t("normal"), readBoard("bridge-best-marathon-normal", { legacy: ["bridge-best-marathon"] }), (value) => String(value)],
+          [`${t("hard")} ×2`, readBoard("bridge-best-marathon-hard"), (value) => String(value)],
+          [t("sprint"), readBoard("bridge-best-sprint", { lower: true }), formatTime],
+          ...(settings.pace === "custom" ? [[`${t("custom")} ×${paceOf({ pace: settings.paceSpeed })}`, readBoard(`bridge-best-marathon-custom-${paceOf({ pace: settings.paceSpeed })}`), (value) => String(value)]] : []),
+        ]
+        : [[t(GAMES.find(([name]) => name === id)[1]), readBoard(`bridge-best-${id}`), (value) => String(value)]];
+      for (const [title, values, format] of groups) {
+        const group = document.createElement("section");
+        group.className = "board-group";
+        const heading = document.createElement("h2");
+        heading.textContent = title;
+        group.append(heading);
+        for (let index = 0; index < 5; index += 1) {
+          const line = document.createElement("div");
+          line.className = "board-line";
+          const rank = document.createElement("span");
+          rank.textContent = String(index + 1);
+          const score = document.createElement("b");
+          score.textContent = values[index] ? format(values[index]) : "–";
+          line.append(rank, score);
+          group.append(line);
+        }
+        card.append(group);
+      }
     }
 
     function formatTime(ms) {
@@ -1616,15 +1652,7 @@
     document.querySelector("#settings-back").addEventListener("click", () => showScreen("menu"));
     document.querySelector("#go-boards").addEventListener("click", () => {
       syncPace();
-      const id = currentGame();
-      const tetrisBoard = id === "bridge";
-      document.querySelector("#board-tetris").hidden = !tetrisBoard;
-      document.querySelector("#board-single").hidden = tetrisBoard;
-      if (!tetrisBoard) {
-        const key = GAMES.find(([name]) => name === id)[1];
-        document.querySelector("#board-single-name").textContent = t(key);
-        document.querySelector("#board-single-score").textContent = String(readStored(`bridge-best-${id}`));
-      }
+      renderBoards();
       showScreen("boards");
     });
     document.querySelector("#boards-back").addEventListener("click", () => showScreen("menu"));
@@ -2334,7 +2362,7 @@
         game.score = total;
         session = null;
         game.phase = "over";
-        if (total > readBest()) localStorage.setItem(bestKey(), String(total));
+        remember(total);
         showVeil(t("topped"), String(total), t("again"));
         return;
       }
@@ -2349,7 +2377,7 @@
       last = now;
       if (puzzle?.over && game.phase !== "over") {
         game.phase = "over";
-        if (puzzle.score > readBest()) localStorage.setItem(bestKey(), String(puzzle.score));
+        remember(puzzle.score);
         showVeil(t("topped"), String(puzzle.score), t("again"));
       }
 
@@ -2465,12 +2493,10 @@
           } else if (step?.type === "done") {
             frozenTime = performance.now();
             const time = elapsed();
-            const best = readBest();
-            if (!best || time < best) localStorage.setItem(bestKey(), String(time));
+            remember(time);
             showVeil(t("cleared"), formatTime(time), t("again"));
           } else if (step?.type === "over" || game.phase === "over") {
-            const best = readBest();
-            if (game.score > best) localStorage.setItem(bestKey(), String(game.score));
+            remember(game.score);
             showVeil(t("topped"), String(game.score), t("again"));
           } else if (step?.type === "spawn") resetTimers();
         }
