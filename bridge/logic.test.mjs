@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   COLS,
+  REWARD_CHANCE,
   createGame,
   dropComponents,
   cellsOf,
@@ -174,6 +175,26 @@ test("reward modes prefer breakout, then bbtan, then pinball", () => {
   assert.equal(grid[5][5], null);
   assert.equal(grid[5][6], null);
   assert.equal(grid[5][8].type, "O");
+});
+
+test("mystery pieces show up five times as often", () => {
+  assert.equal(REWARD_CHANCE.breakout, 0.005);
+  assert.equal(REWARD_CHANCE.bbtan, 0.005);
+  assert.equal(REWARD_CHANCE.pinball, 0.01);
+  const rolls = [0.5, 0.0049, 0.5, 0.005, 0, 0.5, 0.0199, 0.5, 0.02];
+  let index = 0;
+  const game = createGame({
+    mode: "marathon",
+    random: () => {
+      const value = rolls[index];
+      index += 1;
+      return value === undefined ? 0.99 : value;
+    },
+  });
+  assert.equal(game.pull().type, "R");
+  assert.equal(game.pull().type, "X");
+  assert.equal(game.pull().type, "D");
+  assert.equal(["I", "O", "T", "S", "Z", "J", "L", "B"].includes(game.pull().type), true);
 });
 
 test("one marathon pull in thirty is a penalty cell", () => {
