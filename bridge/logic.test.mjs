@@ -11,8 +11,10 @@ import {
   createGame,
   gravityMs,
   paceOf,
-  sandClusters,
+  sandClearColors,
+  sandPaint,
   SAND_SCALE,
+  sandColorsOf,
   sandColorOf,
   sandFallStep,
   tSpinReady,
@@ -212,7 +214,7 @@ test("mystery pieces show up five times as often", () => {
   assert.equal(["I", "O", "T", "S", "Z", "J", "L", "B"].includes(game.pull().type), true);
 });
 
-test("sand mode lasts twenty drops and uses three colors", () => {
+test("sand mode lasts twenty drops and uses four colors", () => {
   let n = 0;
   const game = createGame({ mode: "marathon", random: () => (n++ % 3) / 3 });
   game.grid[18][0] = { type: "I", g: 1, bomb: true, reward: "breakout", curse: "seal", sand: null };
@@ -242,12 +244,21 @@ test("sand mode lasts twenty drops and uses three colors", () => {
   assert.equal(sandFallStep(blocked), true);
   assert.equal(blocked[blockedHeight - 2][2], 0);
   assert.ok(blocked[blockedHeight - 1][1] === 1 || blocked[blockedHeight - 1][3] === 1);
-  const cluster = Array.from({ length: 4 }, () => Array(12).fill(0));
-  for (let i = 0; i < 8; i += 1) cluster[3][i] = 3;
-  cluster[2][0] = 1;
-  const found = sandClusters(cluster, 8);
-  assert.equal(found.length, 1);
-  assert.equal(found[0].length, 8);
+  const painted = sandPaint("I", [[0, 0], [1, 0], [2, 0], [3, 0]]);
+  assert.equal(new Set(painted).size, 2);
+  assert.equal(painted[0], sandColorsOf("I")[0]);
+  assert.equal(painted[3], sandColorsOf("I")[1]);
+  const span = Array.from({ length: 3 }, () => Array(6).fill(0));
+  span[2].fill(1);
+  span[0][0] = 1;
+  span[0][5] = 2;
+  span[1][1] = 2;
+  const cleared = sandClearColors(span);
+  assert.deepEqual(cleared.colors, [0]);
+  assert.equal(span[2].every((cell) => cell === 0), true);
+  assert.equal(span[0][0], 0);
+  assert.equal(span[1][1], 2);
+  assert.equal(span[0][5], 2);
   game.sandLeft = 1;
   game.sandExit = false;
   game.phase = "playing";
