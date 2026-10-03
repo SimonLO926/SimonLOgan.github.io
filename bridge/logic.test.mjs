@@ -288,6 +288,18 @@ test("sand mode lasts twenty drops and uses four colors", () => {
   assert.equal(span[0][0], 0);
   assert.equal(span[1][1], 2);
   assert.equal(span[0][5], 2);
+  const linked = [
+    [1, 1, 0, 2],
+    [0, 1, 1, 2],
+    [0, 0, 1, 1],
+  ];
+  const linkedClear = sandClearColors(linked);
+  assert.deepEqual(linkedClear.colors, [0]);
+  assert.equal(linked.flat().includes(1), false);
+  assert.equal(linked[0][3], 2);
+  const broken = [[1, 1, 0, 1, 1]];
+  assert.deepEqual(sandClearColors(broken).colors, []);
+  assert.equal(broken[0][0], 1);
   game.sandLeft = 1;
   game.sandExit = false;
   game.phase = "playing";

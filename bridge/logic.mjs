@@ -702,19 +702,36 @@ export function sandFallStep(grid) {
 }
 
 export function sandClearColors(grid) {
+  const height = grid.length;
   const width = grid[0].length;
   const doomed = new Set();
-  for (const row of grid) {
-    const color = row[0];
-    if (!color) continue;
-    let across = true;
-    for (let x = 1; x < width; x += 1) {
-      if (row[x] !== color) {
-        across = false;
-        break;
+  const seen = new Set();
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const color = grid[y][x];
+      if (!color || doomed.has(color)) continue;
+      const start = y * width + x;
+      if (seen.has(start)) continue;
+      const stack = [[x, y]];
+      seen.add(start);
+      let left = x === 0;
+      let right = x === width - 1;
+      while (stack.length) {
+        const [cx, cy] = stack.pop();
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = cx + dx;
+          const ny = cy + dy;
+          if (nx < 0 || ny < 0 || nx >= width || ny >= height || grid[ny][nx] !== color) continue;
+          const key = ny * width + nx;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          if (nx === 0) left = true;
+          if (nx === width - 1) right = true;
+          stack.push([nx, ny]);
+        }
       }
+      if (left && right) doomed.add(color);
     }
-    if (across) doomed.add(color);
   }
   if (!doomed.size) return { colors: [], count: 0 };
   let count = 0;
