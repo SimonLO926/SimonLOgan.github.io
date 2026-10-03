@@ -489,8 +489,51 @@
     .veil h2 { margin: 0; font-size: 40px; font-weight: 600; letter-spacing: -.04em; }
     .veil p { margin: 0; color: var(--muted); }
     .veil .primary, .veil .text-btn { margin-top: 6px; }
-    .pad { display: none; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 18px; }
-    .pad button { color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+    .pad { display: none; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+    .pad button {
+      min-height: 64px;
+      color: var(--ink);
+      border-radius: 18px;
+      background: var(--md-container);
+      box-shadow: inset 0 0 0 1px var(--md-outline);
+      touch-action: manipulation;
+    }
+    #btn-drop { background: var(--md-primary); color: white; }
+
+    html.touch, html.touch body {
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+    html.touch body { touch-action: none; }
+    html.touch button, html.touch a, html.touch input, html.touch select { touch-action: manipulation; }
+    html.touch .settings-wrap {
+      max-height: 100vh;
+      overflow: auto;
+      touch-action: pan-y;
+    }
+    html.touch #game {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 6px 10px calc(8px + env(safe-area-inset-bottom));
+    }
+    html.touch #game .stage { flex: 1; min-height: 0; align-items: start; }
+    body.touch .pad { display: grid; }
+    body.touch .console { grid-template-columns: 1fr 1fr; width: 100%; gap: 8px; }
+    body.touch .board-wrap { grid-column: 1 / -1; order: -1; }
+    body.touch .rail { padding: 8px; border-radius: 18px; }
+    body.touch #game .box h2,
+    body.touch #game .stat span,
+    body.touch #game .hint { font-size: 14px; }
+    body.touch .stat b { font-size: 22px; }
+    body.touch .stat.hero-stat b { font-size: 28px; }
+    body.touch #hold-canvas, body.touch #next-canvas { width: 92px; height: 64px; }
     .keys { margin: 22px 0 0; color: var(--muted); font-size: 13px; text-align: center; }
 
     @keyframes float-a {
@@ -717,6 +760,14 @@
           <input id="volume" type="range" min="0" max="100" value="70">
         </label>
         <div class="field">
+          <span data-i18n="touch">Touch</span>
+          <div class="theme-row" id="touch-row">
+            <button id="touch-auto" type="button" data-i18n="touchAuto">Auto</button>
+            <button id="touch-on" type="button" data-i18n="touchOn">On</button>
+            <button id="touch-off" type="button" data-i18n="touchOff">Off</button>
+          </div>
+        </div>
+        <div class="field">
           <span data-i18n="theme">Background</span>
           <div class="theme-row">
             <button id="theme-light" type="button" data-i18n="light">White</button>
@@ -859,9 +910,10 @@
       </div>
       <div class="pad">
         <button type="button" id="btn-left" data-i18n="left">Left</button>
-        <button type="button" id="btn-right" data-i18n="right">Right</button>
         <button type="button" id="btn-rot" data-i18n="rotate">Turn</button>
         <button type="button" id="btn-hold" data-i18n="keep">Hold</button>
+        <button type="button" id="btn-right" data-i18n="right">Right</button>
+        <button type="button" id="btn-soft" data-i18n="soft">Down</button>
         <button type="button" id="btn-drop" data-i18n="drop">Drop</button>
       </div>
     </section>
@@ -912,9 +964,11 @@
 
     function loadSettings() {
       try {
-        return { lang: "en", volume: 0.7, theme: "light", ...JSON.parse(localStorage.getItem("bridge-settings") || "{}") };
+        const saved = { lang: "en", volume: 0.7, theme: "light", touch: "auto", ...JSON.parse(localStorage.getItem("bridge-settings") || "{}") };
+        if (!saved.touch) saved.touch = "auto";
+        return saved;
       } catch {
-        return { lang: "en", volume: 0.7, theme: "light" };
+        return { lang: "en", volume: 0.7, theme: "light", touch: "auto" };
       }
     }
 
@@ -935,7 +989,27 @@
       document.querySelector("#volume").value = String(Math.round(settings.volume * 100));
       document.querySelector("#theme-light").setAttribute("aria-pressed", String(settings.theme === "light"));
       document.querySelector("#theme-dark").setAttribute("aria-pressed", String(settings.theme === "dark"));
+      applyTouch();
       sound.setVolume();
+    }
+
+    function coarseDevice() {
+      return window.matchMedia("(pointer: coarse)").matches || window.matchMedia("(hover: none)").matches;
+    }
+
+    function touchEnabled() {
+      if (settings.touch === "on") return true;
+      if (settings.touch === "off") return false;
+      return coarseDevice();
+    }
+
+    function applyTouch() {
+      const on = touchEnabled();
+      document.documentElement.classList.toggle("touch", on);
+      document.body.classList.toggle("touch", on);
+      for (const mode of ["auto", "on", "off"]) {
+        document.querySelector(`#touch-${mode}`).setAttribute("aria-pressed", String((settings.touch || "auto") === mode));
+      }
     }
 
     function bestKey() { return game.mode === "sprint" ? "bridge-best-sprint" : "bridge-best-marathon"; }
@@ -1060,6 +1134,13 @@
       applySettings();
       if (settings.volume <= 0) sound.stop();
     });
+    for (const mode of ["auto", "on", "off"]) {
+      document.querySelector(`#touch-${mode}`).addEventListener("click", () => {
+        settings.touch = mode;
+        saveSettings();
+        applySettings();
+      });
+    }
     document.querySelector("#theme-light").addEventListener("click", () => { settings.theme = "light"; saveSettings(); applySettings(); });
     document.querySelector("#theme-dark").addEventListener("click", () => { settings.theme = "dark"; saveSettings(); applySettings(); });
 
@@ -1120,6 +1201,7 @@
       shift(1);
       rightTimer = window.setInterval(() => shift(1), 70);
     }, () => { steer(1, false); window.clearInterval(rightTimer); });
+    bindPress("#btn-soft", () => heldKeys.add("down"), () => heldKeys.delete("down"));
     bindPress("#btn-rot", () => doRotate(1));
     bindPress("#btn-hold", doHold);
     bindPress("#btn-drop", doHard);
@@ -1547,11 +1629,12 @@
       if (document.querySelector("#game").hidden) return;
       const nav = document.querySelector(".nav").offsetHeight;
       const stage = document.querySelector(".stage");
-      const stacked = window.innerWidth <= 760;
-      const pad = 0;
+      const touch = document.body.classList.contains("touch");
+      const stacked = touch || window.innerWidth <= 760;
+      const railH = stacked ? Math.max(0, ...[...document.querySelectorAll(".rail")].map((el) => el.offsetHeight)) : 0;
       const rails = 220 + 236 + 32;
-      const availH = Math.max(420, window.innerHeight - nav - (stacked ? 280 : 64));
-      const availW = Math.max(180, stage.clientWidth - (stacked ? pad : pad + rails));
+      const availH = Math.max(180, (stacked ? stage.clientHeight : window.innerHeight - nav - 48) - (stacked ? railH + 8 : 0));
+      const availW = Math.max(140, stacked ? stage.clientWidth - 4 : stage.clientWidth - rails);
       const scale = Math.max(0.85, Math.min(availH / (ROWS * CELL), availW / (COLS * CELL)));
       const width = Math.round(COLS * CELL * scale);
       const height = Math.round(ROWS * CELL * scale);
@@ -1565,6 +1648,14 @@
     }
 
     window.addEventListener("resize", fitBoard);
+    for (const query of ["(pointer: coarse)", "(hover: none)"]) {
+      window.matchMedia(query).addEventListener("change", () => { applyTouch(); fitBoard(); });
+    }
+    document.addEventListener("touchmove", (event) => {
+      if (!document.documentElement.classList.contains("touch")) return;
+      if (event.target.closest(".settings-wrap, input, select, .settings-card")) return;
+      event.preventDefault();
+    }, { passive: false });
 
     requestAnimationFrame(frame);
     startHero();
