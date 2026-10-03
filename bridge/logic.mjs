@@ -58,16 +58,30 @@ export const CURSE_CHANCE = 1 / 30;
 export const REWARD_CHANCE = { breakout: 0.005, bbtan: 0.005, pinball: 0.01, sand: 0.005 };
 export const SAND_DROPS = 20;
 export const SAND_MATCH = 8;
-export const SAND_COLORS = 3;
+export const SAND_COLORS = 4;
 export const SAND_SCALE = 8;
 export const SAND_OF_TYPE = {
-  I: 0, S: 0, J: 0,
-  O: 1, Z: 1, L: 1,
-  T: 2, B: 2, X: 2, D: 2, R: 2, A: 2, C: 2,
+  I: [0, 1], O: [1, 2], T: [2, 3], S: [3, 0],
+  Z: [0, 2], J: [1, 3], L: [0, 3],
+  B: [2, 0], X: [3, 1], D: [2, 1], R: [3, 2], A: [0, 1], C: [1, 0],
 };
 
+export function sandColorsOf(type) {
+  return SAND_OF_TYPE[type] ?? [0, 1];
+}
+
 export function sandColorOf(type) {
-  return SAND_OF_TYPE[type] ?? 0;
+  return sandColorsOf(type)[0];
+}
+
+export function sandPaint(type, cells) {
+  const [first, second] = sandColorsOf(type);
+  if (cells.length < 2) return cells.map(() => first);
+  const xs = cells.map(([x]) => x);
+  const ys = cells.map(([, y]) => y);
+  const splitX = Math.max(...xs) !== Math.min(...xs);
+  const mid = splitX ? (Math.min(...xs) + Math.max(...xs)) / 2 : (Math.min(...ys) + Math.max(...ys)) / 2;
+  return cells.map(([x, y]) => ((splitX ? x : y) <= mid ? first : second));
 }
 export const TSPIN_SCORE = [400, 800, 1200, 1600];
 
@@ -467,13 +481,20 @@ export function beginSand(game) {
   tint(game.hold);
   tint(game.active);
   const grid = emptySandGrid();
+  const groups = new Map();
   for (let y = 0; y < ROWS; y += 1) {
     for (let x = 0; x < COLS; x += 1) {
       const cell = game.grid[y][x];
       if (!cell) continue;
-      stampSand(grid, x, y, sandColorOf(cell.type) + 1);
+      const key = cell.g ?? `${x},${y}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push({ x, y, type: cell.type });
       game.grid[y][x] = null;
     }
+  }
+  for (const group of groups.values()) {
+    const paints = sandPaint(group[0].type, group.map((cell) => [cell.x, cell.y]));
+    group.forEach((cell, index) => stampSand(grid, cell.x, cell.y, paints[index] + 1));
   }
   game.sandGrid = grid;
 }
@@ -541,36 +562,31 @@ export function sandFallStep(grid) {
   return moved;
 }
 
-export function sandClusters(grid, min = SAND_MATCH * SAND_SCALE * SAND_SCALE) {
-  const height = grid.length;
+export function sandClearColors(grid) {
   const width = grid[0].length;
-  const seen = new Set();
-  const groups = [];
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      const origin = grid[y][x];
-      const key = x + y * width;
-      if (!origin || seen.has(key)) continue;
-      const group = [];
-      const stack = [[x, y]];
-      seen.add(key);
-      while (stack.length) {
-        const [cx, cy] = stack.pop();
-        group.push({ x: cx, y: cy, sand: grid[cy][cx] - 1 });
-        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-          const nx = cx + dx;
-          const ny = cy + dy;
-          if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
-          const nkey = nx + ny * width;
-          if (seen.has(nkey) || grid[ny][nx] !== origin) continue;
-          seen.add(nkey);
-          stack.push([nx, ny]);
-        }
+  const doomed = new Set();
+  for (const row of grid) {
+    const color = row[0];
+    if (!color) continue;
+    let across = true;
+    for (let x = 1; x < width; x += 1) {
+      if (row[x] !== color) {
+        across = false;
+        break;
       }
-      if (group.length >= min) groups.push(group);
+    }
+    if (across) doomed.add(color);
+  }
+  if (!doomed.size) return { colors: [], count: 0 };
+  let count = 0;
+  for (let y = 0; y < grid.length; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (!doomed.has(grid[y][x])) continue;
+      grid[y][x] = 0;
+      count += 1;
     }
   }
-  return groups;
+  return { colors: [...doomed].map((value) => value - 1), count };
 }
 
 export function lockActive(game) {
@@ -580,8 +596,8 @@ export function lockActive(game) {
   const sanding = !!game.sanding && game.sandGrid;
   const cells = cellsOf(game.active.type, game.active.rot, game.active.x, game.active.y);
   if (sanding) {
-    const value = (game.active.sand ?? sandColorOf(game.active.type)) + 1;
-    for (const [x, y] of cells) stampSand(game.sandGrid, x, y, value);
+    const paints = sandPaint(game.active.type, cells);
+    cells.forEach(([x, y], index) => stampSand(game.sandGrid, x, y, paints[index] + 1));
     game.sandLeft -= 1;
     if (game.sandLeft <= 0) game.sandExit = true;
     game.active = null;
@@ -737,15 +753,13 @@ export function pump(game) {
     }
     const moved = game.sandGrid && sandFallStep(game.sandGrid);
     if (moved) return { type: "sand", moves: [] };
-    const groups = game.sandGrid ? sandClusters(game.sandGrid) : [];
-    if (groups.length) {
-      const cells = groups.flat();
-      for (const cell of cells) game.sandGrid[cell.y][cell.x] = 0;
+    const cleared = game.sandGrid ? sandClearColors(game.sandGrid) : { colors: [], count: 0 };
+    if (cleared.count) {
       const bonus = awardCombo(game);
-      const minos = Math.max(1, Math.round(cells.length / (SAND_SCALE * SAND_SCALE)));
+      const minos = Math.max(1, Math.round(cleared.count / (SAND_SCALE * SAND_SCALE)));
       game.score += minos * 25 * scoreMult(game) + bonus;
       noteLines(game, Math.max(1, Math.floor(minos / 4)));
-      return { type: "clear", rows: [], cells: [], blasts: [], combo: game.combo, sand: true, bonus };
+      return { type: "clear", rows: [], cells: [], blasts: [], combo: game.combo, sand: true, bonus, colors: cleared.colors };
     }
     if (game.sandExit) finishSand(game);
     else {

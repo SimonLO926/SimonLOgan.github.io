@@ -1164,7 +1164,7 @@
     import { createSession, drawSession, updateSession } from "./arcade.mjs";
     import { translate } from "./i18n.mjs";
     import {
-      COLS, ROWS, SAND_DROPS, SAND_SCALE, SHAPES, beginSand, cellsOf, createGame, fits, flipGrid, ghostY, gravityMs,
+      COLS, ROWS, SAND_DROPS, SAND_SCALE, SHAPES, beginSand, cellsOf, createGame, fits, flipGrid, ghostY, gravityMs, sandPaint,
       hardDrop, hold, lockActive, paceOf, pump, startGame, tryMove, tryRotate,
     } from "./logic.mjs";
 
@@ -1172,7 +1172,7 @@
       I: "#64d2ff", O: "#ffd60a", T: "#bf5af2", S: "#30d158", Z: "#ff453a",
       J: "#0a84ff", L: "#ff9f0a", B: "#8e8e93", X: "#5e5ce6", D: "#ff9f0a", R: "#ff375f", A: "#e7d3a1",
     };
-    const SAND_HEX = ["#ffd84a", "#ff4b4b", "#3c8dff"];
+    const SAND_HEX = ["#ffd84a", "#ff4b4b", "#3c8dff", "#3dce6e"];
     const CELL = 28;
     const board = document.querySelector("#board");
     const holdCanvas = document.querySelector("#hold-canvas");
@@ -1632,7 +1632,8 @@
       cells.forEach(([x, y], index) => {
         if (y < 0 || y >= ROWS || x < 0 || x >= COLS) return;
         if (sand != null) {
-          drawSandMino(context, x, y, size, sand, ghost);
+          const paints = sandPaint(type, cells);
+          drawSandMino(context, x, y, size, paints[index], ghost);
           return;
         }
         context.fillStyle = pieceColor(type, curse, sand);
