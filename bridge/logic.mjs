@@ -54,6 +54,7 @@ export const SHAPES = {
 
 export const CURSES = ["seal", "reverse", "blind", "rush", "norotate"];
 export const CURSE_CHANCE = 1 / 30;
+export const REWARD_CHANCE = { breakout: 0.005, bbtan: 0.005, pinball: 0.01 };
 
 function bombShapesFrom(base) {
   const shapes = [base.map((cell) => [...cell])];
@@ -145,9 +146,12 @@ export function createGame(options = {}) {
         return describe("C", CURSES[Math.floor(random() * CURSES.length)]);
       }
       const roll = random();
-      if (roll < 0.001) return describe("R");
-      if (roll < 0.002) return describe("X");
-      if (roll < 0.004) return describe("D");
+      const breakoutAt = REWARD_CHANCE.breakout;
+      const bbtanAt = breakoutAt + REWARD_CHANCE.bbtan;
+      const pinballAt = bbtanAt + REWARD_CHANCE.pinball;
+      if (roll < breakoutAt) return describe("R");
+      if (roll < bbtanAt) return describe("X");
+      if (roll < pinballAt) return describe("D");
     }
     sinceBomb += 1;
     if (sinceBomb >= 8) {
