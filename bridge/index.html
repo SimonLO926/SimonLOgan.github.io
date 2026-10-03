@@ -1320,10 +1320,11 @@
 
     function loadSettings() {
       try {
-        const saved = { lang: "en", volume: 0.7, theme: "light", touch: "auto", pace: "normal", paceSpeed: 1, game: "bridge", ...JSON.parse(localStorage.getItem("bridge-settings") || "{}") };
+        const saved = { lang: "en", volume: 0.7, theme: "light", touch: "auto", pace: "normal", paceSpeed: 1, ...JSON.parse(localStorage.getItem("bridge-settings") || "{}") };
         if (!saved.touch) saved.touch = "auto";
         if (!saved.pace) saved.pace = "normal";
         saved.paceSpeed = paceOf({ pace: saved.paceSpeed ?? 1 });
+        saved.game = "bridge";
         return saved;
       } catch {
         return { lang: "en", volume: 0.7, theme: "light", touch: "auto", pace: "normal", paceSpeed: 1, game: "bridge" };
