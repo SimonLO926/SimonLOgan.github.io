@@ -303,7 +303,7 @@
 
   <details class="codex">
     <summary>盤型、零件和射法是怎麼來的</summary>
-    <p>極限盤 BX-10 是圓碗前面缺一截，左右兩個貓耳 Over 口袋加中間較寬的 Xtreme 口，合成「凹」字，不是整圓。約 44 × 45.5 cm，戰鬥區直徑 36.5 cm，龍捲稜 21 cm。Over 口寬約 12 cm，Xtreme 口寬約 19 cm。無限盤 BX-46 是長方形，左右兩端各一個同樣的凹字口，上下兩條長齒軌可以連續 Infinity Dash。Over 2 分，Xtreme 3 分，爆裂 2 分，停轉 1 分，先到 4 分。</p>
+    <p>極限盤 BX-10 約 44 × 45.5 cm，戰鬥區直徑 36.5 cm。齒軌在出口這邊凹進去，左右兩個貓耳加中間舌片構成「凹」字，那是戰鬥區裡的落點，不是得分洞。再外面才是陷阱：左右擊飛區各 2 分，中間極限區 3 分。無限盤 BX-46 左右兩端各有一組同樣的凹字齒軌，陷阱在齒軌外面；上下長軌可以連續 Infinity Dash。爆裂 2 分，停轉 1 分，先到 4 分。</p>
     <p>陀螺分刃、棘輪、軸心。這裡的刃重用公開秤重的約值：劍龍 Dran Sword 34.8 g（BX-01）、地獄鐮刀 Hells Scythe 32.7 g（BX-02）、巫師之箭 Wizard Arrow 32.0 g（BX-03）、騎士之盾 Knight Shield 32.6 g。鯊刃 Shark Edge 取約 35 g。棘輪對齊 3-60 約 6.2 g、4-80 約 7.0 g 這類秤重。軸心約 2.0–2.3 g。拉力對上拉繩競技大約 4000–15200 RPM。</p>
     <ul>
       <li>蓄貓耳：第二下滑到後收，第一下又有明顯左右傾。陀螺收到出口對面兩側空位續轉，用來躲第一波極限衝擊。社區也叫躲貓耳。</li>
@@ -330,8 +330,8 @@
       { a0: 110, a1: 130, kind: "over" }
     ];
     const CATEARS = [
-      { x: -118, y: 96 },
-      { x: 118, y: 96 }
+      { x: -74, y: 118 },
+      { x: 74, y: 118 }
     ];
     const VIEW = { w: 780, h: 720, scale: 1.5, cx: 390, cy: 330 };
 
@@ -1148,26 +1148,39 @@
         bowl.push([Math.cos(angle) * radius, Math.sin(angle) * radius]);
       }
       const outline = bowl.concat([
-        [150, 112], [176, 150], [168, 196], [124, 176], [112, 138],
-        [96, 156], [90, 214], [0, 228], [-90, 214], [-96, 156],
-        [-112, 138], [-124, 176], [-168, 196], [-176, 150], [-150, 112]
+        [132, 108], [108, 128], [78, 146], [42, 132], [18, 112],
+        [0, 102],
+        [-18, 112], [-42, 132], [-78, 146], [-108, 128], [-132, 108]
       ]);
       return {
         id: "xtreme",
         outline,
-        housing: [470, 500],
+        housing: [470, 520],
         ears: CATEARS,
         pockets: [
-          { kind: "over", slope: false, name: "右貓耳", poly: [[118, 130], [176, 150], [186, 198], [130, 188], [112, 150]] },
-          { kind: "xtreme", slope: false, name: "Xtreme", poly: [[-78, 150], [-96, 236], [96, 236], [78, 150]] },
-          { kind: "over", slope: false, name: "左貓耳", poly: [[-118, 130], [-112, 150], [-130, 188], [-186, 198], [-176, 150]] }
+          { kind: "over", slope: false, name: "左擊飛", poly: [[-150, 168], [-210, 176], [-214, 232], [-142, 236], [-136, 180]] },
+          { kind: "xtreme", slope: false, name: "極限", poly: [[-78, 176], [-86, 248], [86, 248], [78, 176]] },
+          { kind: "over", slope: false, name: "右擊飛", poly: [[150, 168], [136, 180], [142, 236], [214, 232], [210, 176]] }
         ],
         rail(parent, toothGeo, toothMat) {
-          for (let deg = 154; deg < 386; deg += 6) {
+          for (let deg = 158; deg < 382; deg += 6) {
             const angle = degRad(deg);
             const tooth = new THREE.Mesh(toothGeo, toothMat);
-            tooth.position.set(Math.cos(angle) * 148, 7.2, Math.sin(angle) * 148);
+            tooth.position.set(Math.cos(angle) * 146, 7.2, Math.sin(angle) * 146);
             tooth.rotation.y = Math.PI / 2 - angle;
+            parent.add(tooth);
+          }
+          [-1, 1].forEach((side) => {
+            for (let i = 0; i <= 7; i += 1) {
+              const t = i / 7;
+              const tooth = new THREE.Mesh(toothGeo, toothMat);
+              tooth.position.set(side * (28 + Math.sin(t * Math.PI) * 58), 7.2, 96 + Math.sin(t * Math.PI) * 42);
+              parent.add(tooth);
+            }
+          });
+          for (let y = 96; y <= 124; y += 7) {
+            const tooth = new THREE.Mesh(toothGeo, toothMat);
+            tooth.position.set(0, 7.2, y);
             parent.add(tooth);
           }
         }
@@ -1179,33 +1192,48 @@
       const outline = [];
       for (let x = 170; x >= -170; x -= 16) outline.push([x, -yRail]);
       outline.push(
-        [-188, -108], [-246, -86], [-262, -48], [-214, -24],
-        [-236, 0],
-        [-214, 24], [-262, 48], [-246, 86], [-188, 108]
+        [-186, -92], [-210, -70], [-198, -36], [-176, -18],
+        [-188, 0],
+        [-176, 18], [-198, 36], [-210, 70], [-186, 92]
       );
       for (let x = -170; x <= 170; x += 16) outline.push([x, yRail]);
       outline.push(
-        [188, 108], [246, 86], [262, 48], [214, 24],
-        [236, 0],
-        [214, -24], [262, -48], [246, -86], [188, -108]
+        [186, 92], [210, 70], [198, 36], [176, 18],
+        [188, 0],
+        [176, -18], [198, -36], [210, -70], [186, -92]
       );
       const endPockets = (sign) => ([
-        { kind: "over", slope: true, name: sign > 0 ? "右上貓耳" : "左上貓耳", poly: [[sign * 188, -20], [sign * 188, -100], [sign * 258, -90], [sign * 268, -36], [sign * 220, -16]] },
-        { kind: "xtreme", slope: false, name: sign > 0 ? "右 Xtreme" : "左 Xtreme", poly: [[sign * 196, -28], [sign * 196, 28], [sign * 246, 18], [sign * 246, -18]] },
-        { kind: "over", slope: true, name: sign > 0 ? "右下貓耳" : "左下貓耳", poly: [[sign * 188, 20], [sign * 220, 16], [sign * 268, 36], [sign * 258, 90], [sign * 188, 100]] }
+        { kind: "over", slope: true, name: sign > 0 ? "右上擊飛" : "左上擊飛", poly: [[sign * 230, -24], [sign * 230, -108], [sign * 292, -96], [sign * 300, -30], [sign * 246, -16]] },
+        { kind: "xtreme", slope: false, name: sign > 0 ? "右極限" : "左極限", poly: [[sign * 236, -22], [sign * 236, 22], [sign * 292, 16], [sign * 292, -16]] },
+        { kind: "over", slope: true, name: sign > 0 ? "右下擊飛" : "左下擊飛", poly: [[sign * 230, 24], [sign * 246, 16], [sign * 300, 30], [sign * 292, 96], [sign * 230, 108]] }
       ]);
       return {
         id: "infinity",
         outline,
-        housing: [640, 390],
-        ears: [{ x: -198, y: 62 }, { x: 198, y: 62 }],
+        housing: [680, 390],
+        ears: [{ x: -168, y: 48 }, { x: 168, y: 48 }],
         pockets: endPockets(-1).concat(endPockets(1)),
         rail(parent, toothGeo, toothMat) {
           [-1, 1].forEach((side) => {
-            for (let x = -168; x <= 168; x += 14) {
+            for (let x = -150; x <= 150; x += 14) {
               const tooth = new THREE.Mesh(toothGeo, toothMat);
               tooth.position.set(x, 7.2, side * 138);
               tooth.rotation.y = side > 0 ? 0 : Math.PI;
+              parent.add(tooth);
+            }
+          });
+          [-1, 1].forEach((end) => {
+            [-1, 1].forEach((side) => {
+              for (let i = 0; i <= 6; i += 1) {
+                const t = i / 6;
+                const tooth = new THREE.Mesh(toothGeo, toothMat);
+                tooth.position.set(end * (150 + Math.sin(t * Math.PI) * 24), 7.2, side * (18 + Math.sin(t * Math.PI) * 52));
+                parent.add(tooth);
+              }
+            });
+            for (let i = 0; i <= 3; i += 1) {
+              const tooth = new THREE.Mesh(toothGeo, toothMat);
+              tooth.position.set(end * (146 + i * 7), 7.2, 0);
               parent.add(tooth);
             }
           });
@@ -1285,8 +1313,20 @@
         parent.add(pocketMesh);
         const cx = pocket.poly.reduce((sum, point) => sum + point[0], 0) / pocket.poly.length;
         const cy = pocket.poly.reduce((sum, point) => sum + point[1], 0) / pocket.poly.length;
-        const label = makeTextSprite(pocket.kind === "xtreme" ? "Xtreme 3" : `${pocket.name} 2`, pocket.kind === "xtreme" ? "#ffd0dc" : "#ffe08a");
-        label.position.set(cx, 14, cy);
+        const label = makeTextSprite(pocket.kind === "xtreme" ? "極限陷阱 3" : "擊飛陷阱 2", pocket.kind === "xtreme" ? "#ffd0dc" : "#ffe08a");
+        label.position.set(cx, 16, cy);
+        parent.add(label);
+      });
+      arena.ears.forEach((ear, index) => {
+        const ring = new THREE.Mesh(
+          new THREE.TorusGeometry(16, 1.1, 8, 24),
+          new THREE.MeshStandardMaterial({ color: 0xff7aa2, emissive: 0x5a1830, emissiveIntensity: 0.55, roughness: 0.32 })
+        );
+        ring.rotation.x = Math.PI / 2;
+        ring.position.set(ear.x, 8.6, ear.y);
+        parent.add(ring);
+        const label = makeTextSprite(index === 0 ? "左貓耳" : "右貓耳", "#ffb7cf");
+        label.position.set(ear.x, 18, ear.y - 22);
         parent.add(label);
       });
 
