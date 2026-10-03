@@ -572,3 +572,23 @@ test("returning from sand can clear more than four Bridge rows without NaN", () 
   assert.ok(Number.isFinite(game.score));
   assert.ok(game.score > 0);
 });
+
+
+test("sand resolution preserves a settled disconnected island of the cleared color", () => {
+  for (const mode of ["sand", "marathon"]) {
+    const game = createGame({ mode });
+    beginSand(game);
+    game.phase = "resolving";
+    const bottom = game.sandGrid.length - 1;
+    game.sandGrid[bottom].fill(2);
+    game.sandGrid[bottom - 1].fill(1);
+    // A different-color shelf keeps this same-color island separate from the span.
+    for (let x = 9; x <= 13; x += 1) game.sandGrid[bottom - 2][x] = 2;
+    game.sandGrid[bottom - 3][11] = 1;
+    const step = pump(game);
+    assert.equal(step.type, "clear");
+    assert.ok(step.colors.includes(0));
+    assert.equal(game.sandGrid[bottom - 3][11], 1);
+    assert.ok(game.sandGrid[bottom - 1].every((value) => value === 0));
+  }
+});
