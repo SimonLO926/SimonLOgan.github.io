@@ -14,9 +14,12 @@ import {
   sandClearColors,
   sandPaint,
   SAND_MIX_CHANCE,
+  SAND_REPEAT_CHANCE,
   SAND_SCALE,
   sandColorsOf,
   sandMark,
+  sandAtRotation,
+  SHAPES,
   paceScale,
   sandColorOf,
   sandFallStep,
@@ -229,14 +232,15 @@ test("sand mode lasts twenty drops and uses four colors", () => {
   beginSand(game);
   assert.equal(game.sandLeft, SAND_DROPS);
   assert.equal(game.grid[18][0], null);
-  assert.equal(game.sandGrid[18 * SAND_SCALE][0], sandColorOf("I") + 1);
-  assert.equal(game.sandGrid[18 * SAND_SCALE][SAND_SCALE], sandColorOf("O") + 1);
-  assert.equal(game.queue[0].sand, sandColorOf("T"));
-  assert.equal(game.queue[1].sand, sandColorOf("L"));
-  assert.deepEqual(game.queue[2].sand, sandColorsOf("J"));
+  assert.ok(game.sandGrid[18 * SAND_SCALE][0] > 0);
+  assert.ok(game.sandGrid[18 * SAND_SCALE][SAND_SCALE] > 0);
+  for (const piece of game.queue) {
+    if (Array.isArray(piece.sand)) assert.ok(piece.sand.every((color) => color >= 0 && color < 4));
+    else assert.ok(piece.sand >= 0 && piece.sand < 4);
+  }
   const pulled = game.pull();
-  if (Array.isArray(pulled.sand)) assert.deepEqual(pulled.sand, sandColorsOf(pulled.type));
-  else assert.equal(pulled.sand, sandColorOf(pulled.type));
+  if (Array.isArray(pulled.sand)) assert.ok(pulled.sand.every((color) => color >= 0 && color < 4));
+  else assert.ok(pulled.sand >= 0 && pulled.sand < 4);
   assert.equal(["I", "O", "T", "S", "Z", "J", "L"].includes(game.pull().type), true);
   const grain = emptySandGrid();
   const grainHeight = grain.length;
@@ -252,12 +256,25 @@ test("sand mode lasts twenty drops and uses four colors", () => {
   assert.equal(blocked[blockedHeight - 2][2], 0);
   assert.ok(blocked[blockedHeight - 1][1] === 1 || blocked[blockedHeight - 1][3] === 1);
   const painted = sandPaint("I", [[0, 0], [1, 0], [2, 0], [3, 0]]);
-  assert.equal(SAND_MIX_CHANCE, 1 / 3);
+  assert.equal(SAND_MIX_CHANCE, 1 / 8);
+  assert.equal(SAND_REPEAT_CHANCE, 1 / 2.2);
   assert.equal(new Set(painted).size, 2);
   const solid = sandPaint("I", [[0, 0], [1, 0], [2, 0], [3, 0]], false);
   assert.deepEqual(solid, [sandColorOf("I"), sandColorOf("I"), sandColorOf("I"), sandColorOf("I")]);
-  assert.deepEqual(sandMark("T", () => 0), sandColorsOf("T"));
-  assert.equal(sandMark("T", () => 1 / 3), sandColorOf("T"));
+  const mixed = sandMark("I", (() => {
+    const rolls = [0, 0, 0];
+    let cursor = 0;
+    return () => rolls[cursor++];
+  })(), null);
+  assert.equal(mixed.hue, 0);
+  assert.equal(new Set(mixed.sand).size, 2);
+  const repeated = sandMark("T", (() => {
+    const rolls = [0, 0.5];
+    let cursor = 0;
+    return () => rolls[cursor++];
+  })(), 2);
+  assert.equal(repeated.hue, 2);
+  assert.equal(repeated.sand, 2);
   assert.equal(painted[0], sandColorsOf("I")[0]);
   assert.equal(painted[3], sandColorsOf("I")[1]);
   const span = Array.from({ length: 3 }, () => Array(6).fill(0));
@@ -295,6 +312,20 @@ function tSpinCavity(game, base, column) {
     if (x !== column) game.grid[base + 2][x] = { type: "O", g: 1 };
   }
 }
+
+test("a two-color sand piece keeps its colors when it rotates", () => {
+  for (const type of ["I", "T", "S", "Z", "J", "L"]) {
+    const count = SHAPES[type][0].length;
+    const colors = Array.from({ length: count }, (_, index) => index);
+    for (let rot = 0; rot < SHAPES[type].length; rot += 1) {
+      const painted = sandAtRotation(type, colors, rot);
+      assert.deepEqual([...painted].sort((a, b) => a - b), colors);
+    }
+  }
+  assert.deepEqual(sandAtRotation("I", [0, 1, 0, 1], 0), [0, 1, 0, 1]);
+  assert.deepEqual(sandAtRotation("I", [0, 1, 0, 1], 1), [0, 1, 0, 1]);
+  assert.deepEqual(sandAtRotation("I", [0, 0, 1, 1], 1), [0, 0, 1, 1]);
+});
 
 test("a rotated T that clears one line is a T-spin single", () => {
   const game = createGame({ mode: "marathon", sequence: ["T", "T", "T", "T"] });

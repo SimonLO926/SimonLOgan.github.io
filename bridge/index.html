@@ -1897,11 +1897,11 @@
       context.fill();
     }
 
-    function drawBlob(context, cells, type, size, ghost, markIndex = null, curse = null, sand = null) {
+    function drawBlob(context, cells, type, size, ghost, markIndex = null, curse = null, sand = null, rot = 0) {
       cells.forEach(([x, y], index) => {
         if (y < 0 || y >= ROWS || x < 0 || x >= COLS) return;
         if (sand != null) {
-          const paints = sandPaintsFor(type, cells, sand);
+          const paints = sandPaintsFor(type, cells, sand, rot);
           drawSandMino(context, x, y, size, paints[index], ghost);
           return;
         }
@@ -2178,8 +2178,8 @@
       drawFx();
       if (game.active && game.phase === "playing") {
         const gy = ghostY(game);
-        drawBlob(ctx, cellsOf(game.active.type, game.active.rot, game.active.x, gy), game.active.type, CELL, true, null, game.active.curse, game.active.sand ?? null);
-        drawBlob(ctx, cellsOf(game.active.type, game.active.rot, game.active.x, game.active.y), game.active.type, CELL, false, game.active.bombIndex, game.active.curse, game.active.sand ?? null);
+        drawBlob(ctx, cellsOf(game.active.type, game.active.rot, game.active.x, gy), game.active.type, CELL, true, null, game.active.curse, game.active.sand ?? null, game.active.rot);
+        drawBlob(ctx, cellsOf(game.active.type, game.active.rot, game.active.x, game.active.y), game.active.type, CELL, false, game.active.bombIndex, game.active.curse, game.active.sand ?? null, game.active.rot);
       }
       if (session) drawSession(ctx, session, ink());
       if (performance.now() < curseUntil.blind) {
