@@ -170,17 +170,30 @@ export function flipper(side, raised) {
   };
 }
 
-function seatOnFlipper(ball, segment) {
+function seatOnFlipper(ball, segment, kicking, step) {
   const dx = segment.x2 - segment.x1;
+  const dy = segment.y2 - segment.y1;
   if (!dx) return;
   const t = (ball.x - segment.x1) / dx;
   if (t < 0 || t > 1) return;
-  const yLine = segment.y1 + (segment.y2 - segment.y1) * t;
+  const yLine = segment.y1 + dy * t;
   const surface = yLine - ball.r - 1;
-  if (ball.y > surface) {
-    ball.y = surface;
-    if (ball.vy > 0) ball.vy *= -0.45;
+  if (ball.vy < -120 || ball.y < surface - 3) return;
+  if (kicking) {
+    if (ball.vy > -240) {
+      ball.vy = -720;
+      ball.vx = Math.sign(dx) * 36;
+    }
+    ball.y = surface - 8;
+    return;
   }
+  const lowX = segment.y2 >= segment.y1 ? segment.x2 : segment.x1;
+  const along = Math.sign(lowX - ball.x) || Math.sign(dx);
+  ball.vx = along * 48;
+  ball.vy = 36;
+  ball.x += ball.vx * step;
+  const next = Math.max(0, Math.min(1, (ball.x - segment.x1) / dx));
+  ball.y = segment.y1 + dy * next - ball.r - 1;
 }
 
 function restBall() {
@@ -240,8 +253,8 @@ function stepBall(session, ball, dt) {
       ball.vx = -Math.abs(ball.vx);
     }
     if (session.kind === "pinball") {
-      seatOnFlipper(ball, flipper("left", session.left));
-      seatOnFlipper(ball, flipper("right", session.right));
+      seatOnFlipper(ball, flipper("left", session.left), session.leftKick > 0, step);
+      seatOnFlipper(ball, flipper("right", session.right), session.rightKick > 0, step);
     }
     if (ball.y < ball.r) {
       ball.y = ball.r;
@@ -253,8 +266,6 @@ function stepBall(session, ball, dt) {
       for (const wall of tableWalls()) {
         collideSegment(ball, { x1: wall[0], y1: wall[1], x2: wall[2], y2: wall[3] }, false);
       }
-      collideSegment(ball, flipper("left", session.left), session.left);
-      collideSegment(ball, flipper("right", session.right), session.right);
     }
   }
   const limit = session.kind === "pinball" ? 900 : session.speed * 1.4;
@@ -302,8 +313,8 @@ export function updateSession(session, dtMs) {
     ball.vy = 0;
     if (session.prep <= 0 && (session.left || session.right || session.fire)) {
       session.launched = true;
-      ball.vx = session.right && !session.left ? -200 : 200;
-      ball.vy = -720;
+      ball.vx = session.right && !session.left ? -70 : 70;
+      ball.vy = -760;
     }
     return session;
   }
@@ -327,7 +338,17 @@ export function updateSession(session, dtMs) {
       }
     }
   }
+  if (session.kind === "pinball") {
+    if (session.left && !session.wasLeft) session.leftKick = 120;
+    if (session.right && !session.wasRight) session.rightKick = 120;
+  }
   for (const ball of session.balls) stepBall(session, ball, dt);
+  if (session.kind === "pinball") {
+    session.leftKick = Math.max(0, (session.leftKick || 0) - dtMs);
+    session.rightKick = Math.max(0, (session.rightKick || 0) - dtMs);
+    session.wasLeft = session.left;
+    session.wasRight = session.right;
+  }
   session.balls = session.balls.filter((ball) => keepBall(session, ball));
   if (brickCount(session.grid) === 0) {
     session.full = true;
