@@ -489,8 +489,17 @@
     .veil h2 { margin: 0; font-size: 40px; font-weight: 600; letter-spacing: -.04em; }
     .veil p { margin: 0; color: var(--muted); }
     .veil .primary, .veil .text-btn { margin-top: 6px; }
-    .pad { display: none; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+    .pad {
+      display: none;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-areas:
+        "rot hold soft"
+        "left right drop";
+      gap: 8px;
+      margin-top: 10px;
+    }
     .pad button {
+      position: relative;
       min-height: 64px;
       color: var(--ink);
       border-radius: 18px;
@@ -498,7 +507,23 @@
       box-shadow: inset 0 0 0 1px var(--md-outline);
       touch-action: manipulation;
     }
-    #btn-drop { background: var(--md-primary); color: white; }
+    .pad svg { width: 34px; height: 34px; display: block; margin: 0 auto; }
+    .pad .sr {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+    }
+    #btn-rot { grid-area: rot; }
+    #btn-hold { grid-area: hold; }
+    #btn-soft { grid-area: soft; }
+    #btn-left { grid-area: left; }
+    #btn-right { grid-area: right; }
+    #btn-drop { grid-area: drop; background: var(--md-primary); color: white; }
+    #btn-drop .fire-icon { display: none; }
+    #btn-drop.firing .drop-icon { display: none; }
+    #btn-drop.firing .fire-icon { display: block; }
 
     html.touch, html.touch body {
       height: 100%;
@@ -909,12 +934,22 @@
         </div>
       </div>
       <div class="pad">
-        <button type="button" id="btn-left" data-i18n="left">Left</button>
         <button type="button" id="btn-rot" data-i18n="rotate">Turn</button>
         <button type="button" id="btn-hold" data-i18n="keep">Hold</button>
-        <button type="button" id="btn-right" data-i18n="right">Right</button>
         <button type="button" id="btn-soft" data-i18n="soft">Down</button>
-        <button type="button" id="btn-drop" data-i18n="drop">Drop</button>
+        <button type="button" id="btn-left">
+          <span class="sr" data-i18n="left">Left</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 L7 12 L14.5 18.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button type="button" id="btn-right">
+          <span class="sr" data-i18n="right">Right</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 L17 12 L9.5 18.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button type="button" id="btn-drop">
+          <span class="sr" data-i18n="drop">Drop</span>
+          <svg class="drop-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 V15 M7.5 11 L12 16.5 L16.5 11 M5 20.5 H19" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="fire-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5 V9 M7.5 13 L12 7.5 L16.5 13" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
       </div>
     </section>
   </div>
@@ -1498,7 +1533,9 @@
       document.querySelector("#best").textContent = game.mode === "sprint" ? (best ? formatTime(best) : "–") : String(Math.max(best, game.score));
       const progress = game.mode === "sprint" ? game.lines / 40 : game.stageLines / game.stageGoal;
       document.querySelector("#meter-bar").style.transform = `scaleX(${Math.max(0, Math.min(1, progress))})`;
-      document.querySelector("#btn-drop").textContent = session?.kind === "bbtan" ? t("fire") : t("drop");
+      const dropButton = document.querySelector("#btn-drop");
+      dropButton.classList.toggle("firing", session?.kind === "bbtan");
+      dropButton.querySelector(".sr").textContent = session?.kind === "bbtan" ? t("fire") : t("drop");
       const coach = document.querySelector("#coach");
       const coaching = session && session.prep > 0 && !paused;
       coach.hidden = !coaching;
