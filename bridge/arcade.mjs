@@ -170,30 +170,20 @@ export function flipper(side, raised) {
   };
 }
 
-function seatOnFlipper(ball, segment, kicking, step) {
+function bounceFlipper(ball, segment, kicking) {
   const dx = segment.x2 - segment.x1;
   const dy = segment.y2 - segment.y1;
-  if (!dx) return;
+  if (!dx) return false;
   const t = (ball.x - segment.x1) / dx;
-  if (t < 0 || t > 1) return;
+  if (t < 0 || t > 1) return false;
   const yLine = segment.y1 + dy * t;
-  const surface = yLine - ball.r - 1;
-  if (ball.vy < -120 || ball.y < surface - 3) return;
-  if (kicking) {
-    if (ball.vy > -240) {
-      ball.vy = -720;
-      ball.vx = Math.sign(dx) * 36;
-    }
-    ball.y = surface - 8;
-    return;
-  }
-  const lowX = segment.y2 >= segment.y1 ? segment.x2 : segment.x1;
-  const along = Math.sign(lowX - ball.x) || Math.sign(dx);
-  ball.vx = along * 48;
-  ball.vy = 36;
-  ball.x += ball.vx * step;
-  const next = Math.max(0, Math.min(1, (ball.x - segment.x1) / dx));
-  ball.y = segment.y1 + dy * next - ball.r - 1;
+  if (ball.vy < 0 && ball.y <= yLine - ball.r + 1) return false;
+  if (ball.y + ball.r < yLine - 2) return false;
+  ball.y = yLine - ball.r - 2;
+  const speed = kicking ? 760 : Math.max(320, Math.abs(ball.vy));
+  ball.vy = -speed;
+  ball.vx += Math.sign(dx) * (kicking ? 160 : 70);
+  return true;
 }
 
 function restBall() {
@@ -253,8 +243,8 @@ function stepBall(session, ball, dt) {
       ball.vx = -Math.abs(ball.vx);
     }
     if (session.kind === "pinball") {
-      seatOnFlipper(ball, flipper("left", session.left), session.leftKick > 0, step);
-      seatOnFlipper(ball, flipper("right", session.right), session.rightKick > 0, step);
+      bounceFlipper(ball, flipper("left", session.left), session.leftKick > 0);
+      bounceFlipper(ball, flipper("right", session.right), session.rightKick > 0);
     }
     if (ball.y < ball.r) {
       ball.y = ball.r;
