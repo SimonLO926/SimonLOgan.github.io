@@ -21,6 +21,7 @@
     }
 
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
     html, body { margin: 0; height: 100%; }
     body {
       color: var(--ink);
@@ -81,7 +82,7 @@
       border: 1px solid var(--line);
       border-radius: 18px;
     }
-    .panel { padding: 12px; }
+    .panel { padding: 12px; max-height: calc(100vh - 250px); overflow: auto; }
     .panel h2 { margin: 0 0 8px; font-size: 15px; }
     .panel.is-locked { opacity: .72; }
     .panel.is-locked fieldset { pointer-events: none; }
@@ -394,7 +395,8 @@
     function comboText(build) {
       const blade = resolveBlade(build);
       const approx = blade.approx ? "約 " : "";
-      return `${build.name} ${blade.zh} ${build.points}-${build.height}${build.bitId} · ${approx}${comboMass(build)} g`;
+      const title = build.name === blade.zh ? blade.zh : `${build.name} · ${blade.zh}`;
+      return `${title} ${build.points}-${build.height}${build.bitId} · ${approx}${comboMass(build)} g`;
     }
 
     function classify(x, y, spin) {
