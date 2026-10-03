@@ -526,7 +526,8 @@
     #btn-drop.firing .fire-icon { display: block; }
 
     html.touch, html.touch body {
-      height: 100%;
+      height: 100svh;
+      max-height: 100svh;
       overflow: hidden;
       overscroll-behavior: none;
     }
@@ -539,18 +540,36 @@
     }
     html.touch #game {
       position: fixed;
-      inset: 0;
+      left: 0;
+      right: 0;
+      top: 0;
       width: 100%;
-      height: 100%;
+      height: 100svh;
       margin: 0;
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      padding: 6px 10px calc(8px + env(safe-area-inset-bottom));
+      padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
     }
     html.touch #game .stage { flex: 1; min-height: 0; align-items: start; overflow: hidden; }
     html.touch #game .pad { flex: none; position: relative; z-index: 3; }
     body.touch .pad { display: grid; }
+    body.touch .console {
+      grid-template-columns: minmax(88px, 140px) minmax(0, 1fr) minmax(96px, 156px);
+      width: 100%;
+      gap: 8px;
+      align-items: start;
+    }
+    body.touch .board-wrap { grid-column: auto; order: 0; justify-self: center; }
+    body.touch .rail { padding: 6px; min-width: 0; }
+    body.touch #hold-canvas,
+    body.touch #next-canvas { width: min(100%, 120px); height: auto; }
+    body.touch #game .box h2,
+    body.touch #game .stat span,
+    body.touch #game .hint { font-size: 12px; }
+    body.touch .stat b { font-size: 18px; }
+    body.touch .stat.hero-stat b { font-size: 22px; }
+    body.touch .pad button { min-height: 54px; }
     .keys { margin: 22px 0 0; color: var(--muted); font-size: 13px; text-align: center; }
 
     @keyframes float-a {
@@ -576,12 +595,11 @@
       h1 { font-size: 64px; }
       .hero-actions, .stage, .console { display: grid; }
       .console { grid-template-columns: 1fr 1fr; width: 100%; }
-      .board-wrap { grid-column: 1 / -1; order: -1; }
       .pad { display: grid; }
-      .rail { padding: 8px; }
-      #hold-canvas { width: auto; height: 64px; }
-      #next-canvas { width: auto; height: 120px; }
       .keys { display: none; }
+      body.touch .console { grid-template-columns: 74px minmax(0, 1fr) 82px; }
+      body.touch #hold-canvas,
+      body.touch #next-canvas { width: 66px; }
     }
   </style>
 </head>
@@ -1661,15 +1679,21 @@
       if (document.querySelector("#game").hidden) return;
       const nav = document.querySelector(".nav").offsetHeight;
       const stage = document.querySelector(".stage");
-      const stacked = window.innerWidth <= 760;
-      const fixed = document.documentElement.classList.contains("touch");
-      const railH = stacked ? Math.max(0, ...[...document.querySelectorAll(".rail")].map((el) => el.offsetHeight)) : 0;
-      const rails = 220 + 236 + 32;
-      const baseH = fixed || stacked ? stage.clientHeight : window.innerHeight - nav - 48;
-      const availH = Math.max(180, baseH - (stacked ? railH + 8 : 8));
-      const availW = Math.max(140, stacked ? stage.clientWidth - 4 : stage.clientWidth - rails);
+      const touch = document.documentElement.classList.contains("touch");
+      if (touch && window.visualViewport) {
+        const gameEl = document.querySelector("#game");
+        gameEl.style.height = `${Math.round(window.visualViewport.height)}px`;
+        gameEl.style.top = `${Math.round(window.visualViewport.offsetTop)}px`;
+      }
+      const stacked = !touch && window.innerWidth <= 760;
+      const railBoxes = [...document.querySelectorAll(".rail")];
+      const railH = stacked ? Math.max(0, ...railBoxes.map((el) => el.offsetHeight)) : 0;
+      const railW = touch || !stacked ? railBoxes.reduce((sum, el) => sum + el.offsetWidth, 0) + 24 : 0;
+      const baseH = touch || stacked ? stage.clientHeight : window.innerHeight - nav - 48;
+      const availH = Math.max(160, baseH - (stacked ? railH + 8 : 4));
+      const availW = Math.max(120, stage.clientWidth - (stacked ? 4 : railW));
       const fit = Math.min(availH / (ROWS * CELL), availW / (COLS * CELL));
-      const scale = stacked ? Math.max(0.38, fit) : Math.max(0.7, fit);
+      const scale = Math.max(touch || stacked ? 0.42 : 0.7, fit);
       const width = Math.round(COLS * CELL * scale);
       const height = Math.round(ROWS * CELL * scale);
       board.style.width = `${width}px`;
@@ -1682,6 +1706,8 @@
     }
 
     window.addEventListener("resize", fitBoard);
+    window.visualViewport?.addEventListener("resize", fitBoard);
+    window.visualViewport?.addEventListener("scroll", fitBoard);
     for (const query of ["(pointer: coarse)", "(hover: none)"]) {
       window.matchMedia(query).addEventListener("change", () => { applyTouch(); fitBoard(); });
     }
