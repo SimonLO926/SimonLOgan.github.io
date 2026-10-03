@@ -1,0 +1,1802 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>爆旋陀螺 X 模擬器</title>
+  <meta name="description" content="可自訂刃、棘輪、軸心的爆旋陀螺 X 對戰。左右游標分兩次鎖定傾斜，限時連點決定拉力。">
+  <style>
+    :root {
+      --bg: #07110d;
+      --bg2: #0d1b15;
+      --panel: #102019;
+      --ink: #e7f6ee;
+      --muted: #93b0a2;
+      --line: rgba(126, 240, 180, .18);
+      --cyan: #7ef0ff;
+      --green: #3dff9a;
+      --pink: #ff4d8d;
+      --gold: #ffe08a;
+      --red: #ff3b4e;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 500px at 50% -10%, rgba(61, 255, 154, .08), transparent 50%),
+        var(--bg);
+      font-family: "WenQuanYi Micro Hei", "Noto Sans TC", "Segoe UI", sans-serif;
+    }
+
+    button, input, select { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: default; opacity: .55; }
+
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 18px 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .mark {
+      width: 36px; height: 36px; display: grid; place-items: center;
+      border: 1px solid var(--green); color: var(--green);
+      font-weight: 800; letter-spacing: -.06em;
+      transform: rotate(8deg);
+    }
+    h1 { margin: 0; font-size: 20px; letter-spacing: -.03em; }
+    h1 small { display: block; color: var(--muted); font-size: 12px; font-weight: 500; letter-spacing: 0; }
+
+    .score {
+      display: flex; align-items: center; gap: 14px;
+      font-variant-numeric: tabular-nums;
+    }
+    .score b { font-size: 28px; letter-spacing: -.04em; }
+    .score span { color: var(--muted); font-size: 12px; }
+    .tools { display: flex; gap: 8px; }
+    .tools button, .ghost {
+      background: transparent;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 7px 12px;
+    }
+    .tools button[aria-pressed="true"] { border-color: var(--green); color: var(--green); }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(260px, 320px) minmax(0, 1fr) minmax(260px, 320px);
+      gap: 12px;
+      padding: 12px;
+      align-items: start;
+    }
+
+    .panel, .dock, .codex {
+      background: linear-gradient(180deg, rgba(16, 32, 25, .96), rgba(8, 18, 14, .96));
+      border: 1px solid var(--line);
+      border-radius: 18px;
+    }
+    .panel { padding: 12px; }
+    .panel h2 { margin: 0 0 8px; font-size: 15px; }
+    .panel.is-locked { opacity: .72; }
+    .panel.is-locked fieldset { pointer-events: none; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+    .chips button, .side button {
+      border: 1px solid var(--line);
+      background: #0c1914;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 12px;
+    }
+    .chips button[aria-pressed="true"], .side button[aria-pressed="true"] {
+      background: var(--green); color: #062116; border-color: var(--green); font-weight: 700;
+    }
+
+    fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; }
+    label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+    select, input[type="text"], input[type="number"] {
+      background: #09140f;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 10px;
+    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .swatches { display: flex; gap: 8px; }
+    input[type="color"] { width: 100%; height: 36px; padding: 0; border: 0; background: transparent; }
+    input[type="range"] { width: 100%; accent-color: var(--green); }
+    .summary {
+      margin: 8px 0 0;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: rgba(126, 240, 255, .06);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .blurb { margin: 0; min-height: 2.6em; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .side { display: flex; gap: 6px; align-items: center; }
+    .custom { display: grid; gap: 6px; padding: 8px; border-radius: 12px; background: rgba(255,255,255,.03); }
+
+    .stage { min-width: 0; }
+    .stage { display: flex; justify-content: center; }
+    canvas {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 18px;
+      background: #050d0a;
+      border: 1px solid var(--line);
+      touch-action: none;
+    }
+    .dock { position: sticky; bottom: 8px; z-index: 3; }
+
+    .dock { margin: 0 12px 12px; padding: 12px 14px 14px; }
+    .phase {
+      display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+      margin-bottom: 8px;
+    }
+    .phase strong { font-size: 16px; }
+    .phase em { color: var(--gold); font-style: normal; font-weight: 700; }
+    #hint { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; min-height: 1.5em; }
+
+    .bar-wrap { display: grid; gap: 6px; }
+    .zones { display: grid; grid-template-columns: 1fr 1.2fr 1fr; font-size: 11px; color: var(--muted); }
+    .zones span:nth-child(1) { color: var(--cyan); }
+    .zones span:nth-child(2) { text-align: center; }
+    .zones span:nth-child(3) { text-align: right; color: var(--gold); }
+    #bar {
+      position: relative;
+      height: 54px;
+      width: 100%;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(90deg, rgba(126,240,255,.18), rgba(255,255,255,.04) 38%, rgba(255,255,255,.04) 62%, rgba(255,224,138,.2));
+      overflow: hidden;
+      padding: 0;
+    }
+    #marker {
+      position: absolute;
+      top: 6px;
+      width: 42px;
+      height: 42px;
+      margin-left: -21px;
+      border-radius: 50%;
+      background: var(--green);
+      color: #062116;
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      font-weight: 800;
+      left: 50%;
+    }
+
+    .sp {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+    #pull {
+      width: 148px;
+      height: 84px;
+      border: 0;
+      border-radius: 18px;
+      background: var(--green);
+      color: #062116;
+      font-size: 28px;
+      font-weight: 800;
+      touch-action: manipulation;
+      user-select: none;
+    }
+    #pull:active { transform: scale(.97); }
+    .meter { height: 14px; border-radius: 999px; background: #09140f; border: 1px solid var(--line); overflow: hidden; }
+    .meter i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--cyan), var(--green)); }
+    .go, .next {
+      height: 52px;
+      padding: 0 22px;
+      border: 0;
+      border-radius: 14px;
+      background: var(--green);
+      color: #062116;
+      font-weight: 800;
+      font-size: 18px;
+    }
+
+    .codex { margin: 0 12px 18px; padding: 10px 14px 14px; }
+    .codex summary { cursor: pointer; font-weight: 700; }
+    .codex p, .codex li { color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .log { margin: 8px 0 0; padding-left: 18px; max-height: 140px; overflow: auto; }
+    .log li { margin: 2px 0; }
+
+    @media (max-width: 1080px) {
+      .layout { grid-template-columns: 1fr; }
+      .top { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <div class="mark">X</div>
+      <h1>爆旋陀螺 X<small>BX-10 極限盤 · 自訂對戰</small></h1>
+    </div>
+    <div class="score" aria-live="polite">
+      <div><span>你</span><br><b id="score-you">0</b></div>
+      <div><span>先到 4 分</span><br><b id="score-gap">·</b></div>
+      <div><span>對手</span><br><b id="score-foe">0</b></div>
+    </div>
+    <div class="tools">
+      <button type="button" id="speed" aria-pressed="false">速度 1×</button>
+      <button type="button" id="mute" aria-pressed="false">音效開</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="panel" id="you-panel"></aside>
+    <div class="stage"><canvas id="arena" width="780" height="720"></canvas></div>
+    <aside class="panel" id="foe-panel"></aside>
+  </div>
+
+  <section class="dock" id="dock">
+    <div class="phase">
+      <strong id="phase-label">準備</strong>
+      <em id="live-read">先組好兩邊的陀螺</em>
+    </div>
+    <div class="bar-wrap" id="bar-wrap" hidden>
+      <div class="zones" id="zones"><span>左傾</span><span>垂直</span><span>右傾</span></div>
+      <button type="button" id="bar" aria-label="確認傾斜時機"><span id="marker">X</span></button>
+    </div>
+    <div class="sp" id="sp-wrap" hidden>
+      <div>
+        <div class="meter" aria-hidden="true"><i id="sp-fill"></i></div>
+        <p id="sp-read" style="margin:8px 0 0">1.5 秒內連點</p>
+      </div>
+      <button type="button" id="pull">拉</button>
+    </div>
+    <div id="ready-wrap">
+      <button type="button" class="go" id="start">3 · 2 · 1　Go Shoot</button>
+    </div>
+    <p id="hint">指標會自己左右跑。點第一次鎖定左右傾斜，點第二次鎖定前後傾斜，然後在時限內連點決定拉力 SP。</p>
+  </section>
+
+  <details class="codex">
+    <summary>盤型、零件和射法是怎麼來的</summary>
+    <p>對戰盤按 BX-10 Xtreme Stadium 的公開尺寸：約 44 × 45.5 × 15.5 cm，戰鬥區直徑 36.5 cm，龍捲稜直徑 21 cm。出口全在同一側：兩側 Over 區 2 分，中間較寬的 Xtreme 區 3 分。爆裂 2 分，停轉 1 分，先到 4 分。全程沒碰到對手就自己出場，只算 1 分自爆。</p>
+    <p>陀螺分刃、棘輪、軸心。這裡的刃重用公開秤重的約值：劍龍 Dran Sword 34.8 g（BX-01）、地獄鐮刀 Hells Scythe 32.7 g（BX-02）、巫師之箭 Wizard Arrow 32.0 g（BX-03）、騎士之盾 Knight Shield 32.6 g。鯊刃 Shark Edge 取約 35 g。棘輪對齊 3-60 約 6.2 g、4-80 約 7.0 g 這類秤重。軸心約 2.0–2.3 g。拉力對上拉繩競技大約 4000–15200 RPM。</p>
+    <ul>
+      <li>蓄貓耳：第二下滑到後收，第一下又有明顯左右傾。陀螺收到出口對面兩側空位續轉，用來躲第一波極限衝擊。社區也叫躲貓耳。</li>
+      <li>逆軌：第二下滑到前壓貼軌，左右傾和順齒方向相反。右旋打右側是順軌，會沿著齒往後圈爬再砸回盤心；打左側是逆軌，反向咬齒，比較耗轉。逆跪和逆軌同音，這裡就是這條逆向。</li>
+      <li>X Dash：軸心齒咬到外圈齒軌就加速，再甩回盤心。Accel 16 齒最快也最耗轉，Rush 10 齒較慢、較不容易衝出去，Flat 12 齒居中。</li>
+      <li>低刃打高棘輪比較容易爆。點數少（尤其 1-60）鎖得住的齒少；點數多較耐爆，但凸片也比較容易被打到。攻型軸心軸比較粗，耐爆較高。</li>
+    </ul>
+    <ol class="log" id="log"></ol>
+  </details>
+
+  <script>
+    const FIELD = {
+      battleR: 182,
+      wall: 170,
+      railR: 158,
+      railIn: 146,
+      ridgeIn: 92,
+      ridgeOut: 116
+    };
+    const EXITS = [
+      { a0: 50, a1: 70, kind: "over" },
+      { a0: 78, a1: 102, kind: "xtreme" },
+      { a0: 110, a1: 130, kind: "over" }
+    ];
+    const CATEARS = [
+      { x: -96, y: -60 },
+      { x: 96, y: -60 }
+    ];
+    const VIEW = { w: 780, h: 720, scale: 1.5, cx: 390, cy: 330 };
+
+    const TYPE_ZH = { attack: "攻擊", defense: "防禦", stamina: "持久", balance: "平衡" };
+    const BLADES = [
+      { id: "dransword", name: "Dran Sword", zh: "劍龍", code: "BX-01", g: 34.8, type: "attack", contacts: 3, spin: "R", atk: 55, def: 24, sta: 18, upper: 0.22, outward: 0, radius: 22 },
+      { id: "hellsscythe", name: "Hells Scythe", zh: "地獄鐮刀", code: "BX-02", g: 32.7, type: "balance", contacts: 4, spin: "R", atk: 38, def: 34, sta: 40, upper: 0.05, outward: 0.2, radius: 23 },
+      { id: "wizardarrow", name: "Wizard Arrow", zh: "巫師之箭", code: "BX-03", g: 32.0, type: "stamina", contacts: 2, spin: "R", atk: 16, def: 30, sta: 64, upper: -0.08, outward: 0.85, radius: 24 },
+      { id: "knightshield", name: "Knight Shield", zh: "騎士之盾", code: "", g: 32.6, type: "defense", contacts: 6, spin: "R", atk: 20, def: 70, sta: 30, upper: 0, outward: 0.15, radius: 23 },
+      { id: "sharkedge", name: "Shark Edge", zh: "鯊刃", code: "", g: 35.0, approx: true, type: "attack", contacts: 3, spin: "R", atk: 64, def: 18, sta: 14, upper: 0.55, outward: 0, radius: 22 }
+    ];
+    const BITS = [
+      { id: "F", name: "Flat", zh: "平面", style: "attack", g: 2.22, teeth: 12, dash: 35, br: 80, friction: 0.19, dashDrain: 0.2, aggression: 1, low: 0 },
+      { id: "LF", name: "Low Flat", zh: "低平面", style: "attack", g: 2.15, teeth: 12, dash: 38, br: 75, friction: 0.23, dashDrain: 0.24, aggression: 1.12, low: 1 },
+      { id: "R", name: "Rush", zh: "衝刺", style: "attack", g: 2.0, teeth: 10, dash: 30, br: 80, friction: 0.145, dashDrain: 0.1, aggression: 0.82, low: 0 },
+      { id: "A", name: "Accel", zh: "加速", style: "attack", g: 2.2, teeth: 16, dash: 40, br: 80, friction: 0.21, dashDrain: 0.38, aggression: 1.02, low: 0 },
+      { id: "T", name: "Taper", zh: "錐形", style: "balance", g: 2.22, teeth: 12, dash: 20, br: 55, friction: 0.125, dashDrain: 0.14, aggression: 0.5, low: 0 },
+      { id: "P", name: "Point", zh: "尖點", style: "balance", g: 2.05, teeth: 12, dash: 16, br: 50, friction: 0.105, dashDrain: 0.1, aggression: 0.35, low: 0 },
+      { id: "B", name: "Ball", zh: "球型", style: "stamina", g: 2.06, teeth: 12, dash: 10, br: 30, friction: 0.082, dashDrain: 0.08, aggression: 0.12, low: 0 },
+      { id: "N", name: "Needle", zh: "針型", style: "defense", g: 2.0, teeth: 12, dash: 8, br: 60, friction: 0.088, dashDrain: 0.06, aggression: 0.05, low: 0 }
+    ];
+    const BIT_BLURB = {
+      F: "平面寬，容易上 X 線，續航差，軸粗所以較耐爆。",
+      LF: "比平面更低，更容易打到對方棘輪，自己也更耗轉。",
+      R: "10 齒。極限衝擊沒那麼暴，但比較聽控，不易自己衝出界。",
+      A: "16 齒。第一下 X Dash 最快，掉轉也最兇，容易衝進 Xtreme 區。",
+      T: "前段會走，後段還留得住轉，攻防都沾一點。",
+      P: "尖軸，半持久。會慢慢挪，但不像平面那樣追著齒軌跑。",
+      B: "球軸低摩擦，適合定點或貓耳位耗轉。軸細，被打中棘輪時較易爆。",
+      N: "針軸釘在盤心附近，拿來擋第一波。不太主動去咬 X 線。"
+    };
+    const PRESETS = [
+      { name: "劍龍", bladeId: "dransword", points: 3, height: 60, bitId: "F", color: "#ff2d3a", ratchetColor: "#e8eef2" },
+      { name: "地獄鐮刀", bladeId: "hellsscythe", points: 4, height: 60, bitId: "T", color: "#c46bff", ratchetColor: "#efe6d6" },
+      { name: "巫師之箭", bladeId: "wizardarrow", points: 4, height: 80, bitId: "B", color: "#3aa0ff", ratchetColor: "#d5e6f5" },
+      { name: "騎士之盾", bladeId: "knightshield", points: 3, height: 80, bitId: "N", color: "#e6c15a", ratchetColor: "#efe6cf" },
+      { name: "鯊刃", bladeId: "sharkedge", points: 4, height: 60, bitId: "LF", color: "#2ee6c7", ratchetColor: "#dff8f2" }
+    ];
+
+    function ratchetMass(points, height) {
+      return +(5.85 + points * 0.12 + (height - 60) * 0.032).toFixed(2);
+    }
+
+    function customBlade() {
+      return {
+        id: "custom", name: "Custom", zh: "自訂刃", code: "自訂", g: 34, approx: true,
+        type: "attack", contacts: 3, spin: "R", atk: 50, def: 30, sta: 30, upper: 0.2, outward: 0.2, radius: 22
+      };
+    }
+
+    function presetBuild(preset) {
+      return {
+        name: preset.name,
+        bladeId: preset.bladeId,
+        custom: null,
+        points: preset.points,
+        height: preset.height,
+        bitId: preset.bitId,
+        color: preset.color,
+        ratchetColor: preset.ratchetColor
+      };
+    }
+
+    const state = {
+      you: presetBuild(PRESETS[0]),
+      foe: presetBuild(PRESETS[2]),
+      youSide: -1,
+      difficulty: "even",
+      score: { you: 0, foe: 0 },
+      phase: "ready",
+      lockedX: 0,
+      lockedY: 0,
+      clicks: 0,
+      spT0: 0,
+      foePlan: null,
+      world: null,
+      lastNote: "",
+      speed: 1,
+      muted: false,
+      log: []
+    };
+
+    function resolveBlade(build) {
+      if (build.bladeId === "custom") return build.custom || customBlade();
+      return BLADES.find((blade) => blade.id === build.bladeId) || BLADES[0];
+    }
+
+    function resolveBit(build) {
+      return BITS.find((bit) => bit.id === build.bitId) || BITS[0];
+    }
+
+    function comboMass(build) {
+      const blade = resolveBlade(build);
+      return +(blade.g + ratchetMass(build.points, build.height) + resolveBit(build).g).toFixed(1);
+    }
+
+    function comboText(build) {
+      const blade = resolveBlade(build);
+      const approx = blade.approx ? "約 " : "";
+      return `${build.name} ${blade.zh} ${build.points}-${build.height}${build.bitId} · ${approx}${comboMass(build)} g`;
+    }
+
+    function classify(x, y, spin) {
+      if (y > 0.36 && Math.abs(x) > 0.24) return "catear";
+      if (y < -0.3 && Math.abs(x) > 0.2) return x * spin > 0 ? "rail" : "counter";
+      if (Math.abs(x) < 0.2 && Math.abs(y) < 0.24) return "vertical";
+      if (y < -0.42) return "smash";
+      return "drive";
+    }
+
+    function techName(tech, x) {
+      if (tech === "catear") return x >= 0 ? "蓄右貓耳" : "蓄左貓耳";
+      if (tech === "counter") return "逆軌";
+      if (tech === "rail") return "順軌";
+      if (tech === "vertical") return "垂直定點";
+      if (tech === "smash") return "強襲直壓";
+      return "普通斜射";
+    }
+
+    function pullStats(clicks) {
+      const sp = Math.max(0, Math.min(100, clicks * (100 / 14)));
+      const rpm = Math.round(4000 + sp * 112);
+      let wobble = 0;
+      if (clicks > 14) wobble += (clicks - 14) * 0.045;
+      if (clicks < 2) wobble += 0.1;
+      return { sp: Math.round(sp), rpm, wobble };
+    }
+
+    function planLaunch(build, launch) {
+      const blade = resolveBlade(build);
+      const spin = blade.spin === "L" ? -1 : 1;
+      const xTilt = launch.xTilt;
+      const yTilt = launch.yTilt;
+      const stats = pullStats(launch.clicks);
+      const tech = classify(xTilt, yTilt, spin);
+      const side = launch.pos >= 0 ? 1 : -1;
+      let x = side * 46;
+      let y = 124;
+      let aimX = 0;
+      let aimY = -1;
+      let speed = 240 + (stats.rpm / 15000) * 420;
+      const ear = xTilt >= 0 ? 1 : 0;
+      if (tech === "catear") {
+        const pocket = CATEARS[ear];
+        aimX = pocket.x - x;
+        aimY = pocket.y - y;
+        speed = 300 + (stats.rpm / 15000) * 180;
+      } else if (tech === "rail" || tech === "counter") {
+        const wall = xTilt >= 0 ? 1 : -1;
+        aimX = wall * 148 - x;
+        aimY = -100 - y;
+        speed = 360 + (stats.rpm / 15000) * 520;
+      } else if (tech === "smash") {
+        aimX = xTilt * 40 - x * 0.15;
+        aimY = -210 - y;
+        speed = 320 + (stats.rpm / 15000) * 620;
+      } else if (tech === "vertical") {
+        aimX = -x;
+        aimY = -y;
+        speed = 180 + (stats.rpm / 15000) * 200;
+      } else {
+        aimX = xTilt * 170;
+        aimY = -160 + Math.max(0, yTilt) * 50;
+        speed = 260 + (stats.rpm / 15000) * 460;
+      }
+      const mag = Math.hypot(aimX, aimY) || 1;
+      return {
+        x, y,
+        vx: (aimX / mag) * speed,
+        vy: (aimY / mag) * speed,
+        tech, spin, ear, speed,
+        rpm: stats.rpm,
+        sp: stats.sp,
+        wobble: stats.wobble,
+        xTilt, yTilt
+      };
+    }
+
+    function makeBey(build, launch, rng) {
+      const plan = planLaunch(build, launch);
+      const jitter = ((rng ? rng() : 0.5) - 0.5) * plan.wobble;
+      const cs = Math.cos(jitter);
+      const sn = Math.sin(jitter);
+      const blade = resolveBlade(build);
+      const bit = resolveBit(build);
+      const ratchet = { points: build.points, height: build.height, mass: ratchetMass(build.points, build.height) };
+      return {
+        id: launch.id,
+        name: build.name,
+        x: plan.x,
+        y: plan.y,
+        vx: plan.vx * cs - plan.vy * sn,
+        vy: plan.vx * sn + plan.vy * cs,
+        rpm: plan.rpm,
+        spin: plan.spin,
+        angle: (rng ? rng() : 0.2) * Math.PI * 2,
+        wobble: plan.wobble,
+        mass: blade.g + ratchet.mass + bit.g,
+        integrity: 100,
+        mode: plan.tech === "catear" ? "seekear" : "free",
+        tech: plan.tech,
+        ear: plan.ear,
+        railDir: 0,
+        railTime: 0,
+        railCooldown: 0,
+        stagger: 0,
+        dashes: 0,
+        alive: true,
+        radius: 19,
+        parts: { blade, bit, ratchet },
+        color: build.color,
+        ratchetColor: build.ratchetColor,
+        knock: 0,
+        orbit: 0,
+        flash: 0,
+        pocketT: 0,
+        pocketKind: "",
+        bursting: false,
+        sleep: false,
+        pendingKO: "",
+        phase: (rng ? rng() : 0.3) * Math.PI * 2
+      };
+    }
+
+    function normDeg(rad) {
+      let deg = (rad * 180) / Math.PI;
+      deg = ((deg % 360) + 360) % 360;
+      return deg;
+    }
+
+    function exitAt(rad) {
+      const deg = normDeg(rad);
+      return EXITS.find((exit) => deg >= exit.a0 && deg <= exit.a1) || null;
+    }
+
+    function enterRail(bey) {
+      bey.mode = "rail";
+      bey.railTime = 0;
+      bey.dashes = (bey.dashes || 0) + 1;
+      const natural = bey.spin > 0 ? -1 : 1;
+      bey.railDir = bey.tech === "counter" ? -natural : natural;
+    }
+
+    function capSpeed(bey) {
+      const speed = Math.hypot(bey.vx, bey.vy);
+      if (speed > 2600) {
+        bey.vx *= 2600 / speed;
+        bey.vy *= 2600 / speed;
+      }
+    }
+
+    function drive(bey, dt) {
+      const bit = bey.parts.bit;
+      let decay = bit.friction * (1 + bey.wobble);
+      if (bey.mode === "rail") decay += bit.dashDrain * (bey.tech === "counter" ? 1.35 : 1);
+      if (bey.mode === "catear") decay *= 0.68;
+      if (bey.tech === "vertical" && bey.mode !== "rail") decay *= 0.9;
+      bey.rpm -= bey.rpm * decay * dt;
+      if (bey.rpm < 0) bey.rpm = 0;
+      bey.flash = Math.max(0, bey.flash - dt);
+      if (bey.knock > 0) bey.knock -= dt;
+      if (bey.railCooldown > 0) bey.railCooldown -= dt;
+      if (bey.stagger > 0) bey.stagger -= dt;
+
+      if (bey.mode === "catear" && bey.knock <= 0) {
+        const ear = CATEARS[bey.ear];
+        bey.orbit += dt * bey.spin * (6.2 + bey.rpm / 5000);
+        const tx = ear.x + Math.cos(bey.orbit) * 14;
+        const ty = ear.y + Math.sin(bey.orbit) * 14;
+        bey.vx = (tx - bey.x) * 11;
+        bey.vy = (ty - bey.y) * 11;
+        return;
+      }
+
+      if (bey.mode === "pocket") {
+        bey.vx *= 0.992;
+        bey.vy *= 0.992;
+        return;
+      }
+
+      if (bey.mode === "rail") {
+        const dist = Math.hypot(bey.x, bey.y) || 1;
+        const th = Math.atan2(bey.y, bey.x);
+        const radErr = dist - FIELD.railR;
+        const dir = bey.railDir || -1;
+        const tx = Math.sin(th) * dir;
+        const ty = Math.cos(th) * dir;
+        const rpmN = bey.rpm / 12000;
+        const dash = (bit.teeth / 12) * (0.55 + rpmN) * (bit.dash / 35) * 520;
+        const blend = 1 - Math.exp(-10 * dt);
+        bey.vx += ((-Math.cos(th) * radErr * 18 + tx * dash) - bey.vx) * blend;
+        bey.vy += ((-Math.sin(th) * radErr * 18 + ty * dash) - bey.vy) * blend;
+        bey.railTime += dt;
+        const hold = 0.15 + (8 / bit.teeth) * 0.1;
+        if (bey.railTime > hold || exitAt(th)) releaseRail(bey, th, dash);
+        return;
+      }
+
+      const dist = Math.hypot(bey.x, bey.y) || 1;
+      const th = Math.atan2(bey.y, bey.x);
+      const rpmN = Math.max(0, bey.rpm / 12000);
+      const style = bit.style;
+      const blend = 1 - Math.exp(-2.4 * dt);
+      const committed = bey.railCooldown > 0.48 || bey.stagger > 0;
+
+      if (committed) {
+        bey.vx *= 0.985;
+        bey.vy *= 0.985;
+      } else if (bey.mode === "seekear" || (bey.tech === "catear" && bey.mode === "free" && bey.knock <= 0)) {
+        const ear = CATEARS[bey.ear];
+        const dx = ear.x - bey.x;
+        const dy = ear.y - bey.y;
+        const distE = Math.hypot(dx, dy) || 1;
+        const desired = Math.min(460, 120 + distE * 2.4);
+        bey.vx += ((dx / distE) * desired - bey.vx) * blend;
+        bey.vy += ((dy / distE) * desired - bey.vy) * blend;
+        if (distE < 26 && bey.knock <= 0) bey.mode = "catear";
+      } else if (style === "attack") {
+        bey.phase += dt * (2.4 + rpmN * 2);
+        const want = 80 + rpmN * 150;
+        const tx = -Math.sin(th) * bey.spin;
+        const ty = Math.cos(th) * bey.spin;
+        const radial = Math.sin(bey.phase) * 64 * bit.aggression;
+        bey.vx += (tx * want + Math.cos(th) * radial - bey.vx) * blend;
+        bey.vy += (ty * want + Math.sin(th) * radial - bey.vy) * blend;
+        if (dist < 148 && rpmN > 0.35) {
+          bey.vx += Math.cos(th) * 120 * dt;
+          bey.vy += Math.sin(th) * 120 * dt;
+        }
+      } else if (style === "stamina") {
+        const want = 34 + rpmN * 36;
+        const radErr = dist - 42;
+        const tx = -Math.sin(th) * bey.spin;
+        const ty = Math.cos(th) * bey.spin;
+        bey.vx += (-Math.cos(th) * radErr * 3 + tx * want - bey.vx) * blend;
+        bey.vy += (-Math.sin(th) * radErr * 3 + ty * want - bey.vy) * blend;
+      } else if (style === "defense") {
+        const hold = 1 - Math.exp(-3.1 * dt);
+        bey.vx += (-bey.x * 2.5 - bey.vx) * hold;
+        bey.vy += (-bey.y * 2.5 - bey.vy) * hold;
+      } else {
+        const want = 58 + rpmN * 64;
+        const radErr = dist - 76;
+        const tx = -Math.sin(th) * bey.spin;
+        const ty = Math.cos(th) * bey.spin;
+        bey.vx += (-Math.cos(th) * radErr * 1.6 + tx * want - bey.vx) * blend;
+        bey.vy += (-Math.sin(th) * radErr * 1.6 + ty * want - bey.vy) * blend;
+      }
+
+      if (dist > FIELD.ridgeIn && dist < FIELD.ridgeOut && bey.mode === "free") {
+        const kick = style === "attack" ? 240 : style === "defense" ? -24 : 60;
+        bey.vx += Math.cos(th) * kick * dt;
+        bey.vy += Math.sin(th) * kick * dt;
+      }
+
+      const canRail = !committed && bey.railCooldown <= 0 && bey.mode === "free" && bey.tech !== "catear" && dist > FIELD.railIn && dist < FIELD.wall + 6 && !exitAt(th) && bey.rpm > 3300 && bit.teeth > 0;
+      if (canRail) {
+        const want = bey.tech === "rail" || bey.tech === "counter" || bey.tech === "smash" || style === "attack" || dist > FIELD.railR + 6;
+        if (want) {
+          const natural = bey.spin > 0 ? -1 : 1;
+          const dir = bey.tech === "counter" ? -natural : natural;
+          if (railHitsExit(bey, dir)) {
+            bey.vx += -Math.cos(th) * 220;
+            bey.vy += -Math.sin(th) * 220;
+            capSpeed(bey);
+          } else {
+            enterRail(bey);
+          }
+        }
+      }
+    }
+
+    function railHitsExit(bey, dir) {
+      const th = Math.atan2(bey.y, bey.x);
+      const bit = bey.parts.bit;
+      const hold = 0.15 + (8 / bit.teeth) * 0.1;
+      const rpmN = bey.rpm / 12000;
+      const dash = (bit.teeth / 12) * (0.55 + rpmN) * (bit.dash / 35) * 520;
+      const arc = (dash * hold) / FIELD.railR;
+      for (let i = 1; i <= 5; i += 1) {
+        if (exitAt(th + dir * arc * (i / 5))) return true;
+      }
+      return false;
+    }
+
+    function releaseRail(bey, th, dash) {
+      bey.mode = "free";
+      bey.railTime = 0;
+      bey.railCooldown = 0.92;
+      bey.flash = 0.2;
+      const nx = Math.cos(th);
+      const ny = Math.sin(th);
+      const dir = bey.railDir || -1;
+      const tx = Math.sin(th) * dir;
+      const ty = Math.cos(th) * dir;
+      const inward = Math.max(480, dash * 0.9);
+      const side = exitAt(th) ? 0.05 : 0.18;
+      bey.vx = -nx * inward + tx * inward * side;
+      bey.vy = -ny * inward + ty * inward * side;
+      capSpeed(bey);
+    }
+
+    function applyBurst(defender, attacker, smash) {
+      if (!defender.alive || defender.integrity <= 0) return;
+      const low = attacker.parts.bit.low ? 10 : 0;
+      const snipe = attacker.parts.ratchet.height - low + 8 <= defender.parts.ratchet.height;
+      const exposure = snipe ? 1 : 0.38;
+      const points = defender.parts.ratchet.points;
+      const hitArea = 0.72 + points * 0.035;
+      const lock = 0.4 + points * 0.055;
+      const br = defender.parts.bit.br / 100;
+      const atk = attacker.parts.blade.atk / 50;
+      const rpmF = Math.max(0.35, attacker.rpm / 11000);
+      const damage = (smash / 150) * atk * exposure * hitArea * (1.35 - lock) * (1.15 - br * 0.85) * rpmF * 7.2;
+      defender.integrity -= damage;
+      if (defender.integrity <= 0) {
+        defender.integrity = 0;
+        defender.bursting = true;
+      }
+    }
+
+    function spawnSparks(world, x, y, color, count) {
+      for (let i = 0; i < count; i += 1) {
+        const angle = (i / count) * Math.PI * 2;
+        world.particles.push({
+          x, y,
+          vx: Math.cos(angle) * 220,
+          vy: Math.sin(angle) * 220,
+          life: 0.28,
+          color
+        });
+      }
+    }
+
+    function collide(a, b, world) {
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      let dist = Math.hypot(dx, dy);
+      const min = a.radius + b.radius;
+      if (dist >= min) return;
+      if (dist < 0.001) dist = 0.001;
+      const nx = dx / dist;
+      const ny = dy / dist;
+      const pen = min - dist;
+      const shareA = b.mass / (a.mass + b.mass);
+      const shareB = a.mass / (a.mass + b.mass);
+      a.x -= nx * pen * shareA;
+      a.y -= ny * pen * shareA;
+      b.x += nx * pen * shareB;
+      b.y += ny * pen * shareB;
+      const rv = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+      const close = Math.max(0, -rv);
+      const spinN = (a.rpm + b.rpm) / 14000;
+      const smash = close + spinN * 340 * ((a.parts.blade.atk + b.parts.blade.atk) / 90);
+      if (smash < 12) return;
+      world.touched = true;
+      const push = (blade) => 0.62 + blade.atk / 130 + Math.max(0, blade.upper) * 0.4;
+      const soak = (blade) => Math.max(0.42, 1 - blade.def / 210);
+      const boostA = b.railCooldown > 0 ? 1.6 : 1;
+      const boostB = a.railCooldown > 0 ? 1.6 : 1;
+      a.vx -= nx * smash * shareA * push(b.parts.blade) * soak(a.parts.blade) * boostA;
+      a.vy -= ny * smash * shareA * push(b.parts.blade) * soak(a.parts.blade) * boostA;
+      b.vx += nx * smash * shareB * push(a.parts.blade) * soak(b.parts.blade) * boostB;
+      b.vy += ny * smash * shareB * push(a.parts.blade) * soak(b.parts.blade) * boostB;
+      capSpeed(a);
+      capSpeed(b);
+      a.rpm -= smash * 0.2 * (b.parts.blade.atk / 48) * (1 - a.parts.blade.outward * 0.25);
+      b.rpm -= smash * 0.2 * (a.parts.blade.atk / 48) * (1 - b.parts.blade.outward * 0.25);
+      if (a.spin !== b.spin) {
+        const donor = a.rpm >= b.rpm ? a : b;
+        const recv = donor === a ? b : a;
+        const steal = Math.min(donor.rpm * 0.04, 600);
+        donor.rpm -= steal;
+        recv.rpm += steal * 0.55;
+      }
+      if (smash > 200) {
+        a.stagger = Math.max(a.stagger, 0.34);
+        b.stagger = Math.max(b.stagger, 0.34);
+      }
+      if (a.mode === "catear" && smash > 220) { a.mode = "free"; a.knock = 0.45; }
+      if (b.mode === "catear" && smash > 220) { b.mode = "free"; b.knock = 0.45; }
+      applyBurst(a, b, smash);
+      applyBurst(b, a, smash);
+      a.flash = 0.09;
+      b.flash = 0.09;
+      spawnSparks(world, (a.x + b.x) / 2, (a.y + b.y) / 2, "#fff6d8", 7);
+    }
+
+    function bounds(bey, dt) {
+      bey.pendingKO = "";
+      const dist = Math.hypot(bey.x, bey.y) || 1;
+      const th = Math.atan2(bey.y, bey.x);
+      const exit = exitAt(th);
+      const outward = bey.vx * Math.cos(th) + bey.vy * Math.sin(th);
+      const leaving = exit && dist > 164 && outward > 70 && bey.mode !== "catear" && bey.mode !== "seekear";
+      if (bey.mode === "pocket" || leaving) {
+        if (bey.mode !== "pocket") {
+          bey.mode = "pocket";
+          bey.pocketT = 0;
+          bey.pocketKind = exit ? exit.kind : "over";
+        }
+        bey.pocketT += dt;
+        if (dist < 158 && outward < 40) {
+          bey.mode = "free";
+          return;
+        }
+        if (bey.pocketT > 0.38 || dist > FIELD.battleR + 28) bey.pendingKO = bey.pocketKind || "over";
+        return;
+      }
+      if (dist > FIELD.wall && bey.mode !== "rail") {
+        const nx = bey.x / dist;
+        const ny = bey.y / dist;
+        bey.x = nx * FIELD.wall;
+        bey.y = ny * FIELD.wall;
+        const vn = bey.vx * nx + bey.vy * ny;
+        if (vn > 0) {
+          bey.vx -= nx * vn * 1.62;
+          bey.vy -= ny * vn * 1.62;
+          bey.rpm -= vn * 0.28;
+        }
+      }
+    }
+
+    function ageParticles(world, dt) {
+      world.particles.forEach((spark) => {
+        spark.life -= dt;
+        spark.x += spark.vx * dt;
+        spark.y += spark.vy * dt;
+      });
+      world.particles = world.particles.filter((spark) => spark.life > 0);
+    }
+
+    function stepWorld(world, dt) {
+      if (world.result) {
+        world.result.hold -= dt;
+        world.beys.forEach((bey) => {
+          if (!bey.alive) {
+            bey.x += bey.vx * dt;
+            bey.y += bey.vy * dt;
+            bey.vx *= 0.96;
+            bey.vy *= 0.96;
+          }
+          bey.angle += bey.spin * dt * (4 + bey.rpm / 1800);
+        });
+        ageParticles(world, dt);
+        return;
+      }
+
+      world.beys.forEach((bey) => { if (bey.alive) drive(bey, dt); });
+      world.beys.forEach((bey) => {
+        if (!bey.alive) return;
+        bey.x += bey.vx * dt;
+        bey.y += bey.vy * dt;
+        bey.angle += bey.spin * dt * (4 + bey.rpm / 1800);
+      });
+      if (world.beys.length >= 2 && world.beys[0].alive && world.beys[1].alive) collide(world.beys[0], world.beys[1], world);
+
+      const bursted = world.beys.filter((bey) => bey.bursting);
+      if (!world.result && world.beys.length >= 2 && bursted.length === 2) {
+        world.result = { draw: true, label: "同時爆裂", hold: 0.75 };
+      } else if (!world.result && bursted.length === 1) {
+        const loser = bursted[0];
+        loser.alive = false;
+        loser.mode = "burst";
+        const winner = world.beys.find((bey) => bey !== loser);
+        world.result = { draw: false, loser, winner, points: 2, label: "Burst Finish", hold: 0.75 };
+        spawnSparks(world, loser.x, loser.y, loser.color, 14);
+      }
+
+      if (!world.result) {
+        world.beys.forEach((bey) => { if (bey.alive) bounds(bey, dt); });
+        const pending = world.beys.filter((bey) => bey.pendingKO);
+        if (world.beys.length >= 2 && pending.length >= 2) {
+          world.result = { draw: true, label: "同時出場", hold: 0.75 };
+        } else if (pending.length === 1) {
+          const loser = pending[0];
+          loser.alive = false;
+          loser.mode = "ko";
+          const winner = world.beys.find((bey) => bey !== loser);
+          let points = loser.pendingKO === "xtreme" ? 3 : 2;
+          let label = loser.pendingKO === "xtreme" ? "Xtreme Finish" : "Over Finish";
+          if (!world.touched) {
+            points = 1;
+            label = "自爆出場";
+          }
+          world.result = { draw: false, loser, winner, points, label, hold: 0.75 };
+        }
+      }
+
+      if (!world.result && world.beys.length >= 2) {
+        world.beys.forEach((bey) => {
+          if (bey.alive && bey.rpm < 150) {
+            bey.alive = false;
+            bey.mode = "sleep";
+            bey.sleep = true;
+            bey.vx *= 0.2;
+            bey.vy *= 0.2;
+          }
+        });
+        const asleep = world.beys.filter((bey) => bey.sleep);
+        if (asleep.length >= 2) world.result = { draw: true, label: "同時停轉", hold: 0.7 };
+        else if (asleep.length === 1) {
+          const loser = asleep[0];
+          const winner = world.beys.find((bey) => bey !== loser);
+          world.result = { draw: false, loser, winner, points: 1, label: "Spin Finish", hold: 0.7 };
+        }
+      }
+
+      world.t += dt;
+      if (!world.result && world.t > 75 && world.beys.length >= 2) {
+        const [a, b] = world.beys;
+        if (Math.abs(a.rpm - b.rpm) < 40) world.result = { draw: true, label: "時間到", hold: 0.7 };
+        else {
+          const winner = a.rpm > b.rpm ? a : b;
+          const loser = winner === a ? b : a;
+          world.result = { draw: false, loser, winner, points: 1, label: "時間到 Spin", hold: 0.7 };
+        }
+      }
+      if (world.calloutT > 0) world.calloutT -= dt;
+      ageParticles(world, dt);
+    }
+
+    function createWorld(youBuild, youLaunch, foeBuild, foeLaunch, rng) {
+      const you = makeBey(youBuild, { ...youLaunch, id: "you" }, rng);
+      const foe = makeBey(foeBuild, { ...foeLaunch, id: "foe" }, rng);
+      return {
+        beys: [you, foe],
+        t: 0,
+        touched: false,
+        particles: [],
+        result: null,
+        calloutT: 1.5
+      };
+    }
+
+    function simulate(youBuild, youLaunch, foeBuild, foeLaunch, seconds, rng) {
+      const world = createWorld(youBuild, youLaunch, foeBuild, foeLaunch, rng);
+      const steps = Math.round(seconds * 120);
+      for (let i = 0; i < steps && !world.result; i += 1) stepWorld(world, 1 / 120);
+      return world;
+    }
+
+    const canvas = document.getElementById("arena");
+    const ctx = canvas.getContext("2d");
+
+    function worldToScreen(x, y) {
+      return [VIEW.cx + x * VIEW.scale, VIEW.cy + y * VIEW.scale];
+    }
+
+    function drawStadium() {
+      ctx.clearRect(0, 0, VIEW.w, VIEW.h);
+      ctx.save();
+      ctx.translate(VIEW.cx, VIEW.cy);
+      ctx.scale(VIEW.scale, VIEW.scale);
+
+      ctx.fillStyle = "#121816";
+      roundRect(ctx, -214, -214, 428, 470, 28);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(126,240,255,.25)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(0, 0, FIELD.battleR, 0, Math.PI * 2);
+      ctx.fillStyle = "#10241c";
+      ctx.fill();
+
+      const floor = ctx.createRadialGradient(0, 0, 20, 0, 0, FIELD.battleR);
+      floor.addColorStop(0, "#163528");
+      floor.addColorStop(0.55, "#10281f");
+      floor.addColorStop(1, "#0c1c16");
+      ctx.fillStyle = floor;
+      ctx.beginPath();
+      ctx.arc(0, 0, FIELD.battleR - 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(255,255,255,.08)";
+      ctx.lineWidth = 10;
+      ctx.beginPath();
+      ctx.arc(0, 0, (FIELD.ridgeIn + FIELD.ridgeOut) / 2, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(61,255,154,.16)";
+      ctx.lineWidth = 16;
+      ctx.beginPath();
+      ctx.arc(0, 0, FIELD.railR, rad(130), rad(50) + Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = "#1f8a55";
+      ctx.lineWidth = 2;
+      for (let deg = 132; deg < 408; deg += 7) {
+        const a = rad(deg);
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * (FIELD.railR - 8), Math.sin(a) * (FIELD.railR - 8));
+        ctx.lineTo(Math.cos(a) * (FIELD.railR + 8), Math.sin(a) * (FIELD.railR + 8));
+        ctx.stroke();
+      }
+
+      drawArrow(158, -2.6, -1, "#7ef9ff");
+      drawArrow(158, -0.4, 1, "#ff4d8d");
+
+      EXITS.forEach((exit) => {
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(rad(exit.a0)) * 150, Math.sin(rad(exit.a0)) * 150);
+        ctx.arc(0, 0, 228, rad(exit.a0), rad(exit.a1));
+        ctx.lineTo(Math.cos(rad(exit.a1)) * 150, Math.sin(rad(exit.a1)) * 150);
+        ctx.fillStyle = exit.kind === "xtreme" ? "rgba(255,77,141,.22)" : "rgba(255,224,138,.13)";
+        ctx.fill();
+      });
+
+      CATEARS.forEach((ear) => {
+        ctx.beginPath();
+        ctx.ellipse(ear.x, ear.y, 30, 22, 0.4, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255,77,141,.09)";
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,180,206,.7)";
+        ctx.setLineDash([3, 3]);
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      });
+
+      ctx.fillStyle = "rgba(126,240,255,.35)";
+      ctx.font = "700 13px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("X", 0, 5);
+      ctx.restore();
+
+      ctx.fillStyle = "#93b0a2";
+      ctx.font = "12px sans-serif";
+      ctx.textAlign = "center";
+      const left = worldToScreen(Math.cos(rad(120)) * 214, Math.sin(rad(120)) * 214);
+      const mid = worldToScreen(0, 236);
+      const right = worldToScreen(Math.cos(rad(60)) * 214, Math.sin(rad(60)) * 214);
+      ctx.fillText("Over 2", left[0], left[1]);
+      ctx.fillStyle = "#ff8ab0";
+      ctx.fillText("Xtreme 3", mid[0], mid[1]);
+      ctx.fillStyle = "#93b0a2";
+      ctx.fillText("Over 2", right[0], right[1]);
+      CATEARS.forEach((ear, index) => {
+        const p = worldToScreen(ear.x, ear.y - 30);
+        ctx.fillStyle = "#ffb3cc";
+        ctx.fillText(index === 0 ? "左貓耳" : "右貓耳", p[0], p[1]);
+      });
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#7ef9ff";
+      ctx.fillText("青箭 右旋順軌", 18, 28);
+      ctx.fillStyle = "#ff4d8d";
+      ctx.fillText("洋紅 逆軌", 18, 46);
+    }
+
+    function rad(deg) { return (deg * Math.PI) / 180; }
+
+    function roundRect(context, x, y, w, h, r) {
+      context.beginPath();
+      context.moveTo(x + r, y);
+      context.arcTo(x + w, y, x + w, y + h, r);
+      context.arcTo(x + w, y + h, x, y + h, r);
+      context.arcTo(x, y + h, x, y, r);
+      context.arcTo(x, y, x + w, y, r);
+      context.closePath();
+    }
+
+    function drawArrow(radius, angle, dir, color) {
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      const tx = Math.sin(angle) * dir;
+      const ty = Math.cos(angle) * dir;
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(x - tx * 10, y - ty * 10);
+      ctx.lineTo(x + tx * 8, y + ty * 8);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x + tx * 8, y + ty * 8, 2.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawBey(bey) {
+      const [sx, sy] = worldToScreen(bey.x, bey.y);
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.scale(VIEW.scale, VIEW.scale);
+      if (!bey.alive && bey.mode === "burst") {
+        drawLayer(bey, -16, -10, 0.3);
+        drawLayer(bey, 14, 8, -0.4);
+        drawLayer(bey, 0, 12, 0.8);
+      } else {
+        if (bey.flash > 0) {
+          ctx.shadowColor = bey.mode === "rail" ? "#7ef9ff" : "#ffffff";
+          ctx.shadowBlur = 16;
+        }
+        drawLayer(bey, 0, 0, 0);
+      }
+      ctx.restore();
+      if (bey.mode === "rail" || bey.mode === "catear") {
+        ctx.fillStyle = bey.mode === "catear" ? "#ffb3cc" : (bey.tech === "counter" ? "#ff4d8d" : "#7ef9ff");
+        ctx.font = "12px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(bey.mode === "catear" ? "貓耳" : (bey.tech === "counter" ? "逆軌" : "X"), sx, sy - 42);
+      }
+    }
+
+    function drawLayer(bey, ox, oy, extra) {
+      ctx.save();
+      ctx.translate(ox, oy);
+      ctx.rotate(bey.angle + extra);
+      const blade = bey.parts.blade;
+      const tabs = bey.parts.ratchet.points;
+      const reach = 11 + (bey.parts.ratchet.height - 60) * 0.12;
+      ctx.fillStyle = bey.ratchetColor;
+      for (let i = 0; i < tabs; i += 1) {
+        ctx.rotate((Math.PI * 2) / tabs);
+        ctx.fillRect(4, -3.2, reach, 6.4);
+      }
+      ctx.rotate(-bey.angle - extra);
+      ctx.rotate(bey.angle + extra);
+      ctx.fillStyle = bey.color;
+      if (blade.type === "stamina") {
+        ctx.beginPath();
+        ctx.arc(0, 0, 16, 0, Math.PI * 2);
+        ctx.arc(0, 0, 9, 0, Math.PI * 2, true);
+        ctx.fill();
+        ctx.fillRect(12, -2, 6, 4);
+        ctx.fillRect(-18, -2, 6, 4);
+      } else if (blade.type === "defense") {
+        ctx.beginPath();
+        for (let i = 0; i < 6; i += 1) {
+          const a = (i / 6) * Math.PI * 2;
+          ctx.lineTo(Math.cos(a) * 16, Math.sin(a) * 16);
+        }
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        const n = Math.max(2, blade.contacts);
+        for (let i = 0; i < n; i += 1) {
+          const a = (i / n) * Math.PI * 2;
+          ctx.save();
+          ctx.rotate(a);
+          ctx.beginPath();
+          ctx.moveTo(4, -3);
+          ctx.quadraticCurveTo(16, blade.upper > 0.3 ? -8 : -2, 20, 0);
+          ctx.quadraticCurveTo(14, 5, 4, 3);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+      ctx.beginPath();
+      ctx.fillStyle = "#0d1411";
+      ctx.arc(0, 0, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#e7f6ee";
+      ctx.font = "700 7px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(bey.spin > 0 ? "R" : "L", 0, 2.5);
+      if (bey.integrity < 42 && bey.alive) {
+        ctx.strokeStyle = "#ff4d6a";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(-6, -2);
+        ctx.lineTo(2, 4);
+        ctx.lineTo(7, -5);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawPreview() {
+      if (state.phase !== "x" && state.phase !== "y" && state.phase !== "sp") return;
+      const yTilt = state.phase === "x" ? 0 : state.lockedY || currentBar();
+      const xTilt = state.phase === "x" ? currentBar() : state.lockedX;
+      const yUse = state.phase === "y" ? currentBar() : yTilt;
+      const plan = planLaunch(state.you, {
+        xTilt, yTilt: yUse, clicks: state.phase === "sp" ? state.clicks : 8, pos: state.youSide
+      });
+      ctx.save();
+      ctx.strokeStyle = "rgba(61,255,154,.8)";
+      ctx.setLineDash([5, 5]);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const start = worldToScreen(plan.x, plan.y);
+      ctx.moveTo(start[0], start[1]);
+      for (let t = 0.05; t <= 0.35; t += 0.05) {
+        const p = worldToScreen(plan.x + plan.vx * t, plan.y + plan.vy * t);
+        ctx.lineTo(p[0], p[1]);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawHud() {
+      const world = state.world;
+      if (!world) return;
+      ctx.font = "13px sans-serif";
+      world.beys.forEach((bey, index) => {
+        const x = index === 0 ? 16 : VIEW.w - 176;
+        ctx.fillStyle = "rgba(5,13,10,.72)";
+        ctx.fillRect(x, 60, 160, 36);
+        ctx.fillStyle = bey.color;
+        ctx.fillRect(x + 8, 74, Math.max(0, Math.min(144, (bey.rpm / 15200) * 144)), 8);
+        ctx.fillStyle = "#e7f6ee";
+        ctx.textAlign = "left";
+        ctx.fillText(`${bey.name}  ${Math.max(0, Math.round(bey.rpm))} RPM`, x + 8, 72);
+      });
+      if (world.calloutT > 0) {
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#ffe08a";
+        ctx.font = "700 28px sans-serif";
+        const you = world.beys[0];
+        ctx.fillText(techName(you.tech, you.ear === 1 ? 1 : -1), VIEW.w / 2, 86);
+      }
+      if (state.phase === "round" || state.phase === "match") {
+        ctx.fillStyle = "rgba(5,13,10,.78)";
+        ctx.fillRect(VIEW.w / 2 - 180, VIEW.h / 2 - 46, 360, 92);
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#e7f6ee";
+        ctx.font = "700 22px sans-serif";
+        ctx.fillText(state.lastNote, VIEW.w / 2, VIEW.h / 2 - 4);
+        ctx.font = "14px sans-serif";
+        ctx.fillStyle = "#93b0a2";
+        ctx.fillText(state.phase === "match" ? "這場到 4 分了" : "可以改裝，再射下一發", VIEW.w / 2, VIEW.h / 2 + 24);
+      }
+    }
+
+    function draw() {
+      fitCanvas();
+      drawStadium();
+      drawPreview();
+      const world = state.world;
+      if (world) {
+        world.particles.forEach((spark) => {
+          const p = worldToScreen(spark.x, spark.y);
+          ctx.globalAlpha = Math.max(0, spark.life * 3);
+          ctx.fillStyle = spark.color;
+          ctx.beginPath();
+          ctx.arc(p[0], p[1], 2.2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        });
+        world.beys.forEach(drawBey);
+      } else {
+        [-1, 1].forEach((side, index) => {
+          const build = index === 0 ? state.you : state.foe;
+          const ghost = makeBey(build, { xTilt: 0, yTilt: 0, clicks: 0, pos: index === 0 ? state.youSide : -state.youSide, id: index === 0 ? "you" : "foe" }, () => 0.2);
+          ghost.vx = 0;
+          ghost.vy = 0;
+          ghost.angle = performance.now() / 700 * (index === 0 ? 1 : -1);
+          drawBey(ghost);
+        });
+      }
+      drawHud();
+    }
+
+    let fitted = 0;
+    function fitCanvas() {
+      const parentW = canvas.parentElement ? canvas.parentElement.clientWidth : VIEW.w;
+      const maxH = Math.max(300, window.innerHeight - 290);
+      let cssW = parentW || VIEW.w;
+      let cssH = cssW * (VIEW.h / VIEW.w);
+      if (cssH > maxH) {
+        cssH = maxH;
+        cssW = cssH * (VIEW.w / VIEW.h);
+      }
+      const key = `${Math.round(cssW)}x${Math.round(cssH)}`;
+      if (key === fitted) return;
+      fitted = key;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      canvas.style.width = `${cssW}px`;
+      canvas.style.height = `${cssH}px`;
+      canvas.width = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
+      ctx.setTransform((dpr * cssW) / VIEW.w, 0, 0, (dpr * cssH) / VIEW.h, 0, 0);
+    }
+
+    function currentBar(now = performance.now()) {
+      const period = 1160;
+      const u = ((now % period) + period) % period / period;
+      const tri = u < 0.5 ? u * 2 : 2 - u * 2;
+      return tri * 2 - 1;
+    }
+
+    function renderBuilder(role) {
+      const build = state[role];
+      const panel = document.getElementById(`${role}-panel`);
+      const title = role === "you" ? "你的陀螺" : "對手的陀螺";
+      const bladeOptions = BLADES.map((blade) => `<option value="${blade.id}">${blade.zh} ${blade.name}</option>`).join("");
+      const bitOptions = BITS.map((bit) => `<option value="${bit.id}">${bit.id} ${bit.zh} · ${bit.teeth}齒 · ${bit.g}g</option>`).join("");
+      const pointOptions = [1, 2, 3, 4, 5, 6, 7, 9].map((n) => `<option value="${n}">${n} 點</option>`).join("");
+      const custom = build.bladeId === "custom";
+      panel.innerHTML = `
+        <h2>${title}</h2>
+        <div class="chips" role="group" aria-label="${title}預設">
+          ${PRESETS.map((preset, index) => `<button type="button" data-preset="${index}">${preset.name}</button>`).join("")}
+          <button type="button" data-preset="custom">自訂刃</button>
+        </div>
+        <fieldset>
+          <label>名字<input id="${role}-name" type="text" maxlength="16" value="${escapeAttr(build.name)}"></label>
+          <label>刃 Blade<select id="${role}-blade">${bladeOptions}<option value="custom">自訂刃</option></select></label>
+          <div class="custom" id="${role}-custom" ${custom ? "" : "hidden"}>
+            <label>重量 <b data-out="g"></b><input data-custom="g" type="range" min="28" max="42" step="0.1"></label>
+            <label>接觸點 <b data-out="contacts"></b><input data-custom="contacts" type="range" min="1" max="8" step="1"></label>
+            <div class="row">
+              <label>類型<select data-custom="type"><option value="attack">攻擊</option><option value="balance">平衡</option><option value="defense">防禦</option><option value="stamina">持久</option></select></label>
+              <label>旋向<select data-custom="spin"><option value="R">右旋 R</option><option value="L">左旋 L</option></select></label>
+            </div>
+            <label>攻擊 <b data-out="atk"></b><input data-custom="atk" type="range" min="8" max="75" step="1"></label>
+            <label>防禦 <b data-out="def"></b><input data-custom="def" type="range" min="8" max="75" step="1"></label>
+            <label>持久 <b data-out="sta"></b><input data-custom="sta" type="range" min="8" max="75" step="1"></label>
+            <label>上挑 <b data-out="upper"></b><input data-custom="upper" type="range" min="-40" max="60" step="1"></label>
+          </div>
+          <div class="row">
+            <label>棘輪點數<select id="${role}-points">${pointOptions}</select></label>
+            <label>高度<select id="${role}-height"><option value="60">60 低</option><option value="70">70</option><option value="80">80 高</option></select></label>
+          </div>
+          <label>軸心 Bit<select id="${role}-bit">${bitOptions}</select></label>
+          <p class="blurb" id="${role}-blurb"></p>
+          <div class="row swatches">
+            <label>刃色<input id="${role}-color" type="color" value="${build.color}"></label>
+            <label>棘輪色<input id="${role}-ratchet" type="color" value="${build.ratchetColor}"></label>
+          </div>
+          ${role === "you" ? `<div class="side"><span>站位</span><button type="button" data-side="-1">出口左側</button><button type="button" data-side="1">出口右側</button></div>` : `<label>對手射法<select id="foe-diff"><option value="practice">練習，拉力不穩</option><option value="even">對等</option><option value="champion">冠軍，會挑射法</option></select></label>`}
+        </fieldset>
+        <p class="summary" id="${role}-summary"></p>`;
+      panel.querySelector(`#${role}-blade`).value = build.bladeId;
+      panel.querySelector(`#${role}-points`).value = String(build.points);
+      panel.querySelector(`#${role}-height`).value = String(build.height);
+      panel.querySelector(`#${role}-bit`).value = build.bitId;
+      if (role === "foe") panel.querySelector("#foe-diff").value = state.difficulty;
+      if (role === "you") {
+        panel.querySelectorAll("[data-side]").forEach((button) => {
+          button.setAttribute("aria-pressed", String(Number(button.dataset.side) === state.youSide));
+        });
+      }
+      panel.querySelectorAll("[data-preset]").forEach((button) => {
+        const on = button.dataset.preset === "custom" ? build.bladeId === "custom" : PRESETS[button.dataset.preset]?.bladeId === build.bladeId && build.bladeId !== "custom";
+        button.setAttribute("aria-pressed", String(on));
+      });
+      fillCustom(role);
+      refreshSummary(role);
+      panel.oninput = () => syncBuilder(role);
+      panel.onchange = () => syncBuilder(role);
+      panel.onclick = (event) => {
+        const preset = event.target.closest("[data-preset]");
+        if (preset) applyPreset(role, preset.dataset.preset);
+        const side = event.target.closest("[data-side]");
+        if (side && state.phase === "ready" || side && state.phase === "round" || side && state.phase === "match") {
+          state.youSide = Number(side.dataset.side);
+          renderBuilder("you");
+        }
+      };
+    }
+
+    function escapeAttr(value) {
+      return String(value).replace(/[&"]/g, (ch) => (ch === "&" ? "&amp;" : "&quot;"));
+    }
+
+    function fillCustom(role) {
+      const build = state[role];
+      if (!build.custom) build.custom = customBlade();
+      const box = document.getElementById(`${role}-custom`);
+      if (!box) return;
+      box.querySelectorAll("[data-custom]").forEach((input) => {
+        const key = input.dataset.custom;
+        if (key === "upper") input.value = String(Math.round(build.custom.upper * 100));
+        else input.value = build.custom[key];
+      });
+      writeCustomOut(role);
+    }
+
+    function writeCustomOut(role) {
+      const blade = state[role].custom;
+      const box = document.getElementById(`${role}-custom`);
+      if (!box || !blade) return;
+      box.querySelector('[data-out="g"]').textContent = `${blade.g.toFixed(1)} g`;
+      box.querySelector('[data-out="contacts"]').textContent = blade.contacts;
+      box.querySelector('[data-out="atk"]').textContent = blade.atk;
+      box.querySelector('[data-out="def"]').textContent = blade.def;
+      box.querySelector('[data-out="sta"]').textContent = blade.sta;
+      box.querySelector('[data-out="upper"]').textContent = blade.upper.toFixed(2);
+    }
+
+    function syncBuilder(role) {
+      if (locked()) return;
+      const build = state[role];
+      build.name = document.getElementById(`${role}-name`).value.slice(0, 16) || (role === "you" ? "我的陀螺" : "對手");
+      const bladeId = document.getElementById(`${role}-blade`).value;
+      if (bladeId === "custom" && build.bladeId !== "custom") {
+        build.bladeId = "custom";
+        if (!build.custom) build.custom = customBlade();
+        renderBuilder(role);
+        return;
+      }
+      build.bladeId = bladeId;
+      build.points = Number(document.getElementById(`${role}-points`).value);
+      build.height = Number(document.getElementById(`${role}-height`).value);
+      build.bitId = document.getElementById(`${role}-bit`).value;
+      build.color = document.getElementById(`${role}-color`).value;
+      build.ratchetColor = document.getElementById(`${role}-ratchet`).value;
+      if (role === "foe") state.difficulty = document.getElementById("foe-diff").value;
+      if (build.bladeId === "custom") {
+        const box = document.getElementById(`${role}-custom`);
+        box.querySelectorAll("[data-custom]").forEach((input) => {
+          const key = input.dataset.custom;
+          if (key === "type" || key === "spin") build.custom[key] = input.value;
+          else if (key === "upper") build.custom.upper = Number(input.value) / 100;
+          else if (key === "g") build.custom.g = Number(input.value);
+          else build.custom[key] = Number(input.value);
+        });
+        build.custom.outward = build.custom.type === "stamina" ? 0.8 : 0.15;
+        writeCustomOut(role);
+      }
+      refreshSummary(role);
+    }
+
+    function refreshSummary(role) {
+      const build = state[role];
+      const blade = resolveBlade(build);
+      const bit = resolveBit(build);
+      const node = document.getElementById(`${role}-summary`);
+      if (node) node.textContent = `${comboText(build)} · ${TYPE_ZH[blade.type]} · 耐爆 ${bit.br} · X Dash ${bit.dash}`;
+      const blurb = document.getElementById(`${role}-blurb`);
+      if (blurb) blurb.textContent = BIT_BLURB[bit.id] || "";
+    }
+
+    function applyPreset(role, key) {
+      if (locked()) return;
+      if (key === "custom") {
+        state[role].bladeId = "custom";
+        if (!state[role].custom) state[role].custom = customBlade();
+        state[role].name = "自訂";
+      } else {
+        const preset = PRESETS[Number(key)];
+        const name = state[role].name;
+        state[role] = presetBuild(preset);
+        if (role === "foe" && name === "對手") state[role].name = preset.name;
+      }
+      renderBuilder(role);
+    }
+
+    function locked() {
+      return state.phase === "x" || state.phase === "y" || state.phase === "sp" || state.phase === "battle";
+    }
+
+    function paintLock() {
+      document.querySelectorAll(".panel").forEach((panel) => panel.classList.toggle("is-locked", locked()));
+    }
+
+    function pushLog(text) {
+      state.log.unshift(text);
+      state.log = state.log.slice(0, 8);
+      const list = document.getElementById("log");
+      list.innerHTML = "";
+      state.log.forEach((line) => {
+        const item = document.createElement("li");
+        item.textContent = line;
+        list.appendChild(item);
+      });
+    }
+
+    function updateScore() {
+      document.getElementById("score-you").textContent = state.score.you;
+      document.getElementById("score-foe").textContent = state.score.foe;
+    }
+
+    const phaseLabel = document.getElementById("phase-label");
+    const liveRead = document.getElementById("live-read");
+    const barWrap = document.getElementById("bar-wrap");
+    const spWrap = document.getElementById("sp-wrap");
+    const readyWrap = document.getElementById("ready-wrap");
+    const zones = document.getElementById("zones");
+    const marker = document.getElementById("marker");
+    const hint = document.getElementById("hint");
+    const startBtn = document.getElementById("start");
+    const spFill = document.getElementById("sp-fill");
+    const spRead = document.getElementById("sp-read");
+
+    function showDock() {
+      const phase = state.phase;
+      barWrap.hidden = phase !== "x" && phase !== "y";
+      spWrap.hidden = phase !== "sp";
+      readyWrap.hidden = phase === "x" || phase === "y" || phase === "sp" || phase === "battle";
+      if (phase === "ready") {
+        phaseLabel.textContent = "準備發射";
+        startBtn.textContent = "3 · 2 · 1　Go Shoot";
+        liveRead.textContent = "指標自動左右移動";
+        hint.textContent = "點下去之後，游標會一直左右跑。第一次點鎖定左右傾斜，第二次點鎖定前後傾斜。右旋要順軌就前壓加右傾，要逆軌就前壓加左傾；要蓄貓耳就後收，並偏向你想躲的那一側。";
+      } else if (phase === "x") {
+        phaseLabel.textContent = "第 1 次 · 左右傾斜 X";
+        zones.innerHTML = "<span>左傾</span><span>垂直</span><span>右傾</span>";
+        hint.textContent = "看準游標，點這條或按空白鍵。中間接近垂直，越旁邊傾斜越大。";
+      } else if (phase === "y") {
+        phaseLabel.textContent = "第 2 次 · 前後傾斜 Y";
+        zones.innerHTML = "<span>前壓貼軌</span><span>垂直</span><span>後收貓耳</span>";
+        hint.textContent = "同一條繼續跑。左半是前壓，咬極限線；右半是後收，進貓耳。右旋：前壓＋右傾＝順軌，前壓＋左傾＝逆軌。左旋相反。";
+      } else if (phase === "sp") {
+        phaseLabel.textContent = "拉力 SP";
+        liveRead.textContent = "1.5 秒";
+        hint.textContent = "時限內連點。大約 14 下拉滿，再多會過拉，出手變飄。";
+      } else if (phase === "battle") {
+        phaseLabel.textContent = "對戰中";
+        hint.textContent = state.lastNote;
+      } else if (phase === "round") {
+        phaseLabel.textContent = "這回結束";
+        startBtn.textContent = "下一發";
+        liveRead.textContent = `${state.score.you} : ${state.score.foe}`;
+        hint.textContent = state.lastNote;
+      } else if (phase === "match") {
+        phaseLabel.textContent = state.score.you >= 4 ? "你贏了這場" : "對手贏了這場";
+        startBtn.textContent = "再比一場";
+        liveRead.textContent = `${state.score.you} : ${state.score.foe}`;
+        hint.textContent = state.lastNote;
+      }
+      paintLock();
+    }
+
+    function beginLaunch() {
+      if (state.phase === "match") {
+        state.score.you = 0;
+        state.score.foe = 0;
+        updateScore();
+      }
+      state.lockedX = 0;
+      state.lockedY = 0;
+      state.clicks = 0;
+      state.world = null;
+      state.foePlan = cpuPlan(state.foe, state.difficulty, Math.random);
+      state.phase = "x";
+      showDock();
+      tone(520, 0.05);
+    }
+
+    function confirmAxis() {
+      const value = currentBar();
+      if (state.phase === "x") {
+        state.lockedX = value;
+        state.phase = "y";
+        tone(640, 0.05);
+        showDock();
+      } else if (state.phase === "y") {
+        state.lockedY = value;
+        state.clicks = 0;
+        state.spT0 = performance.now();
+        state.phase = "sp";
+        tone(760, 0.05);
+        showDock();
+      }
+    }
+
+    function addPull() {
+      if (state.phase !== "sp") return;
+      state.clicks += 1;
+      const stats = pullStats(state.clicks);
+      tone(380 + Math.min(18, state.clicks) * 28, 0.03);
+      spFill.style.width = `${stats.sp}%`;
+      const warn = state.clicks > 14 ? " · 過拉" : "";
+      spRead.textContent = `${state.clicks} 下 · SP ${stats.sp} · ${stats.rpm} RPM${warn}`;
+      liveRead.textContent = `SP ${stats.sp}`;
+    }
+
+    function beginBattle() {
+      const youLaunch = {
+        xTilt: state.lockedX,
+        yTilt: state.lockedY,
+        clicks: state.clicks,
+        pos: state.youSide,
+        id: "you"
+      };
+      const foeLaunch = { ...state.foePlan, pos: -state.youSide, id: "foe" };
+      state.world = createWorld(state.you, youLaunch, state.foe, foeLaunch, Math.random);
+      const youPlan = planLaunch(state.you, youLaunch);
+      const foePlan = planLaunch(state.foe, foeLaunch);
+      state.lastNote = `你：${techName(youPlan.tech, youPlan.xTilt)}　SP ${youPlan.sp}　${youPlan.rpm} RPM。對手：${techName(foePlan.tech, foePlan.xTilt)}　SP ${foePlan.sp}。`;
+      pushLog(state.lastNote);
+      state.phase = "battle";
+      showDock();
+      tone(180, 0.09, "sawtooth");
+    }
+
+    function finishBattle() {
+      const result = state.world.result;
+      if (result.draw) {
+        state.lastNote = `${result.label}，這回重賽`;
+        pushLog(state.lastNote);
+        state.phase = "round";
+      } else {
+        const youWin = result.winner && result.winner.id === "you";
+        if (youWin) state.score.you += result.points;
+        else state.score.foe += result.points;
+        updateScore();
+        state.lastNote = `${youWin ? "你" : "對手"} ${result.label} +${result.points}`;
+        pushLog(state.lastNote);
+        state.phase = state.score.you >= 4 || state.score.foe >= 4 ? "match" : "round";
+        tone(youWin ? 880 : 140, 0.12);
+      }
+      showDock();
+    }
+
+    function cpuPlan(build, difficulty, rng) {
+      const spin = resolveBlade(build).spin === "L" ? -1 : 1;
+      const style = resolveBit(build).style;
+      let x = 0;
+      let y = 0;
+      let clicks = 10;
+      if (difficulty === "practice") {
+        return { xTilt: (rng() * 2 - 1) * 0.85, yTilt: (rng() * 2 - 1) * 0.85, clicks: 3 + Math.floor(rng() * 6), pos: 1 };
+      }
+      if (style === "defense") {
+        x = (rng() - 0.5) * 0.18;
+        y = (rng() - 0.5) * 0.18;
+        clicks = difficulty === "champion" ? 13 : 10;
+      } else if (style === "stamina") {
+        x = rng() < 0.5 ? -0.68 : 0.68;
+        y = 0.74;
+        clicks = difficulty === "champion" ? 12 : 9;
+      } else if (style === "attack") {
+        const counter = rng() < (difficulty === "champion" ? 0.45 : 0.28);
+        x = (counter ? -0.68 : 0.68) * spin;
+        y = -0.76;
+        clicks = difficulty === "champion" ? 14 : 11;
+      } else {
+        x = (rng() < 0.5 ? -0.45 : 0.45);
+        y = -0.2;
+        clicks = 10;
+      }
+      return { xTilt: x, yTilt: y, clicks, pos: 1 };
+    }
+
+    let audioCtx = null;
+    function tone(freq, dur, type) {
+      if (state.muted) return;
+      try {
+        audioCtx = audioCtx || new AudioContext();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type || "square";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + dur);
+      } catch (error) {
+        /* autoplay or missing audio device */
+      }
+    }
+
+    document.getElementById("bar").addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      confirmAxis();
+    });
+    document.getElementById("pull").addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      addPull();
+    });
+    startBtn.addEventListener("click", beginLaunch);
+    document.getElementById("speed").addEventListener("click", () => {
+      state.speed = state.speed === 1 ? 2 : 1;
+      const button = document.getElementById("speed");
+      button.textContent = `速度 ${state.speed}×`;
+      button.setAttribute("aria-pressed", String(state.speed === 2));
+    });
+    document.getElementById("mute").addEventListener("click", () => {
+      state.muted = !state.muted;
+      const button = document.getElementById("mute");
+      button.textContent = state.muted ? "音效關" : "音效開";
+      button.setAttribute("aria-pressed", String(state.muted));
+    });
+    window.addEventListener("keydown", (event) => {
+      if (event.code !== "Space" && event.code !== "Enter") return;
+      if (event.repeat) return;
+      const tag = document.activeElement && document.activeElement.tagName;
+      if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+      event.preventDefault();
+      if (state.phase === "ready" || state.phase === "round" || state.phase === "match") beginLaunch();
+      else if (state.phase === "x" || state.phase === "y") confirmAxis();
+      else if (state.phase === "sp") addPull();
+    });
+
+    let last = performance.now();
+    let awarded = false;
+    function frame(now) {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      if (state.phase === "x" || state.phase === "y") {
+        const value = currentBar(now);
+        marker.style.left = `${50 + value * 46}%`;
+        const deg = Math.round(value * 28);
+        if (state.phase === "x") {
+          liveRead.textContent = `X ${deg > 0 ? "+" : ""}${deg}°`;
+        } else {
+          const tech = classify(state.lockedX, value, resolveBlade(state.you).spin === "L" ? -1 : 1);
+          liveRead.textContent = `現在按：${techName(tech, state.lockedX)}　Y ${deg > 0 ? "+" : ""}${deg}°`;
+        }
+      } else if (state.phase === "sp") {
+        const left = Math.max(0, 1500 - (now - state.spT0));
+        liveRead.textContent = `${(left / 1000).toFixed(1)} 秒`;
+        if (left <= 0) beginBattle();
+      } else if (state.phase === "battle" && state.world) {
+        const steps = Math.max(1, Math.round(dt * 120 * state.speed));
+        for (let i = 0; i < steps; i += 1) stepWorld(state.world, 1 / 120);
+        if (state.world.result && state.world.result.hold <= 0) finishBattle();
+      }
+      draw();
+      requestAnimationFrame(frame);
+    }
+
+    function runSimTests() {
+      const lines = [];
+      const check = (name, cond, extra) => {
+        lines.push(`${cond ? "PASS" : "FAIL"} ${name}${cond ? "" : " " + (extra || "")}`);
+      };
+      check("蓄左貓耳", classify(-0.6, 0.7, 1) === "catear");
+      check("右旋右傾是順軌", classify(0.6, -0.7, 1) === "rail");
+      check("右旋左傾是逆軌", classify(-0.6, -0.7, 1) === "counter");
+      check("垂直", classify(0.05, 0.04, 1) === "vertical");
+      check("左旋左傾是順軌", classify(-0.6, -0.7, -1) === "rail");
+      check("14 下拉滿", pullStats(14).sp === 100 && pullStats(14).rpm === 15200);
+      check("貓耳在齒軌內側", CATEARS.every((ear) => Math.hypot(ear.x, ear.y) < FIELD.railIn - 8));
+
+      const rng = () => 0.5;
+      const bey = makeBey(presetBuild(PRESETS[0]), { xTilt: -0.7, yTilt: -0.8, clicks: 12, pos: -1, id: "you" }, rng);
+      bey.x = -FIELD.railR;
+      bey.y = 0;
+      bey.vx = 0;
+      bey.vy = 0;
+      bey.tech = "rail";
+      enterRail(bey);
+      drive(bey, 1 / 60);
+      const railCross = Math.sign(bey.x * bey.vy - bey.y * bey.vx);
+      bey.tech = "counter";
+      bey.vx = 0;
+      bey.vy = 0;
+      enterRail(bey);
+      drive(bey, 1 / 60);
+      const counterCross = Math.sign(bey.x * bey.vy - bey.y * bey.vx);
+      check("順軌和逆軌方向相反", railCross !== 0 && railCross === -counterCross, `${railCross} ${counterCross}`);
+
+      const arrow = presetBuild(PRESETS[2]);
+      const solo = createWorld(arrow, { xTilt: -0.7, yTilt: 0.8, clicks: 10, pos: -1, id: "you" }, arrow, { xTilt: 0, yTilt: 0, clicks: 1, pos: 1, id: "foe" }, rng);
+      solo.beys.pop();
+      for (let i = 0; i < 4 * 120; i += 1) stepWorld(solo, 1 / 120);
+      const parked = solo.beys[0];
+      const parkDist = Math.hypot(parked.x - CATEARS[0].x, parked.y - CATEARS[0].y);
+      check("蓄貓耳會停進左耳", parked.mode === "catear" && parkDist < 36, `mode ${parked.mode} dist ${parkDist.toFixed(1)}`);
+
+      const knight = presetBuild(PRESETS[3]);
+      const calm = simulate(arrow, { xTilt: 0, yTilt: 0, clicks: 8, pos: -1 }, knight, { xTilt: 0, yTilt: 0, clicks: 8, pos: 1 }, 12, rng);
+      check("垂直持久開局不會馬上出界", !calm.result || calm.result.label.indexOf("Spin") >= 0 || calm.t > 8, calm.result && calm.result.label);
+
+      const shark = presetBuild(PRESETS[4]);
+      const soft = presetBuild(PRESETS[2]);
+      soft.points = 1;
+      soft.height = 60;
+      soft.bitId = "B";
+      const attack = simulate(shark, { xTilt: -0.66, yTilt: -0.78, clicks: 14, pos: -1 }, soft, { xTilt: 0.1, yTilt: 0.05, clicks: 6, pos: 1 }, 25, rng);
+      check("強襲在 25 秒內分出勝負", !!attack.result, `t ${attack.t.toFixed(1)} rpm ${attack.beys.map((b) => Math.round(b.rpm)).join(",")}`);
+
+      const victim = (points, height, bitId) => {
+        const build = presetBuild(PRESETS[2]);
+        build.points = points;
+        build.height = height;
+        build.bitId = bitId;
+        return makeBey(build, { xTilt: 0, yTilt: 0, clicks: 8, pos: 1, id: "foe" }, rng);
+      };
+      const hitter = makeBey(shark, { xTilt: -0.6, yTilt: -0.7, clicks: 14, pos: -1, id: "you" }, rng);
+      hitter.rpm = 14000;
+      const fragile = victim(1, 80, "B");
+      const solid = victim(9, 60, "F");
+      applyBurst(fragile, hitter, 900);
+      applyBurst(solid, hitter, 900);
+      check("低鎖高棘輪比厚鎖低刃容易爆", (100 - fragile.integrity) > (100 - solid.integrity) * 1.8, `${fragile.integrity.toFixed(1)} vs ${solid.integrity.toFixed(1)}`);
+
+      const light = makeBey(Object.assign(presetBuild(PRESETS[2]), { bladeId: "custom", custom: Object.assign(customBlade(), { g: 28, type: "stamina", atk: 20 }) }), { xTilt: 0, yTilt: 0, clicks: 4, pos: -1, id: "you" }, rng);
+      const heavy = makeBey(Object.assign(presetBuild(PRESETS[4]), { bladeId: "custom", custom: Object.assign(customBlade(), { g: 42, type: "attack", atk: 60 }) }), { xTilt: 0, yTilt: 0, clicks: 4, pos: 1, id: "foe" }, rng);
+      light.x = 0; light.y = 0; light.vx = 0; light.vy = 0; light.rpm = 10000;
+      heavy.x = 30; heavy.y = 0; heavy.vx = 0; heavy.vy = 0; heavy.rpm = 10000;
+      collide(light, heavy, { touched: false, particles: [] });
+      check("輕刃被撞得更快", Math.abs(light.vx) > Math.abs(heavy.vx), `${light.vx.toFixed(1)} ${heavy.vx.toFixed(1)}`);
+      return lines;
+    }
+
+    renderBuilder("you");
+    renderBuilder("foe");
+    showDock();
+
+    if (location.hash === "#test") {
+      const pre = document.createElement("pre");
+      pre.id = "testout";
+      try {
+        pre.textContent = runSimTests().join("\n");
+      } catch (error) {
+        pre.textContent = `FAIL threw ${error && error.stack}`;
+      }
+      document.body.prepend(pre);
+    } else {
+      requestAnimationFrame(frame);
+    }
+
+    window.BX = { classify, planLaunch, simulate, createWorld, stepWorld, BLADES, BITS, presetBuild, PRESETS, pullStats };
+  </script>
+</body>
+</html>
