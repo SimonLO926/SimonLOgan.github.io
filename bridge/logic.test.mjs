@@ -12,6 +12,7 @@ import {
   gravityMs,
   paceOf,
   sandClusters,
+  sandColorOf,
   sandFallStep,
   tSpinReady,
   dropComponents,
@@ -220,9 +221,13 @@ test("sand mode lasts twenty drops and uses three colors", () => {
   assert.equal(game.grid[18][0].bomb, false);
   assert.equal(game.grid[18][0].reward, null);
   assert.equal(game.grid[18][0].curse, null);
-  const colors = new Set([game.grid[18][0].sand, game.grid[18][1].sand, ...game.queue.map((piece) => piece.sand)]);
-  for (const color of colors) assert.ok(color >= 0 && color < SAND_COLORS);
-  assert.equal(game.pull().sand >= 0 && game.pull().sand < SAND_COLORS, true);
+  assert.equal(game.grid[18][0].sand, sandColorOf("I"));
+  assert.equal(game.grid[18][1].sand, sandColorOf("O"));
+  assert.equal(game.queue[0].sand, sandColorOf("T"));
+  assert.equal(game.queue[1].sand, sandColorOf("L"));
+  assert.equal(game.queue[2].sand, sandColorOf("J"));
+  const pulled = game.pull();
+  assert.equal(pulled.sand, sandColorOf(pulled.type));
   assert.equal(["I", "O", "T", "S", "Z", "J", "L"].includes(game.pull().type), true);
   const grain = emptyGrid();
   grain[10][4] = { type: "T", g: 9, sand: 1 };

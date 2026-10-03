@@ -59,6 +59,15 @@ export const REWARD_CHANCE = { breakout: 0.005, bbtan: 0.005, pinball: 0.01, san
 export const SAND_DROPS = 20;
 export const SAND_MATCH = 8;
 export const SAND_COLORS = 3;
+export const SAND_OF_TYPE = {
+  I: 0, S: 0, J: 0,
+  O: 1, Z: 1, L: 1,
+  T: 2, B: 2, X: 2, D: 2, R: 2, A: 2, C: 2,
+};
+
+export function sandColorOf(type) {
+  return SAND_OF_TYPE[type] ?? 0;
+}
 export const TSPIN_SCORE = [400, 800, 1200, 1600];
 
 function bombShapesFrom(base) {
@@ -145,7 +154,7 @@ export function createGame(options = {}) {
       bombIndex: marked ? Math.floor(random() * SHAPES[type][0].length) : null,
       curse,
     };
-    if (game.sanding) piece.sand = Math.floor(random() * SAND_COLORS);
+    if (game.sanding) piece.sand = sandColorOf(type);
     return piece;
   }
 
@@ -416,7 +425,7 @@ export function beginSand(game) {
   game.sandLeft = SAND_DROPS;
   game.sandExit = false;
   const tint = (piece) => {
-    if (piece) piece.sand = Math.floor(game.random() * SAND_COLORS);
+    if (piece) piece.sand = sandColorOf(piece.type);
   };
   for (const piece of game.queue) tint(piece);
   tint(game.hold);
@@ -425,7 +434,7 @@ export function beginSand(game) {
     for (let x = 0; x < COLS; x += 1) {
       const cell = game.grid[y][x];
       if (!cell) continue;
-      cell.sand = Math.floor(game.random() * SAND_COLORS);
+      cell.sand = sandColorOf(cell.type);
       cell.g = takeGid(game);
       cell.bomb = false;
       cell.reward = null;
@@ -520,7 +529,7 @@ export function lockActive(game) {
   game.spin = tSpinReady(game) ? "tspin" : null;
   const gid = takeGid(game);
   const sanding = !!game.sanding;
-  const sand = sanding ? (game.active.sand ?? 0) : null;
+  const sand = sanding ? (game.active.sand ?? sandColorOf(game.active.type)) : null;
   const cells = cellsOf(game.active.type, game.active.rot, game.active.x, game.active.y);
   cells.forEach(([x, y], index) => {
     game.grid[y][x] = {
