@@ -1164,7 +1164,7 @@
     import { createSession, drawSession, updateSession } from "./arcade.mjs";
     import { translate } from "./i18n.mjs";
     import {
-      COLS, ROWS, SAND_DROPS, SHAPES, beginSand, cellsOf, createGame, fits, flipGrid, ghostY, gravityMs,
+      COLS, ROWS, SAND_DROPS, SAND_SCALE, SHAPES, beginSand, cellsOf, createGame, fits, flipGrid, ghostY, gravityMs,
       hardDrop, hold, lockActive, paceOf, pump, startGame, tryMove, tryRotate,
     } from "./logic.mjs";
 
@@ -1172,12 +1172,7 @@
       I: "#64d2ff", O: "#ffd60a", T: "#bf5af2", S: "#30d158", Z: "#ff453a",
       J: "#0a84ff", L: "#ff9f0a", B: "#8e8e93", X: "#5e5ce6", D: "#ff9f0a", R: "#ff375f", A: "#e7d3a1",
     };
-    const SAND_HEX = ["#e6b325", "#e25b45", "#2eb8d6"];
-    const SAND_GRAINS = [
-      [0.22, 0.22, 0.13], [0.5, 0.16, 0.11], [0.76, 0.28, 0.12],
-      [0.18, 0.5, 0.12], [0.48, 0.48, 0.15], [0.78, 0.54, 0.11],
-      [0.26, 0.78, 0.12], [0.54, 0.8, 0.14], [0.8, 0.76, 0.11],
-    ];
+    const SAND_HEX = ["#ffd84a", "#ff4b4b", "#3c8dff"];
     const CELL = 28;
     const board = document.querySelector("#board");
     const holdCanvas = document.querySelector("#hold-canvas");
@@ -1358,7 +1353,7 @@
     function onManeuver() {
       if (!game.active) return;
       const { type, rot, x, y } = game.active;
-      if (!fits(game.grid, type, rot, x, y + 1) && lockResets < 12) {
+      if (!fits(game.grid, type, rot, x, y + 1, game) && lockResets < 12) {
         lockMs = 0;
         lockResets += 1;
       }
@@ -1576,22 +1571,38 @@
       return `rgb(${channel(16)}, ${channel(8)}, ${channel(0)})`;
     }
 
-    function drawSandCell(context, x, y, size, colorIndex, ghost) {
+    function drawSandMino(context, x, y, size, colorIndex, ghost) {
+      const grain = size / SAND_SCALE;
       const base = SAND_HEX[colorIndex] ?? SAND_HEX[0];
-      const ix = Math.floor(x);
-      const iy = Math.floor(y);
-      const ox = ((Math.abs(ix * 13 + iy * 7) % 5) - 2) * 0.035;
-      const oy = ((Math.abs(ix * 5 + iy * 11) % 5) - 2) * 0.035;
       context.save();
-      context.globalAlpha = ghost ? 0.38 : 1;
-      SAND_GRAINS.forEach(([gx, gy, radius], index) => {
-        const shade = (index + ix + iy) % 3;
-        context.fillStyle = shade === 0 ? mixHex(base, 0.38) : shade === 1 ? base : mixHex(base, -0.32);
-        context.beginPath();
-        context.arc((x + gx + ox) * size, (y + gy + oy) * size, Math.max(1.1, size * radius), 0, Math.PI * 2);
-        context.fill();
-      });
+      context.globalAlpha = ghost ? 0.4 : 1;
+      for (let dy = 0; dy < SAND_SCALE; dy += 1) {
+        for (let dx = 0; dx < SAND_SCALE; dx += 1) {
+          const speckle = (dx * 13 + dy * 7) % 11;
+          const shade = speckle === 0 ? mixHex(base, 0.3) : speckle === 1 ? mixHex(base, -0.24) : base;
+          context.fillStyle = shade;
+          context.fillRect(x * size + dx * grain, y * size + dy * grain, grain + 0.8, grain + 0.8);
+        }
+      }
       context.restore();
+    }
+
+    function drawSandField(context) {
+      const grid = game.sandGrid;
+      if (!grid) return;
+      const grain = CELL / SAND_SCALE;
+      for (let y = 0; y < grid.length; y += 1) {
+        const row = grid[y];
+        for (let x = 0; x < row.length; x += 1) {
+          const color = row[x];
+          if (!color) continue;
+          const base = SAND_HEX[color - 1] ?? SAND_HEX[0];
+          const speckle = (x * 13 + y * 29) % 17;
+          const shade = speckle === 0 ? mixHex(base, 0.28) : speckle === 1 ? mixHex(base, -0.22) : base;
+          context.fillStyle = shade;
+          context.fillRect(x * grain, y * grain, grain + 0.8, grain + 0.8);
+        }
+      }
     }
 
     function tile(context, x, y, size, ghost, tint) {
@@ -1621,7 +1632,7 @@
       cells.forEach(([x, y], index) => {
         if (y < 0 || y >= ROWS || x < 0 || x >= COLS) return;
         if (sand != null) {
-          drawSandCell(context, x, y, size, sand, ghost);
+          drawSandMino(context, x, y, size, sand, ghost);
           return;
         }
         context.fillStyle = pieceColor(type, curse, sand);
@@ -1832,8 +1843,9 @@
       prepareBoard();
       const shaking = fx.some((item) => (item.big && item.t < 200) || ((item.kind === "tspin" || item.kind === "combo") && item.t < 160));
       if (shaking) ctx.translate((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
-      ctx.fillStyle = document.body.dataset.theme === "dark" ? "#0e1014" : "#ffffff";
+      ctx.fillStyle = game.sandGrid ? "#14110e" : (document.body.dataset.theme === "dark" ? "#0e1014" : "#ffffff");
       ctx.fillRect(0, 0, COLS * CELL, ROWS * CELL);
+      drawSandField(ctx);
       const flipping = anim?.step.type === "flip" || (anim?.step.type === "reward" && anim.step.reward !== "sand");
       if (flipping) {
         const turn = Math.min(1, anim.t / anim.dur);
@@ -1844,25 +1856,25 @@
         ctx.translate(-(COLS * CELL) / 2, -(ROWS * CELL) / 2);
       }
       const skip = new Set();
-      if (anim?.step.type === "drop" || anim?.step.type === "sand") for (const move of anim.step.moves) skip.add(move.g);
+      if (anim?.step.moves?.length && (anim.step.type === "drop" || anim.step.type === "sand")) for (const move of anim.step.moves) skip.add(move.g);
       drawGridCells(ctx, game.grid, skip, CELL);
-      if (anim?.step.type === "drop" || anim?.step.type === "sand") {
+      if (anim?.step.moves?.length && (anim.step.type === "drop" || anim.step.type === "sand")) {
         const turn = Math.min(1, anim.t / anim.dur);
         const eased = 1 - (1 - turn) ** 2;
         for (const move of anim.step.moves) {
           const x = move.x0 == null ? move.x : move.x0 + (move.x1 - move.x0) * eased;
           const y = move.y0 + (move.y1 - move.y0) * eased;
-          if (move.sand != null) drawSandCell(ctx, x, y, CELL, move.sand, false);
+          if (move.sand != null) drawSandMino(ctx, x, y, CELL, move.sand, false);
           else {
             ctx.fillStyle = pieceColor(move.type);
             tile(ctx, x, y, CELL, false);
           }
         }
       }
-      if (anim?.step.type === "clear") {
+      if (anim?.step.type === "clear" && !anim.step.sand) {
         ctx.globalAlpha = 1 - anim.t / anim.dur;
         for (const cell of anim.step.cells) {
-          if (cell.sand != null) drawSandCell(ctx, cell.x, cell.y, CELL, cell.sand, false);
+          if (cell.sand != null) drawSandMino(ctx, cell.x, cell.y, CELL, cell.sand, false);
           else {
             ctx.fillStyle = pieceColor(cell.type, cell.curse, cell.sand);
             tile(ctx, cell.x, cell.y, CELL, false);
@@ -1995,7 +2007,7 @@
           if (!tryMove(game, 0, 1)) break;
           lockMs = 0;
         }
-        if (game.active && !fits(game.grid, game.active.type, game.active.rot, game.active.x, game.active.y + 1)) {
+        if (game.active && !fits(game.grid, game.active.type, game.active.rot, game.active.x, game.active.y + 1, game)) {
           lockMs += dt;
           if (lockMs >= 480) {
             lockActive(game);
@@ -2051,8 +2063,8 @@
         if (!anim && game.phase === "resolving") {
           const step = pump(game);
           if (step?.type === "clear" || step?.type === "drop" || step?.type === "flip" || step?.type === "reward" || step?.type === "sand" || step?.type === "spin") {
-            const distance = step.type === "drop" || step.type === "sand" ? Math.max(0, ...step.moves.map((move) => Math.abs(move.y1 - move.y0) + Math.abs((move.x1 ?? move.x) - (move.x0 ?? move.x)))) : 0;
-            const dur = step.type === "clear" ? (step.blasts?.length ? 520 : step.sand ? 220 : 240) : step.type === "sand" ? 70 : step.type === "drop" ? 120 + distance * 18 : step.type === "spin" ? 560 : step.type === "reward" && step.reward === "sand" ? 480 : step.type === "reward" ? 720 : 460;
+            const distance = step.moves?.length && (step.type === "drop" || step.type === "sand") ? Math.max(0, ...step.moves.map((move) => Math.abs(move.y1 - move.y0) + Math.abs((move.x1 ?? move.x) - (move.x0 ?? move.x)))) : 0;
+            const dur = step.type === "clear" ? (step.blasts?.length ? 520 : step.sand ? 180 : 240) : step.type === "sand" ? 16 : step.type === "drop" ? 120 + distance * 18 : step.type === "spin" ? 560 : step.type === "reward" && step.reward === "sand" ? 480 : step.type === "reward" ? 720 : 460;
             anim = { step, t: 0, dur };
             if (step.type === "clear") {
               if (step.tspin) {
@@ -2060,13 +2072,14 @@
                 pushCallout("tspin", t("tspin"));
                 spinBurst();
               }
-              sound.playClear(step.sand ? Math.max(1, Math.ceil(step.cells.length / 4)) : step.rows.length);
+              sound.playClear(step.sand ? 2 : step.rows.length);
               if (step.combo > 1) {
                 sound.playCombo(step.combo);
                 pushCallout("combo", `${t("combo")} ${step.combo}`);
                 comboBurst(step.combo);
               }
-              for (const cell of step.cells) burst(cell, !!step.tspin);
+              if (step.sand) sandBurst();
+              else for (const cell of step.cells) burst(cell, !!step.tspin);
               for (const cell of step.blasts || []) burst(cell, true);
               if (step.blasts?.length) sound.playBoom();
               applyCurses(step.cells);

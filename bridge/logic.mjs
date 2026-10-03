@@ -59,6 +59,7 @@ export const REWARD_CHANCE = { breakout: 0.005, bbtan: 0.005, pinball: 0.01, san
 export const SAND_DROPS = 20;
 export const SAND_MATCH = 8;
 export const SAND_COLORS = 3;
+export const SAND_SCALE = 8;
 export const SAND_OF_TYPE = {
   I: 0, S: 0, J: 0,
   O: 1, Z: 1, L: 1,
@@ -124,10 +125,25 @@ export function cellsOf(type, rot, x, y) {
   return shape.map(([dx, dy]) => [x + dx, y + dy]);
 }
 
-export function fits(grid, type, rot, x, y) {
+function cellHitsSand(game, cx, cy) {
+  const grid = game?.sandGrid;
+  if (!grid) return false;
+  const scale = SAND_SCALE;
+  const y0 = cy * scale;
+  const x0 = cx * scale;
+  for (let dy = 0; dy < scale; dy += 1) {
+    const row = grid[y0 + dy];
+    if (!row) return true;
+    for (let dx = 0; dx < scale; dx += 1) if (row[x0 + dx]) return true;
+  }
+  return false;
+}
+
+export function fits(grid, type, rot, x, y, sandGame = null) {
   return cellsOf(type, rot, x, y).every(([cx, cy]) => {
     if (cx < 0 || cx >= COLS || cy < 0 || cy >= ROWS) return false;
-    return !grid[cy][cx];
+    if (grid[cy][cx]) return false;
+    return !cellHitsSand(sandGame, cx, cy);
   });
 }
 
@@ -208,6 +224,7 @@ export function createGame(options = {}) {
     comboArmed: false,
     pendingBoom: null,
     sanding: false,
+    sandGrid: null,
     sandLeft: 0,
     sandExit: false,
     spin: null,
@@ -247,6 +264,7 @@ export function startGame(game, nextMode) {
   game.comboArmed = false;
   game.pendingBoom = null;
   game.sanding = false;
+  game.sandGrid = null;
   game.sandLeft = 0;
   game.sandExit = false;
   game.spin = null;
@@ -270,7 +288,7 @@ function spawn(game, preset) {
     sand: next.sand ?? null,
   };
   game.spinEligible = false;
-  if (!fits(game.grid, piece.type, piece.rot, piece.x, piece.y)) {
+  if (!fits(game.grid, piece.type, piece.rot, piece.x, piece.y, game)) {
     game.active = null;
     game.phase = "over";
     return false;
@@ -282,7 +300,7 @@ function spawn(game, preset) {
 export function tryMove(game, dx, dy) {
   if (game.phase !== "playing" || !game.active) return false;
   const { type, rot, x, y } = game.active;
-  if (!fits(game.grid, type, rot, x + dx, y + dy)) return false;
+  if (!fits(game.grid, type, rot, x + dx, y + dy, game)) return false;
   game.active.x += dx;
   game.active.y += dy;
   if (dx) game.spinEligible = false;
@@ -295,7 +313,7 @@ export function tryRotate(game, dir) {
   const count = SHAPES[type].length;
   const next = (rot + dir + count) % count;
   for (const [kx, ky] of KICKS) {
-    if (fits(game.grid, type, next, x + kx, y + ky)) {
+    if (fits(game.grid, type, next, x + kx, y + ky, game)) {
       game.active.rot = next;
       game.active.x += kx;
       game.active.y += ky;
@@ -324,7 +342,7 @@ export function ghostY(game) {
   if (!game.active) return null;
   const { type, rot, x } = game.active;
   let y = game.active.y;
-  while (fits(game.grid, type, rot, x, y + 1)) y += 1;
+  while (fits(game.grid, type, rot, x, y + 1, game)) y += 1;
   return y;
 }
 
@@ -420,6 +438,24 @@ function paintCell(cell, sand) {
   };
 }
 
+export function emptySandGrid() {
+  return Array.from({ length: ROWS * SAND_SCALE }, () => Array(COLS * SAND_SCALE).fill(0));
+}
+
+function stampSand(grid, cx, cy, value) {
+  const scale = SAND_SCALE;
+  const y0 = cy * scale;
+  const x0 = cx * scale;
+  for (let dy = 0; dy < scale; dy += 1) {
+    const row = grid[y0 + dy];
+    if (!row) continue;
+    for (let dx = 0; dx < scale; dx += 1) {
+      const x = x0 + dx;
+      if (x >= 0 && x < row.length) row[x] = value;
+    }
+  }
+}
+
 export function beginSand(game) {
   game.sanding = true;
   game.sandLeft = SAND_DROPS;
@@ -430,90 +466,103 @@ export function beginSand(game) {
   for (const piece of game.queue) tint(piece);
   tint(game.hold);
   tint(game.active);
+  const grid = emptySandGrid();
   for (let y = 0; y < ROWS; y += 1) {
     for (let x = 0; x < COLS; x += 1) {
       const cell = game.grid[y][x];
       if (!cell) continue;
-      cell.sand = sandColorOf(cell.type);
-      cell.g = takeGid(game);
-      cell.bomb = false;
-      cell.reward = null;
-      cell.curse = null;
+      stampSand(grid, x, y, sandColorOf(cell.type) + 1);
+      game.grid[y][x] = null;
     }
   }
+  game.sandGrid = grid;
 }
 
 export function finishSand(game) {
+  const grid = game.sandGrid;
+  const scale = SAND_SCALE;
+  if (grid) {
+    for (let cy = 0; cy < ROWS; cy += 1) {
+      for (let cx = 0; cx < COLS; cx += 1) {
+        const tally = [0, 0, 0];
+        let filled = 0;
+        for (let dy = 0; dy < scale; dy += 1) {
+          for (let dx = 0; dx < scale; dx += 1) {
+            const value = grid[cy * scale + dy][cx * scale + dx];
+            if (!value) continue;
+            filled += 1;
+            tally[value - 1] += 1;
+          }
+        }
+        if (filled * 2 >= scale * scale) {
+          const color = tally.indexOf(Math.max(...tally));
+          game.grid[cy][cx] = { type: ["I", "O", "T"][color], g: takeGid(game), bomb: false, reward: null, curse: null, sand: null };
+        } else game.grid[cy][cx] = null;
+      }
+    }
+  }
+  game.sandGrid = null;
   game.sanding = false;
   game.sandLeft = 0;
   game.sandExit = false;
   for (const piece of game.queue) if (piece) piece.sand = null;
   if (game.hold) game.hold.sand = null;
   if (game.active) game.active.sand = null;
-  for (let y = 0; y < ROWS; y += 1) {
-    for (let x = 0; x < COLS; x += 1) {
-      if (game.grid[y][x]) game.grid[y][x].sand = null;
-    }
-  }
 }
 
 export function sandFallStep(grid) {
-  const moves = [];
-  for (let y = ROWS - 2; y >= 0; y -= 1) {
+  const height = grid.length;
+  const width = grid[0].length;
+  let moved = false;
+  for (let y = height - 2; y >= 0; y -= 1) {
     const xs = [];
-    for (let x = 0; x < COLS; x += 1) xs.push(x);
+    for (let x = 0; x < width; x += 1) xs.push(x);
     if (y % 2) xs.reverse();
     for (const x of xs) {
-      const cell = grid[y][x];
-      if (!cell || cell.sand == null) continue;
-      let nx = x;
-      let ny = y;
+      const color = grid[y][x];
+      if (!color) continue;
       if (!grid[y + 1][x]) {
-        ny = y + 1;
-      } else {
-        const dirs = y % 2 ? [1, -1] : [-1, 1];
-        for (const dx of dirs) {
-          const tx = x + dx;
-          if (tx < 0 || tx >= COLS) continue;
-          if (!grid[y + 1][tx]) {
-            nx = tx;
-            ny = y + 1;
-            break;
-          }
-        }
+        grid[y + 1][x] = color;
+        grid[y][x] = 0;
+        moved = true;
+        continue;
       }
-      if (nx === x && ny === y) continue;
-      grid[ny][nx] = cell;
-      grid[y][x] = null;
-      moves.push({ x0: x, y0: y, x1: nx, y1: ny, type: cell.type, sand: cell.sand, g: cell.g });
+      const dirs = y % 2 ? [1, -1] : [-1, 1];
+      for (const dx of dirs) {
+        const tx = x + dx;
+        if (tx < 0 || tx >= width || grid[y + 1][tx]) continue;
+        grid[y + 1][tx] = color;
+        grid[y][x] = 0;
+        moved = true;
+        break;
+      }
     }
   }
-  return moves;
+  return moved;
 }
 
-export function sandClusters(grid, min = SAND_MATCH) {
+export function sandClusters(grid, min = SAND_MATCH * SAND_SCALE * SAND_SCALE) {
+  const height = grid.length;
+  const width = grid[0].length;
   const seen = new Set();
   const groups = [];
-  for (let y = 0; y < ROWS; y += 1) {
-    for (let x = 0; x < COLS; x += 1) {
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
       const origin = grid[y][x];
-      const key = x + y * COLS;
-      if (!origin || origin.sand == null || seen.has(key)) continue;
+      const key = x + y * width;
+      if (!origin || seen.has(key)) continue;
       const group = [];
       const stack = [[x, y]];
       seen.add(key);
       while (stack.length) {
         const [cx, cy] = stack.pop();
-        const cell = grid[cy][cx];
-        group.push({ x: cx, y: cy, type: cell.type, sand: cell.sand, curse: null, reward: null });
+        group.push({ x: cx, y: cy, sand: grid[cy][cx] - 1 });
         for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
           const nx = cx + dx;
           const ny = cy + dy;
-          if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
-          const nkey = nx + ny * COLS;
-          if (seen.has(nkey)) continue;
-          const next = grid[ny][nx];
-          if (!next || next.sand !== origin.sand) continue;
+          if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+          const nkey = nx + ny * width;
+          if (seen.has(nkey) || grid[ny][nx] !== origin) continue;
           seen.add(nkey);
           stack.push([nx, ny]);
         }
@@ -528,23 +577,30 @@ export function lockActive(game) {
   if (!game.active) return;
   game.spin = tSpinReady(game) ? "tspin" : null;
   const gid = takeGid(game);
-  const sanding = !!game.sanding;
-  const sand = sanding ? (game.active.sand ?? sandColorOf(game.active.type)) : null;
+  const sanding = !!game.sanding && game.sandGrid;
   const cells = cellsOf(game.active.type, game.active.rot, game.active.x, game.active.y);
+  if (sanding) {
+    const value = (game.active.sand ?? sandColorOf(game.active.type)) + 1;
+    for (const [x, y] of cells) stampSand(game.sandGrid, x, y, value);
+    game.sandLeft -= 1;
+    if (game.sandLeft <= 0) game.sandExit = true;
+    game.active = null;
+    game.holdLocked = false;
+    game.comboArmed = true;
+    game.spinEligible = false;
+    game.phase = "resolving";
+    return;
+  }
   cells.forEach(([x, y], index) => {
     game.grid[y][x] = {
       type: game.active.type,
-      g: sanding ? takeGid(game) : gid,
+      g: gid,
       bomb: game.active.type === "B" && index === game.active.bombIndex,
       reward: rewardOn(game.active, index),
       curse: game.active.type === "C" ? game.active.curse : null,
-      sand,
+      sand: null,
     };
   });
-  if (sanding) {
-    game.sandLeft -= 1;
-    if (game.sandLeft <= 0) game.sandExit = true;
-  }
   game.active = null;
   game.holdLocked = false;
   game.comboArmed = true;
@@ -679,17 +735,17 @@ export function pump(game) {
       game.score += TSPIN_SCORE[0] * scoreMult(game);
       return { type: "spin", kind: "tspin", combo: game.combo };
     }
-    const moves = sandFallStep(game.grid);
-    if (moves.length) return { type: "sand", moves };
-    const groups = sandClusters(game.grid);
+    const moved = game.sandGrid && sandFallStep(game.sandGrid);
+    if (moved) return { type: "sand", moves: [] };
+    const groups = game.sandGrid ? sandClusters(game.sandGrid) : [];
     if (groups.length) {
       const cells = groups.flat();
-      for (const cell of cells) game.grid[cell.y][cell.x] = null;
+      for (const cell of cells) game.sandGrid[cell.y][cell.x] = 0;
       const bonus = awardCombo(game);
-      const gained = cells.length * 25 * scoreMult(game) + bonus;
-      game.score += gained;
-      noteLines(game, Math.max(1, Math.floor(cells.length / 4)));
-      return { type: "clear", rows: [], cells, blasts: [], combo: game.combo, sand: true, bonus };
+      const minos = Math.max(1, Math.round(cells.length / (SAND_SCALE * SAND_SCALE)));
+      game.score += minos * 25 * scoreMult(game) + bonus;
+      noteLines(game, Math.max(1, Math.floor(minos / 4)));
+      return { type: "clear", rows: [], cells: [], blasts: [], combo: game.combo, sand: true, bonus };
     }
     if (game.sandExit) finishSand(game);
     else {

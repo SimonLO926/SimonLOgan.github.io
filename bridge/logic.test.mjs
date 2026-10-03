@@ -12,6 +12,7 @@ import {
   gravityMs,
   paceOf,
   sandClusters,
+  SAND_SCALE,
   sandColorOf,
   sandFallStep,
   tSpinReady,
@@ -19,6 +20,7 @@ import {
   cellsOf,
   chainBlast,
   emptyGrid,
+  emptySandGrid,
   flipGrid,
   fullRows,
   hardDrop,
@@ -218,35 +220,34 @@ test("sand mode lasts twenty drops and uses three colors", () => {
   game.queue = [{ type: "T" }, { type: "L" }, { type: "J" }];
   beginSand(game);
   assert.equal(game.sandLeft, SAND_DROPS);
-  assert.equal(game.grid[18][0].bomb, false);
-  assert.equal(game.grid[18][0].reward, null);
-  assert.equal(game.grid[18][0].curse, null);
-  assert.equal(game.grid[18][0].sand, sandColorOf("I"));
-  assert.equal(game.grid[18][1].sand, sandColorOf("O"));
+  assert.equal(game.grid[18][0], null);
+  assert.equal(game.sandGrid[18 * SAND_SCALE][0], sandColorOf("I") + 1);
+  assert.equal(game.sandGrid[18 * SAND_SCALE][SAND_SCALE], sandColorOf("O") + 1);
   assert.equal(game.queue[0].sand, sandColorOf("T"));
   assert.equal(game.queue[1].sand, sandColorOf("L"));
   assert.equal(game.queue[2].sand, sandColorOf("J"));
   const pulled = game.pull();
   assert.equal(pulled.sand, sandColorOf(pulled.type));
   assert.equal(["I", "O", "T", "S", "Z", "J", "L"].includes(game.pull().type), true);
-  const grain = emptyGrid();
-  grain[10][4] = { type: "T", g: 9, sand: 1 };
-  const moved = sandFallStep(grain);
-  assert.equal(moved.length, 1);
-  assert.equal(moved[0].y1, 11);
-  assert.equal(grain[10][4], null);
-  const blocked = emptyGrid();
-  blocked[18][2] = { type: "T", g: 3, sand: 0 };
-  blocked[19][2] = { type: "I", g: 4, sand: 1 };
-  const slide = sandFallStep(blocked);
-  assert.equal(slide[0].y1, 19);
-  assert.notEqual(slide[0].x1, 2);
-  const cluster = emptyGrid();
-  for (let i = 0; i < SAND_MATCH; i += 1) cluster[19][i] = { type: "O", g: 10 + i, sand: 2 };
-  cluster[18][0] = { type: "O", g: 30, sand: 1 };
-  const found = sandClusters(cluster);
+  const grain = emptySandGrid();
+  const grainHeight = grain.length;
+  grain[grainHeight - 3][4] = 1;
+  assert.equal(sandFallStep(grain), true);
+  assert.equal(grain[grainHeight - 2][4], 1);
+  assert.equal(grain[grainHeight - 3][4], 0);
+  const blocked = emptySandGrid();
+  const blockedHeight = blocked.length;
+  blocked[blockedHeight - 1][2] = 2;
+  blocked[blockedHeight - 2][2] = 1;
+  assert.equal(sandFallStep(blocked), true);
+  assert.equal(blocked[blockedHeight - 2][2], 0);
+  assert.ok(blocked[blockedHeight - 1][1] === 1 || blocked[blockedHeight - 1][3] === 1);
+  const cluster = Array.from({ length: 4 }, () => Array(12).fill(0));
+  for (let i = 0; i < 8; i += 1) cluster[3][i] = 3;
+  cluster[2][0] = 1;
+  const found = sandClusters(cluster, 8);
   assert.equal(found.length, 1);
-  assert.equal(found[0].length, SAND_MATCH);
+  assert.equal(found[0].length, 8);
   game.sandLeft = 1;
   game.sandExit = false;
   game.phase = "playing";
@@ -255,7 +256,7 @@ test("sand mode lasts twenty drops and uses three colors", () => {
   assert.equal(game.sandLeft, 0);
   assert.equal(game.sandExit, true);
   let guard = 0;
-  while (game.sanding && game.phase === "resolving" && guard < 40) {
+  while (game.sanding && game.phase === "resolving" && guard < 400) {
     pump(game);
     guard += 1;
   }
