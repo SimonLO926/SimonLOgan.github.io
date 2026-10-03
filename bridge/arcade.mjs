@@ -145,27 +145,22 @@ function collidePaddle(session, ball) {
   ball.y = top - ball.r - 1;
 }
 
-const PIN_SIDE = 14;
-const PIN_FLOOR = H - 6;
-const PIN_PIVOT_Y = H - 86;
-const FLIP_LEN = 72;
-const FLIP_REST = 0.95;
-const FLIP_UP = -0.22;
+const PIN_RAIL = 18;
+const PIN_PIVOT_Y = H - 56;
+const FLIP_LEN = 102;
+const FLIP_REST = 0.34;
+const FLIP_UP = -0.46;
 
 function tableWalls() {
-  const leftTip = flipper("left", false).x2;
-  const rightTip = flipper("right", false).x2;
   return [
-    [PIN_SIDE, 36, PIN_SIDE, PIN_FLOOR],
-    [PIN_SIDE, PIN_FLOOR, leftTip, PIN_FLOOR],
-    [W - PIN_SIDE, 36, W - PIN_SIDE, PIN_FLOOR],
-    [W - PIN_SIDE, PIN_FLOOR, rightTip, PIN_FLOOR],
+    [PIN_RAIL, 0, PIN_RAIL, H],
+    [W - PIN_RAIL, 0, W - PIN_RAIL, H],
   ];
 }
 
 export function flipper(side, raised) {
   const left = side === "left";
-  const pivotX = left ? 78 : W - 78;
+  const pivotX = left ? PIN_RAIL : W - PIN_RAIL;
   const angle = left ? (raised ? FLIP_UP : FLIP_REST) : (raised ? Math.PI - FLIP_UP : Math.PI - FLIP_REST);
   return {
     x1: pivotX,
@@ -173,6 +168,19 @@ export function flipper(side, raised) {
     x2: pivotX + Math.cos(angle) * FLIP_LEN,
     y2: PIN_PIVOT_Y + Math.sin(angle) * FLIP_LEN,
   };
+}
+
+function seatOnFlipper(ball, segment) {
+  const dx = segment.x2 - segment.x1;
+  if (!dx) return;
+  const t = (ball.x - segment.x1) / dx;
+  if (t < 0 || t > 1) return;
+  const yLine = segment.y1 + (segment.y2 - segment.y1) * t;
+  const surface = yLine - ball.r - 1;
+  if (ball.y > surface) {
+    ball.y = surface;
+    if (ball.vy > 0) ball.vy *= -0.45;
+  }
 }
 
 function restBall() {
@@ -222,7 +230,7 @@ function stepBall(session, ball, dt) {
     if (ball.gravity) ball.vy += 520 * step;
     ball.x += ball.vx * step;
     ball.y += ball.vy * step;
-    const inset = session.kind === "pinball" ? PIN_SIDE + ball.r : ball.r;
+    const inset = session.kind === "pinball" ? PIN_RAIL + ball.r : ball.r;
     if (ball.x < inset) {
       ball.x = inset;
       ball.vx = Math.abs(ball.vx);
@@ -232,14 +240,8 @@ function stepBall(session, ball, dt) {
       ball.vx = -Math.abs(ball.vx);
     }
     if (session.kind === "pinball") {
-      const leftTip = flipper("left", false).x2;
-      const rightTip = flipper("right", false).x2;
-      const inGutter = ball.x <= leftTip || ball.x >= rightTip;
-      const floorY = PIN_FLOOR - ball.r;
-      if (inGutter && ball.y > floorY) {
-        ball.y = floorY;
-        if (ball.vy > 0) ball.vy = -Math.abs(ball.vy) * 0.25;
-      }
+      seatOnFlipper(ball, flipper("left", session.left));
+      seatOnFlipper(ball, flipper("right", session.right));
     }
     if (ball.y < ball.r) {
       ball.y = ball.r;
@@ -391,21 +393,19 @@ export function drawSession(ctx, session, ink) {
   }
   if (session.kind === "pinball") {
     ctx.save();
-    ctx.strokeStyle = "rgba(0,113,227,.28)";
-    ctx.lineWidth = 8;
+    ctx.fillStyle = "#d7e4f5";
+    ctx.fillRect(0, 0, PIN_RAIL, H);
+    ctx.fillRect(W - PIN_RAIL, 0, PIN_RAIL, H);
+    ctx.fillStyle = "#7aa2d4";
+    ctx.fillRect(PIN_RAIL - 4, 0, 4, H);
+    ctx.fillRect(W - PIN_RAIL, 0, 4, H);
     ctx.lineCap = "round";
-    ctx.beginPath();
-    for (const [x1, y1, x2, y2] of tableWalls()) {
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-    }
-    ctx.stroke();
-    ctx.lineWidth = 12;
+    ctx.lineWidth = 18;
     for (const side of ["left", "right"]) {
       const segment = flipper(side, side === "left" ? session.left : session.right);
       const gloss = ctx.createLinearGradient(segment.x1, segment.y1, segment.x2, segment.y2);
-      gloss.addColorStop(0, "#64d2ff");
-      gloss.addColorStop(1, "#0071e3");
+      gloss.addColorStop(0, "#9bdcff");
+      gloss.addColorStop(1, "#0a66c2");
       ctx.strokeStyle = gloss;
       ctx.beginPath();
       ctx.moveTo(segment.x1, segment.y1);
@@ -413,7 +413,7 @@ export function drawSession(ctx, session, ink) {
       ctx.stroke();
       ctx.fillStyle = ink;
       ctx.beginPath();
-      ctx.arc(segment.x1, segment.y1, 6, 0, Math.PI * 2);
+      ctx.arc(segment.x1, segment.y1, 7, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();

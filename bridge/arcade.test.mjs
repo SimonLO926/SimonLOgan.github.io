@@ -29,12 +29,14 @@ test("the pinball ball rests on the flippers until one is flipped", () => {
   assert.ok(session.balls[0].vy < 0);
 });
 
-test("pinball flippers rest pointing down and the side gutters stay sealed", () => {
+test("pinball flippers rest on a shallow slope and the side rails stay sealed", () => {
   for (const side of ["left", "right"]) {
     const rest = flipper(side, false);
     const raised = flipper(side, true);
-    assert.ok(rest.y2 > rest.y1);
-    assert.ok(raised.y2 < rest.y2);
+    const slope = (rest.y2 - rest.y1) / Math.abs(rest.x2 - rest.x1);
+    assert.ok(slope > 0.2 && slope < 0.5);
+    assert.ok(raised.y2 < rest.y1);
+    assert.ok(Math.min(rest.x1, rest.x2) < 40 || Math.max(rest.x1, rest.x2) > W - 40);
   }
   const grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
   grid[2][4] = { type: "O", g: 1 };
@@ -54,6 +56,14 @@ test("pinball flippers rest pointing down and the side gutters stay sealed", () 
   for (let i = 0; i < 150; i += 1) updateSession(right, 16);
   assert.equal(right.balls.length, 1);
   assert.ok(right.balls[0].x <= W - 14);
+  const onFlipper = createSession("pinball", grid, 1, () => 0.5);
+  onFlipper.prep = 0;
+  onFlipper.launched = true;
+  const left = flipper("left", false);
+  onFlipper.balls = [{ x: (left.x1 + left.x2) / 2, y: left.y1 - 40, vx: 0, vy: 400, r: 7, gravity: true }];
+  for (let i = 0; i < 120; i += 1) updateSession(onFlipper, 16);
+  assert.equal(onFlipper.balls.length, 1);
+  assert.ok(onFlipper.balls[0].y < H - 8);
   const mouth = createSession("pinball", grid, 1, () => 0.5);
   mouth.prep = 0;
   mouth.launched = true;
