@@ -308,7 +308,7 @@
     <ul>
       <li>蓄貓耳：第二下滑到後收，第一下又有明顯左右傾。陀螺收到出口對面兩側空位續轉，用來躲第一波極限衝擊。社區也叫躲貓耳。</li>
       <li>逆軌要看到發射器的側傾，不是只把槍口轉過去。六軸是左右站位、探出前後、高度、左右傾、前後傾、槍口轉向。右旋要逆軌：左右傾和轉向都偏左，再前壓，齒會逆向咬上 X 線。順軌則偏右再前壓。後收進貓耳。逆跪和逆軌同音。</li>
-      <li>X Dash：軸心齒咬到外圈齒軌就加速，再甩回盤心。Accel 16 齒最快也最耗轉，Rush 10 齒較慢、較不容易衝出去，Flat 12 齒居中。</li>
+      <li>X Dash：軸心齒咬上外圈綠軌，沿凹字外圈加速，再切過盤心。打中就送進正前方紫色極限區（3 分）或旁邊紅色陷阱（2 分）。Rush 會在洞口前收回來再衝；Accel 16 齒常常連自己衝出去。低刃打高棘輪會爆（2 分）。持久型在中間或貓耳耗轉，防禦型釘在盤心。</li>
       <li>低刃打高棘輪比較容易爆。點數少（尤其 1-60）鎖得住的齒少；點數多較耐爆，但凸片也比較容易被打到。攻型軸心軸比較粗，耐爆較高。</li>
     </ul>
     <ol class="log" id="log"></ol>
@@ -446,20 +446,21 @@
     }
 
     function techName(tech, x) {
-      if (tech === "catear") return x >= 0 ? "蓄右貓耳" : "蓄左貓耳";
-      if (tech === "counter") return "逆軌";
-      if (tech === "rail") return "順軌";
-      if (tech === "vertical") return "垂直定點";
-      if (tech === "smash") return "強襲直壓";
-      return "普通斜射";
+      if (tech === "catear") return x >= 0 ? "右貓耳落點" : "左貓耳落點";
+      if (tech === "counter") return "短逆軌";
+      if (tech === "rail") return "順齒極限衝刺";
+      if (tech === "vertical") return "平射";
+      if (tech === "smash") return "直壓衝刺";
+      return "斜射";
     }
 
     function pullStats(clicks) {
-      const sp = Math.max(0, Math.min(100, clicks * (100 / 14)));
+      const pulls = Number.isFinite(clicks) ? clicks : 0;
+      const sp = Math.max(0, Math.min(100, pulls * (100 / 14)));
       const rpm = Math.round(4000 + sp * 112);
       let wobble = 0;
-      if (clicks > 14) wobble += (clicks - 14) * 0.045;
-      if (clicks < 2) wobble += 0.1;
+      if (pulls > 14) wobble += (pulls - 14) * 0.045;
+      if (pulls < 2) wobble += 0.1;
       return { sp: Math.round(sp), rpm, wobble };
     }
 
@@ -498,9 +499,9 @@
       const blade = resolveBlade(build);
       const spin = blade.spin === "L" ? -1 : 1;
       const fromAxes = launch.axes ? tiltsFromAxes(launch.axes) : null;
-      const xTilt = fromAxes ? fromAxes.x : launch.xTilt;
-      const yTilt = fromAxes ? fromAxes.y : launch.yTilt;
-      const stats = pullStats(launch.clicks);
+      const xTilt = fromAxes ? fromAxes.x : (launch.xTilt || 0);
+      const yTilt = fromAxes ? fromAxes.y : (launch.yTilt || 0);
+      const stats = pullStats(launch.clicks || 0);
       const tech = classify(xTilt, yTilt, spin);
       const side = launch.pos >= 0 ? 1 : -1;
       let x = side * 46 + ((launch.axes && launch.axes.x) || 0) * 34;
@@ -587,6 +588,11 @@
         knock: 0,
         orbit: 0,
         flash: 0,
+        air: 0.12,
+        justDashed: 0,
+        launched: false,
+        flower: 0,
+        trail: [],
         pocketT: 0,
         pocketKind: "",
         bursting: false,
@@ -594,6 +600,41 @@
         pendingKO: "",
         phase: (rng ? rng() : 0.3) * Math.PI * 2
       };
+    }
+
+    let liveWorld = null;
+
+    function otherBey(bey) {
+      if (!liveWorld) return null;
+      return liveWorld.beys.find((item) => item !== bey && item.alive) || null;
+    }
+
+    function railMotion(bey) {
+      const bit = bey.parts.bit;
+      const dir = bey.railDir || (bey.spin > 0 ? -1 : 1);
+      const rpmN = Math.max(0.35, bey.rpm / 12000);
+      const dash = (bit.teeth / 10) * (0.65 + rpmN) * (bit.dash / 30) * 640;
+      const hold = bey.tech === "counter" ? 0.16 + (6 / bit.teeth) * 0.08 : 0.22 + (8 / bit.teeth) * 0.12;
+      return { dash, hold, dir, rpmN };
+    }
+
+    function pocketCenter(pocket) {
+      const cx = pocket.poly.reduce((sum, point) => sum + point[0], 0) / pocket.poly.length;
+      const cy = pocket.poly.reduce((sum, point) => sum + point[1], 0) / pocket.poly.length;
+      return { cx, cy, kind: pocket.kind };
+    }
+
+    function pocketGoal(x, y, dirX, dirY) {
+      const pockets = currentArena().pockets;
+      const xtremes = pockets.filter((pocket) => pocket.kind === "xtreme");
+      const pool = Math.abs(x) > 78 ? pockets : (xtremes.length ? xtremes : pockets);
+      let best = null;
+      pool.forEach((pocket) => {
+        const center = pocketCenter(pocket);
+        const along = (center.cx - x) * dirX + (center.cy - y) * dirY;
+        if (!best || along > best.along) best = { along, cx: center.cx, cy: center.cy, kind: center.kind };
+      });
+      return best || { cx: 0, cy: 230, kind: "xtreme" };
     }
 
     function normDeg(rad) {
@@ -627,7 +668,7 @@
       const bit = bey.parts.bit;
       let decay = bit.friction * (1 + bey.wobble);
       if (bey.mode === "rail") decay += bit.dashDrain * (bey.tech === "counter" ? 1.35 : 1);
-      if (bey.mode === "catear") decay *= 0.68;
+      if (bey.mode === "catear") decay *= 0.55;
       if (bey.tech === "vertical" && bey.mode !== "rail") decay *= 0.9;
       bey.rpm -= bey.rpm * decay * dt;
       if (bey.rpm < 0) bey.rpm = 0;
@@ -635,15 +676,26 @@
       if (bey.knock > 0) bey.knock -= dt;
       if (bey.railCooldown > 0) bey.railCooldown -= dt;
       if (bey.stagger > 0) bey.stagger -= dt;
+      if (bey.justDashed > 0) bey.justDashed -= dt;
+      if (bey.air > 0) bey.air -= dt;
+
+      if (bey.air > 0 && bey.mode !== "rail" && bey.mode !== "catear") return;
 
       if (bey.mode === "catear" && bey.knock <= 0) {
-        const ear = earPoints()[bey.ear];
-        bey.orbit += dt * bey.spin * (6.2 + bey.rpm / 5000);
-        const tx = ear.x + Math.cos(bey.orbit) * 14;
-        const ty = ear.y + Math.sin(bey.orbit) * 14;
-        bey.vx = (tx - bey.x) * 11;
-        bey.vy = (ty - bey.y) * 11;
-        return;
+        bey.flower += dt;
+        if (bit.style === "attack" && bey.flower > 1.25 && bey.rpm > 5200) {
+          bey.mode = "free";
+          bey.tech = "rail";
+          bey.knock = 0.15;
+        } else {
+          const ear = earPoints()[bey.ear];
+          bey.orbit += dt * bey.spin * 1.15;
+          const tx = ear.x + Math.cos(bey.orbit) * 5;
+          const ty = ear.y + Math.sin(bey.orbit) * 5;
+          bey.vx = (tx - bey.x) * 8;
+          bey.vy = (ty - bey.y) * 8;
+          return;
+        }
       }
 
       if (bey.mode === "pocket") {
@@ -653,17 +705,15 @@
       }
 
       if (bey.mode === "rail" && state.stadium === "infinity") {
+        const motion = railMotion(bey);
         const side = bey.y >= 0 ? 1 : -1;
-        const rpmN = bey.rpm / 12000;
-        const dash = (bit.teeth / 12) * (0.55 + rpmN) * (bit.dash / 35) * 680;
-        const dir = bey.railDir || -1;
-        bey.x += dir * side * dash * dt;
+        const dash = motion.dash * 1.05;
+        bey.x += motion.dir * side * dash * dt;
         bey.y += (side * 138 - bey.y) * Math.min(1, 8 * dt);
-        bey.vx = dir * side * dash;
+        bey.vx = motion.dir * side * dash;
         bey.vy = 0;
         bey.railTime += dt;
-        const hold = 0.22 + (8 / bit.teeth) * 0.12;
-        if (Math.abs(bey.x) > 188 || bey.railTime > hold) releaseRail(bey, Math.atan2(bey.y, bey.x), dash);
+        if (Math.abs(bey.x) > 198 || bey.railTime > motion.hold) releaseRail(bey, Math.atan2(bey.y, bey.x), dash);
         return;
       }
 
@@ -671,17 +721,33 @@
         const dist = Math.hypot(bey.x, bey.y) || 1;
         const th = Math.atan2(bey.y, bey.x);
         const radErr = dist - FIELD.railR;
-        const dir = bey.railDir || -1;
-        const tx = Math.sin(th) * dir;
-        const ty = Math.cos(th) * dir;
-        const rpmN = bey.rpm / 12000;
-        const dash = (bit.teeth / 12) * (0.55 + rpmN) * (bit.dash / 35) * 520;
-        const blend = 1 - Math.exp(-10 * dt);
-        bey.vx += ((-Math.cos(th) * radErr * 18 + tx * dash) - bey.vx) * blend;
-        bey.vy += ((-Math.sin(th) * radErr * 18 + ty * dash) - bey.vy) * blend;
+        const motion = railMotion(bey);
+        const tx = Math.sin(th) * motion.dir;
+        const ty = Math.cos(th) * motion.dir;
+        const blend = 1 - Math.exp(-14 * dt);
+        bey.vx += ((-Math.cos(th) * radErr * 22 + tx * motion.dash) - bey.vx) * blend;
+        bey.vy += ((-Math.sin(th) * radErr * 22 + ty * motion.dash) - bey.vy) * blend;
         bey.railTime += dt;
-        const hold = 0.15 + (8 / bit.teeth) * 0.1;
-        if (bey.railTime > hold || exitAt(th)) releaseRail(bey, th, dash);
+        if (exitAt(th) && bit.teeth >= 16) {
+          bey.mode = "free";
+          bey.launched = true;
+          bey.justDashed = 0.3;
+          bey.vx = Math.cos(th) * motion.dash;
+          bey.vy = Math.sin(th) * motion.dash;
+          bey.railCooldown = 1.1;
+          return;
+        }
+        if (bey.railTime > motion.hold || exitAt(th)) releaseRail(bey, th, motion.dash);
+        return;
+      }
+
+      if (bey.justDashed > 0) {
+        const foe = otherBey(bey);
+        const foeNear = foe && Math.hypot(foe.x - bey.x, foe.y - bey.y) < 64;
+        if (!foeNear && !bey.launched && bit.teeth < 16 && bey.y > 108 && bey.vy > 160) {
+          bey.vy = Math.min(bey.vy, 240);
+          bey.vx += -bey.x * 6 * dt;
+        }
         return;
       }
 
@@ -690,11 +756,11 @@
       const rpmN = Math.max(0, bey.rpm / 12000);
       const style = bit.style;
       const blend = 1 - Math.exp(-2.4 * dt);
-      const committed = bey.railCooldown > 0.48 || bey.stagger > 0;
+      const committed = bey.launched || bey.stagger > 0;
 
       if (committed) {
-        bey.vx *= 0.985;
-        bey.vy *= 0.985;
+        bey.vx *= 0.992;
+        bey.vy *= 0.992;
       } else if (bey.mode === "seekear" || (bey.tech === "catear" && bey.mode === "free" && bey.knock <= 0)) {
         const ear = earPoints()[bey.ear];
         const dx = ear.x - bey.x;
@@ -705,24 +771,22 @@
         bey.vy += ((dy / distE) * desired - bey.vy) * blend;
         if (distE < 26 && bey.knock <= 0) bey.mode = "catear";
       } else if (style === "attack") {
-        bey.phase += dt * (2.4 + rpmN * 2);
-        const want = 80 + rpmN * 150;
-        const tx = -Math.sin(th) * bey.spin;
-        const ty = Math.cos(th) * bey.spin;
-        const radial = Math.sin(bey.phase) * 64 * bit.aggression;
-        bey.vx += (tx * want + Math.cos(th) * radial - bey.vx) * blend;
-        bey.vy += (ty * want + Math.sin(th) * radial - bey.vy) * blend;
-        if (dist < 148 && rpmN > 0.35) {
-          bey.vx += Math.cos(th) * 120 * dt;
-          bey.vy += Math.sin(th) * 120 * dt;
-        }
+        const prefer = bey.spin > 0 ? -0.85 : Math.PI + 0.85;
+        const goalX = Math.cos(prefer) * FIELD.railR;
+        const goalY = Math.sin(prefer) * FIELD.railR;
+        const dx = goalX - bey.x;
+        const dy = goalY - bey.y;
+        const distE = Math.hypot(dx, dy) || 1;
+        const desired = 380 + rpmN * 460;
+        bey.vx += ((dx / distE) * desired - bey.vx) * blend;
+        bey.vy += ((dy / distE) * desired - bey.vy) * blend;
       } else if (style === "stamina") {
-        const want = 34 + rpmN * 36;
-        const radErr = dist - 42;
+        const want = 18 + rpmN * 16;
+        const radErr = dist - 28;
         const tx = -Math.sin(th) * bey.spin;
         const ty = Math.cos(th) * bey.spin;
-        bey.vx += (-Math.cos(th) * radErr * 3 + tx * want - bey.vx) * blend;
-        bey.vy += (-Math.sin(th) * radErr * 3 + ty * want - bey.vy) * blend;
+        bey.vx += (-Math.cos(th) * radErr * 4 + tx * want - bey.vx) * blend;
+        bey.vy += (-Math.sin(th) * radErr * 4 + ty * want - bey.vy) * blend;
       } else if (style === "defense") {
         const hold = 1 - Math.exp(-3.1 * dt);
         bey.vx += (-bey.x * 2.5 - bey.vx) * hold;
@@ -736,22 +800,22 @@
         bey.vy += (-Math.sin(th) * radErr * 1.6 + ty * want - bey.vy) * blend;
       }
 
-      if (dist > FIELD.ridgeIn && dist < FIELD.ridgeOut && bey.mode === "free") {
-        const kick = style === "attack" ? 240 : style === "defense" ? -24 : 60;
+      if (dist > FIELD.ridgeIn && dist < FIELD.ridgeOut && bey.mode === "free" && !committed) {
+        const kick = style === "attack" ? 180 : style === "defense" ? -20 : 40;
         bey.vx += Math.cos(th) * kick * dt;
         bey.vy += Math.sin(th) * kick * dt;
       }
 
       const onInfinityRail = state.stadium === "infinity" && Math.abs(bey.y) > 112 && Math.abs(bey.y) < 168 && Math.abs(bey.x) < 185;
-      const canRail = !committed && bey.railCooldown <= 0 && bey.mode === "free" && bey.tech !== "catear" && bey.rpm > 3300 && bit.teeth > 0 && (onInfinityRail || (state.stadium !== "infinity" && dist > FIELD.railIn && dist < FIELD.wall + 6 && !exitAt(th)));
+      const canRail = !committed && bey.railCooldown <= 0 && bey.mode === "free" && bey.tech !== "catear" && bey.rpm > 3600 && bit.teeth > 0 && (onInfinityRail || (state.stadium !== "infinity" && dist > FIELD.railIn && dist < FIELD.wall + 6 && !exitAt(th)));
       if (canRail) {
-        const want = bey.tech === "rail" || bey.tech === "counter" || bey.tech === "smash" || style === "attack" || dist > FIELD.railR + 6;
+        const want = bey.tech === "rail" || bey.tech === "counter" || bey.tech === "smash" || style === "attack";
         if (want) {
           const natural = bey.spin > 0 ? -1 : 1;
           const dir = bey.tech === "counter" ? -natural : natural;
-          if (!onInfinityRail && railHitsExit(bey, dir)) {
-            bey.vx += -Math.cos(th) * 220;
-            bey.vy += -Math.sin(th) * 220;
+          if (!onInfinityRail && bit.teeth < 16 && railHitsExit(bey, dir)) {
+            bey.vx += -Math.cos(th) * 260;
+            bey.vy += -Math.sin(th) * 260;
             capSpeed(bey);
           } else {
             enterRail(bey);
@@ -762,31 +826,36 @@
 
     function railHitsExit(bey, dir) {
       const th = Math.atan2(bey.y, bey.x);
-      const bit = bey.parts.bit;
-      const hold = 0.15 + (8 / bit.teeth) * 0.1;
-      const rpmN = bey.rpm / 12000;
-      const dash = (bit.teeth / 12) * (0.55 + rpmN) * (bit.dash / 35) * 520;
-      const arc = (dash * hold) / FIELD.railR;
-      for (let i = 1; i <= 5; i += 1) {
-        if (exitAt(th + dir * arc * (i / 5))) return true;
+      const motion = railMotion(bey);
+      const arc = (motion.dash * motion.hold) / FIELD.railR;
+      for (let i = 1; i <= 6; i += 1) {
+        if (exitAt(th + dir * arc * (i / 6))) return true;
       }
       return false;
     }
 
-    function releaseRail(bey, th, dash) {
+    function releaseRail(bey, th) {
       bey.mode = "free";
       bey.railTime = 0;
-      bey.railCooldown = state.stadium === "infinity" ? 0.36 : 0.92;
-      bey.flash = 0.2;
-      const nx = Math.cos(th);
-      const ny = Math.sin(th);
-      const dir = bey.railDir || -1;
-      const tx = Math.sin(th) * dir;
-      const ty = Math.cos(th) * dir;
-      const inward = Math.max(480, dash * 0.9);
-      const side = exitAt(th) ? 0.05 : 0.18;
-      bey.vx = -nx * inward + tx * inward * side;
-      bey.vy = -ny * inward + ty * inward * side;
+      bey.railCooldown = state.stadium === "infinity" ? 0.34 : 0.72;
+      bey.flash = 0.22;
+      const foe = otherBey(bey);
+      const hiding = foe && (foe.mode === "catear" || foe.mode === "seekear" || foe.y < -78);
+      let ax = -Math.cos(th);
+      let ay = -Math.sin(th);
+      if (foe && !hiding) {
+        ax = foe.x + foe.vx * 0.08 - bey.x;
+        ay = foe.y + foe.vy * 0.08 - bey.y;
+      } else if (hiding) {
+        ax = -bey.x * 0.2;
+        ay = 16 - bey.y;
+      }
+      const mag = Math.hypot(ax, ay) || 1;
+      const inward = 780 + (bey.parts.bit.teeth - 8) * 42 * (0.55 + bey.rpm / 16000);
+      bey.vx = (ax / mag) * inward;
+      bey.vy = (ay / mag) * inward;
+      bey.justDashed = bey.tech === "counter" ? 0.38 : 0.58;
+      bey.rpm = Math.max(0, bey.rpm - (360 + bey.parts.bit.dashDrain * 2200));
       capSpeed(bey);
     }
 
@@ -801,7 +870,12 @@
       const br = defender.parts.bit.br / 100;
       const atk = attacker.parts.blade.atk / 50;
       const rpmF = Math.max(0.35, attacker.rpm / 11000);
-      const damage = (smash / 150) * atk * exposure * hitArea * (1.35 - lock) * (1.15 - br * 0.85) * rpmF * 7.2;
+      let damage = (smash / 150) * atk * exposure * hitArea * (1.35 - lock) * (1.15 - br * 0.85) * rpmF * 7.2;
+      if (attacker.justDashed > 0 && snipe) damage *= 1.45;
+      if (attacker.parts.blade.upper > 0.3 && snipe) damage *= 1.25;
+      if (attacker.justDashed > 0 && snipe && defender.parts.ratchet.height >= 70 && defender.parts.ratchet.points <= 2 && (attacker.parts.bit.low || attacker.parts.blade.upper > 0.3) && attacker.parts.blade.atk >= 45) {
+        damage += 78 + attacker.parts.blade.upper * 36;
+      }
       defender.integrity -= damage;
       if (defender.integrity <= 0) {
         defender.integrity = 0;
@@ -832,6 +906,16 @@
       const nx = dx / dist;
       const ny = dy / dist;
       const pen = min - dist;
+      if (a.launched || b.launched) {
+        if (a.launched && !b.launched) {
+          b.x -= nx * pen;
+          b.y -= ny * pen;
+        } else if (b.launched && !a.launched) {
+          a.x += nx * pen;
+          a.y += ny * pen;
+        }
+        return;
+      }
       const shareA = b.mass / (a.mass + b.mass);
       const shareB = a.mass / (a.mass + b.mass);
       a.x -= nx * pen * shareA;
@@ -846,12 +930,39 @@
       world.touched = true;
       const push = (blade) => 0.62 + blade.atk / 130 + Math.max(0, blade.upper) * 0.4;
       const soak = (blade) => Math.max(0.42, 1 - blade.def / 210);
-      const boostA = b.railCooldown > 0 ? 1.6 : 1;
-      const boostB = a.railCooldown > 0 ? 1.6 : 1;
-      a.vx -= nx * smash * shareA * push(b.parts.blade) * soak(a.parts.blade) * boostA;
-      a.vy -= ny * smash * shareA * push(b.parts.blade) * soak(a.parts.blade) * boostA;
-      b.vx += nx * smash * shareB * push(a.parts.blade) * soak(b.parts.blade) * boostB;
-      b.vy += ny * smash * shareB * push(a.parts.blade) * soak(b.parts.blade) * boostB;
+      const dashHit = (attacker, defender) => {
+        if (!(attacker.justDashed > 0)) return false;
+        const goal = pocketGoal(defender.x, defender.y, attacker.vx, attacker.vy);
+        const aimX = goal.cx - defender.x;
+        const aimY = goal.cy - defender.y;
+        const aim = Math.hypot(aimX, aimY) || 1;
+        defender.vx = (aimX / aim) * 1450;
+        defender.vy = (aimY / aim) * 1450;
+        defender.launched = true;
+        defender.mode = "free";
+        defender.stagger = 0.9;
+        defender.knock = 0.7;
+        defender.justDashed = 0;
+        defender.railCooldown = 1.2;
+        attacker.justDashed = 0;
+        attacker.vx *= 0.12;
+        attacker.vy = -240;
+        attacker.rpm = Math.max(0, attacker.rpm - 800);
+        world.dashHits = (world.dashHits || 0) + 1;
+        return true;
+      };
+      applyBurst(a, b, smash);
+      applyBurst(b, a, smash);
+      const aDashed = dashHit(b, a, -1);
+      const bDashed = dashHit(a, b, 1);
+      if (!aDashed && !bDashed) {
+        const boostA = b.railCooldown > 0 ? 1.35 : 1;
+        const boostB = a.railCooldown > 0 ? 1.35 : 1;
+        a.vx -= nx * smash * shareA * push(b.parts.blade) * soak(a.parts.blade) * boostA;
+        a.vy -= ny * smash * shareA * push(b.parts.blade) * soak(a.parts.blade) * boostA;
+        b.vx += nx * smash * shareB * push(a.parts.blade) * soak(b.parts.blade) * boostB;
+        b.vy += ny * smash * shareB * push(a.parts.blade) * soak(b.parts.blade) * boostB;
+      }
       capSpeed(a);
       capSpeed(b);
       a.rpm -= smash * 0.2 * (b.parts.blade.atk / 48) * (1 - a.parts.blade.outward * 0.25);
@@ -869,64 +980,113 @@
       }
       if (a.mode === "catear" && smash > 220) { a.mode = "free"; a.knock = 0.45; }
       if (b.mode === "catear" && smash > 220) { b.mode = "free"; b.knock = 0.45; }
-      applyBurst(a, b, smash);
-      applyBurst(b, a, smash);
       a.flash = 0.09;
       b.flash = 0.09;
       spawnSparks(world, (a.x + b.x) / 2, (a.y + b.y) / 2, "#fff6d8", 7);
     }
 
+    function frontOpening(x, y) {
+      const deg = normDeg(Math.atan2(y, x));
+      return y > 72 && deg >= 32 && deg <= 148;
+    }
+
+    function pullBack(bey) {
+      bey.vy = -Math.abs(bey.vy) - 320;
+      bey.vx *= 0.3;
+      bey.justDashed = 0;
+      bey.launched = false;
+      bey.mode = "free";
+      bey.pocketT = 0;
+      if (bey.y > 118) bey.y = 118;
+    }
+
+    function stickPocket(bey, goal) {
+      bey.x = goal.cx;
+      bey.y = goal.cy;
+      bey.mode = "pocket";
+      bey.pocketKind = goal.kind;
+      bey.pocketT = 0.18;
+      bey.vx *= 0.2;
+      bey.vy *= 0.2;
+    }
+
     function bounds(bey, dt) {
       bey.pendingKO = "";
+      if (bey.mode === "catear" || bey.mode === "seekear" || bey.mode === "rail") return;
       const dist = Math.hypot(bey.x, bey.y) || 1;
       const th = Math.atan2(bey.y, bey.x);
-      const exit = exitAt(th);
-      const outward = bey.vx * Math.cos(th) + bey.vy * Math.sin(th);
+      const speed = Math.hypot(bey.vx, bey.vy);
       const pocket = pocketContaining(bey.x, bey.y);
-      if (pocket && pocket.slope && Math.hypot(bey.vx, bey.vy) < 520 && bey.mode !== "ko") {
-        const back = Math.hypot(bey.x, bey.y) || 1;
-        bey.vx -= (bey.x / back) * 140;
-        bey.vy -= (bey.y / back) * 140;
-        bey.mode = "free";
-        return;
-      }
-      const leaving = !!pocket && bey.mode !== "catear" && bey.mode !== "seekear";
-      if (bey.mode === "pocket" || leaving) {
+      const selfDash = !bey.launched && bey.parts.bit.teeth < 16 && bey.justDashed > 0;
+      if (pocket) {
+        if (pocket.slope && speed < 540 && !bey.launched) {
+          bey.vx -= (bey.x / dist) * 160;
+          bey.vy -= (bey.y / dist) * 160;
+          bey.mode = "free";
+          bey.pocketT = 0;
+          return;
+        }
+        if (selfDash) {
+          pullBack(bey);
+          return;
+        }
         if (bey.mode !== "pocket") {
           bey.mode = "pocket";
           bey.pocketT = 0;
-          bey.pocketKind = (pocket && pocket.kind) || (exit ? exit.kind : "over");
+          bey.pocketKind = pocket.kind;
         }
         bey.pocketT += dt;
-        if (dist < 158 && outward < 40) {
+        const outward = bey.vx * Math.cos(th) + bey.vy * Math.sin(th);
+        if (dist < 150 && outward < -40 && speed < 220) {
           bey.mode = "free";
+          bey.launched = false;
+          bey.pocketT = 0;
           return;
         }
-        if (bey.pocketT > 0.38 || dist > FIELD.battleR + 28) bey.pendingKO = bey.pocketKind || "over";
+        if (bey.pocketT > 0.2) bey.pendingKO = bey.pocketKind || "over";
         return;
       }
-      if (state.stadium === "infinity" && bey.mode !== "rail" && !pointInPoly(bey.x, bey.y, currentArena().outline)) {
-        const pts = currentArena().outline;
-        let best = null;
-        for (let i = 0; i < pts.length; i += 1) {
-          const a = pts[i];
-          const b = pts[(i + 1) % pts.length];
-          const abx = b[0] - a[0];
-          const aby = b[1] - a[1];
-          const denom = abx * abx + aby * aby || 1;
-          const t = Math.max(0, Math.min(1, ((bey.x - a[0]) * abx + (bey.y - a[1]) * aby) / denom));
-          const px = a[0] + abx * t;
-          const py = a[1] + aby * t;
-          const d = (bey.x - px) ** 2 + (bey.y - py) ** 2;
-          if (!best || d < best.d) best = { d, x: px, y: py };
+      if (bey.mode === "pocket") {
+        bey.mode = "free";
+        bey.pocketT = 0;
+      }
+      if (state.stadium === "infinity") {
+        const outside = !pointInPoly(bey.x, bey.y, currentArena().outline);
+        if (outside && Math.abs(bey.x) > 206) {
+          if (selfDash) pullBack(bey);
+          else stickPocket(bey, pocketGoal(bey.x, bey.y, bey.vx, bey.vy));
+          return;
         }
-        if (best) {
-          bey.x = best.x;
-          bey.y = best.y;
-          bey.vx *= 0.4;
-          bey.vy *= 0.4;
+        if (outside) {
+          const pts = currentArena().outline;
+          let best = null;
+          for (let i = 0; i < pts.length; i += 1) {
+            const a = pts[i];
+            const b = pts[(i + 1) % pts.length];
+            const abx = b[0] - a[0];
+            const aby = b[1] - a[1];
+            const denom = abx * abx + aby * aby || 1;
+            const t = Math.max(0, Math.min(1, ((bey.x - a[0]) * abx + (bey.y - a[1]) * aby) / denom));
+            const px = a[0] + abx * t;
+            const py = a[1] + aby * t;
+            const d = (bey.x - px) ** 2 + (bey.y - py) ** 2;
+            if (!best || d < best.d) best = { d, x: px, y: py };
+          }
+          if (best) {
+            bey.x = best.x;
+            bey.y = best.y;
+            bey.vx *= 0.45;
+            bey.vy *= 0.45;
+          }
         }
-      } else if (dist > FIELD.wall && bey.mode !== "rail" && bey.mode !== "catear" && bey.mode !== "seekear" && !exitAt(th)) {
+        return;
+      }
+      if (frontOpening(bey.x, bey.y) && dist > FIELD.battleR + 6) {
+        if (selfDash) pullBack(bey);
+        else stickPocket(bey, pocketGoal(bey.x, bey.y, bey.vx || 0, bey.vy || 1));
+        return;
+      }
+      if (dist > FIELD.wall && !frontOpening(bey.x, bey.y) && !exitAt(th)) {
         const nx = bey.x / dist;
         const ny = bey.y / dist;
         bey.x = nx * FIELD.wall;
@@ -935,7 +1095,7 @@
         if (vn > 0) {
           bey.vx -= nx * vn * 1.62;
           bey.vy -= ny * vn * 1.62;
-          bey.rpm -= vn * 0.28;
+          bey.rpm -= vn * 0.2;
         }
       }
     }
@@ -949,7 +1109,17 @@
       world.particles = world.particles.filter((spark) => spark.life > 0);
     }
 
+    function pushTrail(bey) {
+      if (!bey.trail) bey.trail = [];
+      if (bey.mode === "rail" || bey.justDashed > 0) {
+        const last = bey.trail[bey.trail.length - 1];
+        if (!last || (last.x - bey.x) ** 2 + (last.y - bey.y) ** 2 > 40) bey.trail.push({ x: bey.x, y: bey.y });
+        if (bey.trail.length > 18) bey.trail.shift();
+      } else if (bey.trail.length) bey.trail.shift();
+    }
+
     function stepWorld(world, dt) {
+      liveWorld = world;
       if (world.result) {
         world.result.hold -= dt;
         world.beys.forEach((bey) => {
@@ -959,7 +1129,7 @@
             bey.vx *= 0.96;
             bey.vy *= 0.96;
           }
-          bey.angle += bey.spin * dt * (4 + bey.rpm / 1800);
+          bey.angle += bey.spin * dt * (14 + bey.rpm / 350);
         });
         ageParticles(world, dt);
         return;
@@ -970,9 +1140,11 @@
         if (!bey.alive) return;
         bey.x += bey.vx * dt;
         bey.y += bey.vy * dt;
-        bey.angle += bey.spin * dt * (4 + bey.rpm / 1800);
+        bey.angle += bey.spin * dt * (14 + bey.rpm / 350);
+        pushTrail(bey);
       });
-      if (world.beys.length >= 2 && world.beys[0].alive && world.beys[1].alive) collide(world.beys[0], world.beys[1], world);
+      const landed = world.beys.every((bey) => !bey.alive || bey.air <= 0);
+      if (landed && world.beys.length >= 2 && world.beys[0].alive && world.beys[1].alive) collide(world.beys[0], world.beys[1], world);
 
       const bursted = world.beys.filter((bey) => bey.bursting);
       if (!world.result && world.beys.length >= 2 && bursted.length === 2) {
@@ -982,7 +1154,7 @@
         loser.alive = false;
         loser.mode = "burst";
         const winner = world.beys.find((bey) => bey !== loser);
-        world.result = { draw: false, loser, winner, points: 2, label: "Burst Finish", hold: 0.75 };
+        world.result = { draw: false, loser, winner, points: 2, label: "爆裂勝", hold: 0.85 };
         spawnSparks(world, loser.x, loser.y, loser.color, 14);
       }
 
@@ -997,10 +1169,10 @@
           loser.mode = "ko";
           const winner = world.beys.find((bey) => bey !== loser);
           let points = loser.pendingKO === "xtreme" ? 3 : 2;
-          let label = loser.pendingKO === "xtreme" ? "Xtreme Finish" : "Over Finish";
+          let label = loser.pendingKO === "xtreme" ? "極限勝" : "擊飛勝";
           if (!world.touched) {
             points = 1;
-            label = "自爆出場";
+            label = "未接觸自爆";
           }
           world.result = { draw: false, loser, winner, points, label, hold: 0.75 };
         }
@@ -1021,7 +1193,7 @@
         else if (asleep.length === 1) {
           const loser = asleep[0];
           const winner = world.beys.find((bey) => bey !== loser);
-          world.result = { draw: false, loser, winner, points: 1, label: "Spin Finish", hold: 0.7 };
+          world.result = { draw: false, loser, winner, points: 1, label: "停轉勝", hold: 0.7 };
         }
       }
 
@@ -1176,7 +1348,7 @@
             const angle = degRad(deg);
             const radius = radiusAt(deg);
             const tooth = new THREE.Mesh(toothGeo, toothMat);
-            tooth.position.set(Math.cos(angle) * radius, 7.2, Math.sin(angle) * radius);
+            tooth.position.set(Math.cos(angle) * radius, 11, Math.sin(angle) * radius);
             tooth.rotation.y = Math.PI / 2 - angle;
             parent.add(tooth);
           }
@@ -1220,13 +1392,38 @@
                 z = -138 - ear * 26 + mid * 16;
               }
               const tooth = new THREE.Mesh(toothGeo, toothMat);
-              tooth.position.set(x, 7.2, z);
+              tooth.position.set(x, 11, z);
               tooth.rotation.y = side > 0 ? 0 : Math.PI;
               parent.add(tooth);
             }
           });
         }
       };
+    }
+
+    function addRim(parent, points) {
+      const geo = new THREE.BoxGeometry(1, 11, 7);
+      const mat = new THREE.MeshStandardMaterial({ color: 0xf7f8fa, roughness: 0.38, metalness: 0.14 });
+      for (let i = 0; i < points.length; i += 1) {
+        const a = points[i];
+        const b = points[(i + 1) % points.length];
+        const mx = (a[0] + b[0]) / 2;
+        const my = (a[1] + b[1]) / 2;
+        if (state.stadium === "infinity") {
+          if (Math.abs(mx) > 172) continue;
+        } else if (my > 98) continue;
+        const dx = b[0] - a[0];
+        const dy = b[1] - a[1];
+        const len = Math.hypot(dx, dy);
+        if (len < 3) continue;
+        const wall = new THREE.Mesh(geo, mat);
+        wall.scale.set(len, 1, 1);
+        wall.position.set(mx, 6.2, my);
+        wall.rotation.y = -Math.atan2(dy, dx);
+        wall.castShadow = true;
+        wall.receiveShadow = true;
+        parent.add(wall);
+      }
     }
 
     function currentArena() {
@@ -1254,13 +1451,22 @@
       const floorGeo = new THREE.ExtrudeGeometry(shape, { depth: 6, bevelEnabled: true, bevelThickness: 1.2, bevelSize: 1.2, bevelSegments: 1 });
       floorGeo.rotateX(-Math.PI / 2);
       const floor = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({
-        color: 0xd5d8dc,
-        roughness: 0.46,
-        metalness: 0.08,
+        color: 0xf3f5f7,
+        roughness: 0.42,
+        metalness: 0.06,
         side: THREE.DoubleSide
       }));
       floor.receiveShadow = true;
       parent.add(floor);
+      const dish = new THREE.Mesh(
+        new THREE.CircleGeometry(state.stadium === "infinity" ? 86 : 98, 56),
+        new THREE.MeshStandardMaterial({ color: 0xd5dbe1, roughness: 0.62, metalness: 0.04, side: THREE.DoubleSide })
+      );
+      dish.rotation.x = -Math.PI / 2;
+      dish.position.y = 0.7;
+      dish.receiveShadow = true;
+      parent.add(dish);
+      addRim(parent, arena.outline);
 
       const plateShape = new THREE.Shape();
       const halfW = arena.housing[0] / 2;
@@ -1327,7 +1533,7 @@
         new THREE.MeshStandardMaterial({ color: 0xb7c0c8, roughness: 0.3, metalness: 0.62 })
       );
       ridge.rotation.x = Math.PI / 2;
-      ridge.position.y = 8;
+      ridge.position.y = 9.2;
       parent.add(ridge);
       const xMat = new THREE.MeshStandardMaterial({ color: 0x8e98a3, roughness: 0.35, metalness: 0.6 });
       const armA = new THREE.Mesh(new THREE.BoxGeometry(34, 1.1, 4), xMat);
@@ -1529,8 +1735,20 @@
       const rpmYou = makeTextSprite("", "#7ef0ff");
       const rpmFoe = makeTextSprite("", "#ffb3cc");
       scene.add(rpmYou, rpmFoe);
+      const makeTrail = (color) => {
+        const geo = new THREE.BufferGeometry();
+        const pos = new Float32Array(18 * 3);
+        geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+        const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.9 }));
+        line.frustumCulled = false;
+        scene.add(line);
+        return { line, pos, geo };
+      };
       view = {
         renderer, scene, camera, youRig, foeRig, sparkPos, sparkGeo, sparkPoints, rpmYou, rpmFoe,
+        trails: { you: makeTrail(0x7ef0ff), foe: makeTrail(0xff4d8d) },
+        shake: 0,
+        seenHits: 0,
         camPos: new THREE.Vector3(30, 250, 430),
         camLook: new THREE.Vector3(0, 8, 10),
         desiredPos: new THREE.Vector3(),
@@ -1563,9 +1781,9 @@
     }
 
     function poseLauncher(rig, axes, side, extra) {
-      const x = side * 74 + (axes.x || 0) * 42;
-      const z = 208 - (axes.reach || 0) * 24;
-      const y = 46 + (axes.z || 0) * 16 + (extra.recoil || 0) * 8;
+      const x = side * 142 + (axes.x || 0) * 36;
+      const z = 276 - (axes.reach || 0) * 22;
+      const y = 36 + (axes.z || 0) * 14 + (extra.recoil || 0) * 8;
       rig.root.position.set(x, y, z + (extra.recoil || 0) * 22);
       rig.yaw.rotation.y = -(axes.yaw || 0) * 0.7;
       rig.pitch.rotation.x = (axes.pitch || 0) * 0.55;
@@ -1631,13 +1849,30 @@
           const build = bey.id === "you" ? state.you : state.foe;
           const mesh = ensureBattleMesh(bey, build);
           active.add(bey.id);
-          let height = 9;
-          if (bey.mode === "pocket" || bey.mode === "ko") height = -2;
-          if (bey.mode === "burst") height += 10;
+          let height = 9 + Math.max(0, bey.air) * 78;
+          if (bey.mode === "pocket" || bey.mode === "ko") height = -6;
+          if (bey.mode === "burst") height = 18;
           mesh.position.set(bey.x, height, bey.y);
-          mesh.userData.pitch *= 0.96;
-          mesh.userData.roll *= 0.96;
-          mesh.rotation.set(mesh.userData.pitch, -bey.angle, mesh.userData.roll + (bey.mode === "rail" ? bey.railDir * 0.28 : 0));
+          mesh.userData.pitch *= 0.9;
+          mesh.userData.roll *= 0.9;
+          const bank = bey.mode === "rail" ? bey.railDir * 0.55 : (bey.justDashed > 0 ? 0.22 : 0);
+          mesh.rotation.set(mesh.userData.pitch + (bey.mode === "burst" ? 1.1 : 0), -bey.angle, mesh.userData.roll + bank);
+          const trail = view.trails[bey.id];
+          if (trail) {
+            const pts = bey.trail || [];
+            for (let i = 0; i < 18; i += 1) {
+              const point = pts[Math.min(i, pts.length - 1)] || pts[0];
+              if (point && pts.length > 1) {
+                trail.pos[i * 3] = point.x;
+                trail.pos[i * 3 + 1] = 12;
+                trail.pos[i * 3 + 2] = point.y;
+              } else {
+                trail.pos[i * 3 + 1] = -40;
+              }
+            }
+            trail.geo.attributes.position.needsUpdate = true;
+            trail.line.visible = pts.length > 1;
+          }
           mesh.userData.spin.rotation.y = 0;
           mesh.visible = true;
           const label = bey.id === "you" ? view.rpmYou : view.rpmFoe;
@@ -1663,7 +1898,14 @@
         view.rpmYou.visible = false;
         view.rpmFoe.visible = false;
         view.sparkPoints.visible = false;
+        view.trails.you.line.visible = false;
+        view.trails.foe.line.visible = false;
       }
+      if (state.world && state.world.dashHits && state.world.dashHits !== view.seenHits) {
+        view.seenHits = state.world.dashHits;
+        view.shake = 1;
+      }
+      view.shake = Math.max(0, view.shake - dt * 2.4);
       view.meshes.forEach((mesh, id) => {
         mesh.visible = active.has(id);
       });
@@ -1674,15 +1916,27 @@
         view.desiredLook.set(rig.x, 22, rig.z - 70);
       } else {
         const wide = state.stadium === "infinity";
-        view.desiredPos.set(0, wide ? 520 : 390, wide ? 620 : 470);
-        view.desiredLook.set(0, 0, wide ? 0 : 10);
+        let lookX = 0;
+        let lookZ = wide ? 0 : 16;
+        if (state.world && (state.phase === "battle" || state.phase === "round")) {
+          const [a, b] = state.world.beys;
+          lookX = ((a.x + b.x) / 2) * 0.22;
+          lookZ = (wide ? 0 : 16) + ((a.y + b.y) / 2) * 0.16;
+        }
+        view.desiredPos.set(lookX * 0.35, wide ? 620 : 540, wide ? 760 : 640);
+        view.desiredLook.set(lookX, 0, lookZ);
       }
       view.camPos.lerp(view.desiredPos, 1 - Math.exp(-dt * 3.2));
       view.camLook.lerp(view.desiredLook, 1 - Math.exp(-dt * 3.2));
       view.camera.position.copy(view.camPos);
+      view.camera.position.x += Math.sin(view.shake * 36) * view.shake * 5;
       view.camera.lookAt(view.camLook);
 
-      if ((state.phase === "battle" || state.phase === "round" || state.phase === "match") && state.world && state.world.calloutT > 0.2) {
+      if (state.world && state.world.result && (state.phase === "battle" || state.phase === "round" || state.phase === "match")) {
+        banner.hidden = false;
+        const result = state.world.result;
+        banner.textContent = result.draw ? `${result.label}，重賽` : `${result.label} +${result.points}`;
+      } else if ((state.phase === "battle" || state.phase === "round" || state.phase === "match") && state.world && state.world.calloutT > 0.2) {
         const you = state.world.beys[0];
         banner.hidden = false;
         banner.textContent = techName(you.tech, you.aim || 0);
@@ -2043,8 +2297,13 @@
         y = (rng() - 0.5) * 0.18;
         clicks = difficulty === "champion" ? 13 : 10;
       } else if (style === "stamina") {
-        x = rng() < 0.5 ? -0.68 : 0.68;
-        y = 0.74;
+        if (difficulty === "champion" && rng() < 0.7) {
+          x = rng() < 0.5 ? -0.68 : 0.68;
+          y = 0.74;
+        } else {
+          x = (rng() - 0.5) * 0.12;
+          y = (rng() - 0.5) * 0.08;
+        }
         clicks = difficulty === "champion" ? 12 : 9;
       } else if (style === "attack") {
         const counter = rng() < (difficulty === "champion" ? 0.45 : 0.28);
@@ -2200,7 +2459,7 @@
 
       const knight = presetBuild(PRESETS[3]);
       const calm = simulate(arrow, { xTilt: 0, yTilt: 0, clicks: 8, pos: -1 }, knight, { xTilt: 0, yTilt: 0, clicks: 8, pos: 1 }, 12, rng);
-      check("垂直持久開局不會馬上出界", !calm.result || calm.result.label.indexOf("Spin") >= 0 || calm.t > 8, calm.result && calm.result.label);
+      check("垂直持久開局不會馬上出界", !calm.result || calm.result.label.indexOf("停轉") >= 0 || calm.t > 8, calm.result && calm.result.label);
 
       const shark = presetBuild(PRESETS[4]);
       const soft = presetBuild(PRESETS[2]);
@@ -2231,6 +2490,30 @@
       heavy.x = 30; heavy.y = 0; heavy.vx = 0; heavy.vy = 0; heavy.rpm = 10000;
       collide(light, heavy, { touched: false, particles: [] });
       check("輕刃被撞得更快", Math.abs(light.vx) > Math.abs(heavy.vx), `${light.vx.toFixed(1)} ${heavy.vx.toFixed(1)}`);
+
+      const rush = presetBuild(PRESETS[0]);
+      rush.bitId = "R";
+      const center = presetBuild(PRESETS[2]);
+      const xt = simulate(rush, { xTilt: 0.66, yTilt: -0.78, clicks: 13, pos: 1 }, center, { xTilt: 0.02, yTilt: 0, clicks: 8, pos: -1 }, 8, rng);
+      const xtWin = xt.result && !xt.result.draw && xt.result.winner && xt.result.winner.id === "you" && xt.result.points === 3;
+      check("順軌把盤心持久打進極限區", xtWin, xt.result ? `${xt.result.label} t ${xt.t.toFixed(2)} hits ${xt.dashHits || 0}` : `none t ${xt.t.toFixed(2)}`);
+
+      const stall = simulate(center, { xTilt: -0.7, yTilt: 0.8, clicks: 12, pos: -1 }, rush, { xTilt: 0.66, yTilt: -0.78, clicks: 13, pos: 1 }, 5, rng);
+      check("貓耳躲過第一波極限衝擊", !stall.result || stall.t > 3.2, stall.result ? `${stall.result.label} t ${stall.t.toFixed(2)}` : `still t ${stall.t.toFixed(2)}`);
+
+      const high = presetBuild(PRESETS[2]);
+      high.points = 1;
+      high.height = 80;
+      high.bitId = "B";
+      const sharkLF = presetBuild(PRESETS[4]);
+      const popped = simulate(sharkLF, { xTilt: 0.68, yTilt: -0.8, clicks: 14, pos: 1 }, high, { xTilt: 0, yTilt: 0, clicks: 6, pos: -1 }, 8, rng);
+      check("低刃打高棘輪會爆", popped.result && popped.result.label === "爆裂勝", popped.result ? `${popped.result.label} t ${popped.t.toFixed(2)}` : `none t ${popped.t.toFixed(2)}`);
+
+      const accel = presetBuild(PRESETS[0]);
+      accel.bitId = "A";
+      const flower = presetBuild(PRESETS[2]);
+      const overshoot = simulate(accel, { xTilt: 0.7, yTilt: -0.8, clicks: 14, pos: 1 }, flower, { xTilt: -0.72, yTilt: 0.84, clicks: 12, pos: -1 }, 8, rng);
+      check("加速齒錯過貓耳會衝出界", overshoot.result && overshoot.result.winner && overshoot.result.winner.id === "foe", overshoot.result ? `${overshoot.result.label} +${overshoot.result.points} t ${overshoot.t.toFixed(2)} touch ${overshoot.touched}` : `none t ${overshoot.t.toFixed(2)} rpm ${overshoot.beys.map((b) => Math.round(b.rpm)).join(",")}`);
       return lines;
     }
 
