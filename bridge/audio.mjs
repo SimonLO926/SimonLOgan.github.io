@@ -26,6 +26,20 @@ export function clearPitches(rows) {
   return [72, 76, 79, 84].slice(0, count);
 }
 
+export function tspinPitches() {
+  return [70, 74, 79, 86];
+}
+
+export function comboPitches(combo) {
+  const count = Math.max(2, Math.min(6, combo | 0));
+  const root = 60 + Math.min(8, combo) * 2;
+  return Array.from({ length: count }, (_, index) => root + index * 2);
+}
+
+export function sandPitches() {
+  return [62, 67, 74];
+}
+
 export function createSound(getVolume) {
   let ctx = null;
   let master = null;
@@ -84,6 +98,28 @@ export function createSound(getVolume) {
     pitches.forEach((note, index) => {
       beep(midi(note), start + index * 0.07, 0.2, "square", MIX.clear, sfxGain);
     });
+  }
+
+  function playRun(notes, gap, dur, peak) {
+    if (!ensure()) return;
+    const start = ctx.currentTime;
+    notes.forEach((note, index) => {
+      beep(midi(note), start + index * gap, dur, "square", peak, sfxGain);
+    });
+  }
+
+  function playTspin() {
+    playRun(tspinPitches(), 0.045, 0.16, MIX.clear);
+    if (!ctx) return;
+    beep(midi(58), ctx.currentTime, 0.24, "square", MIX.clear * 0.65, sfxGain);
+  }
+
+  function playCombo(combo) {
+    playRun(comboPitches(combo), 0.038, 0.09, Math.min(0.72, MIX.clear + combo * 0.03));
+  }
+
+  function playSand() {
+    playRun(sandPitches(), 0.05, 0.12, MIX.clear * 0.8);
   }
 
   function playBoom() {
@@ -153,5 +189,5 @@ export function createSound(getVolume) {
     }
   }
 
-  return { setVolume, blip, playClear, playBoom, start, restart, stop, tick, get playing() { return playing; } };
+  return { setVolume, blip, playClear, playBoom, playTspin, playCombo, playSand, start, restart, stop, tick, get playing() { return playing; } };
 }
