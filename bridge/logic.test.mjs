@@ -8,6 +8,7 @@ import {
   SAND_MATCH,
   TSPIN_SCORE,
   beginSand,
+  finishSand,
   createGame,
   gravityMs,
   paceOf,
@@ -285,7 +286,8 @@ test("sand mode lasts twenty drops and uses four colors", () => {
   const cleared = sandClearColors(span);
   assert.deepEqual(cleared.colors, [0]);
   assert.equal(span[2].every((cell) => cell === 0), true);
-  assert.equal(span[0][0], 0);
+  assert.equal(span[0][0], 1);
+  assert.equal(cleared.count, 6);
   assert.equal(span[1][1], 2);
   assert.equal(span[0][5], 2);
   const linked = [
@@ -526,4 +528,47 @@ test("flipping the board turns it upside down", () => {
   assert.equal(game.grid[19][0], null);
   const falling = unsupportedComponents(game.grid);
   assert.equal(falling.length, 1);
+});
+
+
+test("sand clears a turning connected span and its branches, preserving separate same-color sand", () => {
+  const grid = [
+    [1, 1, 0, 0, 1],
+    [0, 1, 1, 0, 0],
+    [0, 0, 1, 1, 1],
+    [1, 0, 1, 0, 0],
+  ];
+  assert.deepEqual(sandClearColors(grid), { colors: [0], count: 8 });
+  assert.deepEqual(grid, [[0, 0, 0, 0, 1], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [1, 0, 0, 0, 0]]);
+});
+
+test("sand requires an orthogonally connected path to both edges", () => {
+  const grid = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+  assert.deepEqual(sandClearColors(grid), { colors: [], count: 0 });
+});
+
+test("all four sand colors convert to valid Bridge pieces", () => {
+  for (let color = 1; color <= SAND_COLORS; color += 1) {
+    const game = createGame();
+    beginSand(game);
+    for (let y = 19 * SAND_SCALE; y < 20 * SAND_SCALE; y += 1) {
+      for (let x = 0; x < SAND_SCALE; x += 1) game.sandGrid[y][x] = color;
+    }
+    finishSand(game);
+    assert.equal(game.grid[19][0].type, ["I", "O", "T", "S"][color - 1]);
+  }
+});
+
+test("returning from sand can clear more than four Bridge rows without NaN", () => {
+  const game = createGame();
+  beginSand(game);
+  for (let y = 15 * SAND_SCALE; y < 20 * SAND_SCALE; y += 1) {
+    game.sandGrid[y].fill(y % SAND_COLORS + 1);
+  }
+  finishSand(game);
+  game.phase = "resolving";
+  const step = pump(game);
+  assert.equal(step.rows.length, 5);
+  assert.ok(Number.isFinite(game.score));
+  assert.ok(game.score > 0);
 });

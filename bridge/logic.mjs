@@ -644,7 +644,7 @@ export function finishSand(game) {
   if (grid) {
     for (let cy = 0; cy < ROWS; cy += 1) {
       for (let cx = 0; cx < COLS; cx += 1) {
-        const tally = [0, 0, 0];
+        const tally = Array(SAND_COLORS).fill(0);
         let filled = 0;
         for (let dy = 0; dy < scale; dy += 1) {
           for (let dx = 0; dx < scale; dx += 1) {
@@ -656,7 +656,7 @@ export function finishSand(game) {
         }
         if (filled * 2 >= scale * scale) {
           const color = tally.indexOf(Math.max(...tally));
-          game.grid[cy][cx] = { type: ["I", "O", "T"][color], g: takeGid(game), bomb: false, reward: null, curse: null, sand: null };
+          game.grid[cy][cx] = { type: ["I", "O", "T", "S"][color], g: takeGid(game), bomb: false, reward: null, curse: null, sand: null };
         } else game.grid[cy][cx] = null;
       }
     }
@@ -702,47 +702,38 @@ export function sandFallStep(grid) {
 }
 
 export function sandClearColors(grid) {
-  const height = grid.length;
+  if (!grid.length || !grid[0].length) return { colors: [], count: 0 };
   const width = grid[0].length;
-  const doomed = new Set();
   const seen = new Set();
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      const color = grid[y][x];
-      if (!color || doomed.has(color)) continue;
-      const start = y * width + x;
-      if (seen.has(start)) continue;
-      const stack = [[x, y]];
-      seen.add(start);
-      let left = x === 0;
-      let right = x === width - 1;
-      while (stack.length) {
-        const [cx, cy] = stack.pop();
-        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-          const nx = cx + dx;
-          const ny = cy + dy;
-          if (nx < 0 || ny < 0 || nx >= width || ny >= height || grid[ny][nx] !== color) continue;
-          const key = ny * width + nx;
-          if (seen.has(key)) continue;
-          seen.add(key);
-          if (nx === 0) left = true;
-          if (nx === width - 1) right = true;
-          stack.push([nx, ny]);
-        }
-      }
-      if (left && right) doomed.add(color);
-    }
-  }
-  if (!doomed.size) return { colors: [], count: 0 };
+  const colors = new Set();
   let count = 0;
   for (let y = 0; y < grid.length; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      if (!doomed.has(grid[y][x])) continue;
-      grid[y][x] = 0;
-      count += 1;
+    const color = grid[y][0];
+    if (!color || seen.has(y * width)) continue;
+    const component = [];
+    const stack = [[0, y]];
+    seen.add(y * width);
+    let across = false;
+    while (stack.length) {
+      const [cx, cy] = stack.pop();
+      component.push([cx, cy]);
+      if (cx === width - 1) across = true;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = cx + dx;
+        const ny = cy + dy;
+        if (nx < 0 || nx >= width || ny < 0 || ny >= grid.length) continue;
+        const key = ny * width + nx;
+        if (seen.has(key) || grid[ny][nx] !== color) continue;
+        seen.add(key);
+        stack.push([nx, ny]);
+      }
     }
+    if (!across) continue;
+    colors.add(color - 1);
+    for (const [cx, cy] of component) grid[cy][cx] = 0;
+    count += component.length;
   }
-  return { colors: [...doomed].map((value) => value - 1), count };
+  return { colors: [...colors], count };
 }
 
 export function lockActive(game) {
@@ -948,7 +939,7 @@ export function pump(game) {
     game.spin = null;
     const mult = scoreMult(game);
     const bonus = awardCombo(game);
-    const lineScore = kind ? tSpinScore(kind, rows.length) : LINE_SCORE[rows.length];
+    const lineScore = kind ? tSpinScore(kind, rows.length) : (LINE_SCORE[rows.length] ?? LINE_SCORE[4] + (rows.length - 4) * 300);
     game.score += lineScore * mult + bonus;
     noteLines(game, rows.length);
     if (game.mode === "tetris") collapseRows(game.grid, rows);
