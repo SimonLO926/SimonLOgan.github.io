@@ -1255,16 +1255,16 @@
     </section>
   </div>
   <script type="module">
-    import { createSound } from "./audio.mjs";
-    import { brickWall, createSession, drawSession, updateSession } from "./arcade.mjs";
-    import { translate } from "./i18n.mjs";
-    import { createTen, createTwenty, tenCycle, tenMove, tenPlace, twentyBest, twentyMove } from "./puzzle.mjs";
-    import { loadBoard, rememberScore } from "./ranks.mjs";
-    import { VERSION } from "./version.mjs";
+    import { createSound } from "./audio.mjs?v=1.0.3";
+    import { brickWall, createSession, drawSession, updateSession } from "./arcade.mjs?v=1.0.3";
+    import { translate } from "./i18n.mjs?v=1.0.3";
+    import { createTen, createTwenty, tenCycle, tenMove, tenPlace, twentyBest, twentyMove } from "./puzzle.mjs?v=1.0.3";
+    import { loadBoard, rememberScore } from "./ranks.mjs?v=1.0.3";
+    import { VERSION } from "./version.mjs?v=1.0.3";
     import {
       COLS, ROWS, SAND_DROPS, SAND_SCALE, SHAPES, beginSand, cellsOf, createGame, fits, flipGrid, ghostY, gravityMs, sandPaintsFor,
       hardDrop, hold, lockActive, paceOf, paceScale, pump, startGame, tryMove, tryRotate,
-    } from "./logic.mjs";
+    } from "./logic.mjs?v=1.0.3";
 
     const COLORS = {
       I: "#64d2ff", O: "#ffd60a", T: "#bf5af2", S: "#30d158", Z: "#ff453a",
@@ -2463,7 +2463,12 @@
           const step = pump(game);
           if (step?.type === "clear" || step?.type === "drop" || step?.type === "flip" || step?.type === "reward" || step?.type === "sand" || step?.type === "spin") {
             const distance = step.moves?.length && (step.type === "drop" || step.type === "sand") ? Math.max(0, ...step.moves.map((move) => Math.abs(move.y1 - move.y0) + Math.abs((move.x1 ?? move.x) - (move.x0 ?? move.x)))) : 0;
-            const dur = step.type === "clear" ? (step.blasts?.length ? 520 : step.sand ? 180 : 240) : step.type === "sand" ? 16 : step.type === "drop" ? 120 + distance * 18 : step.type === "spin" ? 560 : step.type === "reward" && step.reward === "sand" ? 480 : step.type === "reward" ? 720 : 460;
+            const now = performance.now();
+            const cursed = Object.values(curseUntil).some((until) => now < until)
+              || game.grid.some((row) => row.some((cell) => cell?.curse === "seal"));
+            const fastDrop = game.mode === "marathon" && !game.sanding && !cursed;
+            const dropDuration = fastDrop ? Math.min(140, 40 + distance * 5) : 120 + distance * 18;
+            const dur = step.type === "clear" ? (step.blasts?.length ? 520 : step.sand ? 180 : 240) : step.type === "sand" ? 16 : step.type === "drop" ? dropDuration : step.type === "spin" ? 560 : step.type === "reward" && step.reward === "sand" ? 480 : step.type === "reward" ? 720 : 460;
             anim = { step, t: 0, dur };
             if (step.type === "clear") {
               if (step.tspin || step.spinName) {
