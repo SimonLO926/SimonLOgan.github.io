@@ -303,7 +303,7 @@
 
   <details class="codex">
     <summary>盤型、零件和射法是怎麼來的</summary>
-    <p>極限盤 BX-10 約 44 × 45.5 cm，戰鬥區直徑 36.5 cm。齒軌在出口這邊凹進去，左右兩個貓耳加中間舌片構成「凹」字，那是戰鬥區裡的落點，不是得分洞。再外面才是陷阱：左右擊飛區各 2 分，中間極限區 3 分。無限盤 BX-46 左右兩端各有一組同樣的凹字齒軌，陷阱在齒軌外面；上下長軌可以連續 Infinity Dash。爆裂 2 分，停轉 1 分，先到 4 分。</p>
+    <p>極限盤 BX-10 約 44 × 45.5 cm，戰鬥區直徑 36.5 cm。出口這一側是陷阱：左右擊飛區各 2 分，中間極限區 3 分，三個口拼成「凹」字。貓耳在洞口對面，左右各一個，用來蓄貓耳，不是陷阱。無限盤 BX-46 左右兩端都是陷阱凹口，貓耳一樣在對面那一側的內圈；上下長軌可以連續 Infinity Dash。爆裂 2 分，停轉 1 分，先到 4 分。</p>
     <p>陀螺分刃、棘輪、軸心。這裡的刃重用公開秤重的約值：劍龍 Dran Sword 34.8 g（BX-01）、地獄鐮刀 Hells Scythe 32.7 g（BX-02）、巫師之箭 Wizard Arrow 32.0 g（BX-03）、騎士之盾 Knight Shield 32.6 g。鯊刃 Shark Edge 取約 35 g。棘輪對齊 3-60 約 6.2 g、4-80 約 7.0 g 這類秤重。軸心約 2.0–2.3 g。拉力對上拉繩競技大約 4000–15200 RPM。</p>
     <ul>
       <li>蓄貓耳：第二下滑到後收，第一下又有明顯左右傾。陀螺收到出口對面兩側空位續轉，用來躲第一波極限衝擊。社區也叫躲貓耳。</li>
@@ -330,8 +330,8 @@
       { a0: 110, a1: 130, kind: "over" }
     ];
     const CATEARS = [
-      { x: -74, y: 118 },
-      { x: 74, y: 118 }
+      { x: -92, y: -108 },
+      { x: 92, y: -108 }
     ];
     const VIEW = { w: 780, h: 720, scale: 1.5, cx: 390, cy: 330 };
 
@@ -1170,19 +1170,6 @@
             tooth.rotation.y = Math.PI / 2 - angle;
             parent.add(tooth);
           }
-          [-1, 1].forEach((side) => {
-            for (let i = 0; i <= 7; i += 1) {
-              const t = i / 7;
-              const tooth = new THREE.Mesh(toothGeo, toothMat);
-              tooth.position.set(side * (28 + Math.sin(t * Math.PI) * 58), 7.2, 96 + Math.sin(t * Math.PI) * 42);
-              parent.add(tooth);
-            }
-          });
-          for (let y = 96; y <= 124; y += 7) {
-            const tooth = new THREE.Mesh(toothGeo, toothMat);
-            tooth.position.set(0, 7.2, y);
-            parent.add(tooth);
-          }
         }
       };
     }
@@ -1211,7 +1198,7 @@
         id: "infinity",
         outline,
         housing: [680, 390],
-        ears: [{ x: -168, y: 48 }, { x: 168, y: 48 }],
+        ears: [{ x: -110, y: -96 }, { x: 110, y: -96 }],
         pockets: endPockets(-1).concat(endPockets(1)),
         rail(parent, toothGeo, toothMat) {
           [-1, 1].forEach((side) => {
@@ -2182,7 +2169,7 @@
       const aimedOnly = tiltsFromAxes({ roll: 0.05, yaw: -0.8, pitch: -0.75 });
       check("只轉槍口不算逆軌", classify(aimedOnly.x, aimedOnly.y, 1) !== "counter");
       check("14 下拉滿", pullStats(14).sp === 100 && pullStats(14).rpm === 15200);
-      check("貓耳在前方凹口兩側", CATEARS[0].x < 0 && CATEARS[1].x > 0 && CATEARS[0].y > 40 && CATEARS[1].y > 40);
+      check("貓耳在陷阱對面", CATEARS[0].x < 0 && CATEARS[1].x > 0 && CATEARS[0].y < -40 && CATEARS[1].y < -40);
 
       const rng = () => 0.5;
       const bey = makeBey(presetBuild(PRESETS[0]), { xTilt: -0.7, yTilt: -0.8, clicks: 12, pos: -1, id: "you" }, rng);
