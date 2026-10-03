@@ -123,17 +123,46 @@
     .side { display: flex; gap: 6px; align-items: center; }
     .custom { display: grid; gap: 6px; padding: 8px; border-radius: 12px; background: rgba(255,255,255,.03); }
 
-    .stage { min-width: 0; }
-    .stage { display: flex; justify-content: center; }
+    .stage {
+      position: relative;
+      min-width: 0;
+      height: min(68vh, 680px);
+      min-height: 440px;
+    }
     canvas {
       width: 100%;
-      height: auto;
+      height: 100%;
       display: block;
       border-radius: 18px;
-      background: #050d0a;
+      background: #070b09;
       border: 1px solid var(--line);
       touch-action: none;
     }
+    #banner {
+      position: absolute;
+      left: 50%;
+      top: 16px;
+      transform: translateX(-50%);
+      max-width: calc(100% - 32px);
+      padding: 10px 16px;
+      border-radius: 14px;
+      background: rgba(6, 12, 10, .82);
+      border: 1px solid rgba(255, 224, 138, .35);
+      color: var(--gold);
+      font-weight: 800;
+      text-align: center;
+      pointer-events: none;
+    }
+    .pips { display: flex; gap: 6px; margin: 0 0 8px; }
+    .pips i {
+      display: block;
+      width: 36px;
+      height: 6px;
+      border-radius: 99px;
+      background: #1c2b24;
+    }
+    .pips i.on { background: var(--green); }
+    .pips i.now { background: var(--gold); }
     .dock { position: sticky; bottom: 8px; z-index: 3; }
 
     .dock { margin: 0 12px 12px; padding: 12px 14px 14px; }
@@ -240,7 +269,10 @@
 
   <div class="layout">
     <aside class="panel" id="you-panel"></aside>
-    <div class="stage"><canvas id="arena" width="780" height="720"></canvas></div>
+    <div class="stage">
+      <canvas id="arena"></canvas>
+      <div id="banner" hidden></div>
+    </div>
     <aside class="panel" id="foe-panel"></aside>
   </div>
 
@@ -249,6 +281,7 @@
       <strong id="phase-label">準備</strong>
       <em id="live-read">先組好兩邊的陀螺</em>
     </div>
+    <div class="pips" id="pips" hidden></div>
     <div class="bar-wrap" id="bar-wrap" hidden>
       <div class="zones" id="zones"><span>左傾</span><span>垂直</span><span>右傾</span></div>
       <button type="button" id="bar" aria-label="確認傾斜時機"><span id="marker">X</span></button>
@@ -263,7 +296,7 @@
     <div id="ready-wrap">
       <button type="button" class="go" id="start">3 · 2 · 1　Go Shoot</button>
     </div>
-    <p id="hint">指標會自己左右跑。點第一次鎖定左右傾斜，點第二次鎖定前後傾斜，然後在時限內連點決定拉力 SP。</p>
+    <p id="hint">游標會自己左右跑，分六次鎖定發射器的站位、探出、高度、左右傾、前後傾、槍口轉向。逆軌要靠槍身側傾。然後在時限內連點決定拉力。</p>
   </section>
 
   <details class="codex">
@@ -272,13 +305,14 @@
     <p>陀螺分刃、棘輪、軸心。這裡的刃重用公開秤重的約值：劍龍 Dran Sword 34.8 g（BX-01）、地獄鐮刀 Hells Scythe 32.7 g（BX-02）、巫師之箭 Wizard Arrow 32.0 g（BX-03）、騎士之盾 Knight Shield 32.6 g。鯊刃 Shark Edge 取約 35 g。棘輪對齊 3-60 約 6.2 g、4-80 約 7.0 g 這類秤重。軸心約 2.0–2.3 g。拉力對上拉繩競技大約 4000–15200 RPM。</p>
     <ul>
       <li>蓄貓耳：第二下滑到後收，第一下又有明顯左右傾。陀螺收到出口對面兩側空位續轉，用來躲第一波極限衝擊。社區也叫躲貓耳。</li>
-      <li>逆軌：第二下滑到前壓貼軌，左右傾和順齒方向相反。右旋打右側是順軌，會沿著齒往後圈爬再砸回盤心；打左側是逆軌，反向咬齒，比較耗轉。逆跪和逆軌同音，這裡就是這條逆向。</li>
+      <li>逆軌要看到發射器的側傾，不是只把槍口轉過去。六軸是左右站位、探出前後、高度、左右傾、前後傾、槍口轉向。右旋要逆軌：左右傾和轉向都偏左，再前壓，齒會逆向咬上 X 線。順軌則偏右再前壓。後收進貓耳。逆跪和逆軌同音。</li>
       <li>X Dash：軸心齒咬到外圈齒軌就加速，再甩回盤心。Accel 16 齒最快也最耗轉，Rush 10 齒較慢、較不容易衝出去，Flat 12 齒居中。</li>
       <li>低刃打高棘輪比較容易爆。點數少（尤其 1-60）鎖得住的齒少；點數多較耐爆，但凸片也比較容易被打到。攻型軸心軸比較粗，耐爆較高。</li>
     </ul>
     <ol class="log" id="log"></ol>
   </details>
 
+  <script src="./vendor/three.min.js"></script>
   <script>
     const FIELD = {
       battleR: 182,
@@ -366,8 +400,9 @@
       difficulty: "even",
       score: { you: 0, foe: 0 },
       phase: "ready",
-      lockedX: 0,
-      lockedY: 0,
+      axisIndex: 0,
+      axes: { x: 0, reach: 0, z: 0, roll: 0, pitch: 0, yaw: 0 },
+      yank: 0,
       clicks: 0,
       spT0: 0,
       foePlan: null,
@@ -425,16 +460,50 @@
       return { sp: Math.round(sp), rpm, wobble };
     }
 
+    const AXES = [
+      { id: "x", name: "左右站位", left: "靠左", mid: "正中", right: "靠右", hint: "發射器沿出口這側左右挪。" },
+      { id: "reach", name: "探出前後", left: "縮在盤外", mid: "貼著盤緣", right: "探進場內", hint: "前後是槍口伸進場地多深。" },
+      { id: "z", name: "高度", left: "壓低", mid: "標準高度", right: "抬高", hint: "高度是發射器離盤面多高。抬太高，出手會飄。" },
+      { id: "roll", name: "左右傾", left: "左傾", mid: "槍身水平", right: "右傾", hint: "這是發射器本身的側傾。逆軌和順軌都要靠槍身傾過去，軸心齒才會從某一側咬上 X 線。" },
+      { id: "pitch", name: "前後傾", left: "前壓貼軌", mid: "槍口垂直", right: "後收貓耳", hint: "前壓讓陀螺衝去咬齒軌。後收則把陀螺收進貓耳位。" },
+      { id: "yaw", name: "槍口轉向", left: "轉向左牆", mid: "對準盤心", right: "轉向右牆", hint: "右旋要逆軌：左右傾和轉向都偏左，再前壓。順軌則偏右再前壓。只轉槍口、槍身不傾，咬不到逆向齒。" }
+    ];
+
+    function tiltsFromAxes(axes) {
+      const roll = axes.roll || 0;
+      const yaw = axes.yaw || 0;
+      const aimed = Math.abs(yaw) > Math.abs(roll) ? yaw : roll;
+      const x = Math.abs(roll) >= 0.22 ? aimed : aimed * 0.2;
+      return { x, y: axes.pitch || 0 };
+    }
+
+    function axisReadout(axis, value) {
+      if (axis.id === "x") return `左右 ${Math.round(value * 42)} mm`;
+      if (axis.id === "reach") return `前後 ${Math.round(value * 24)} mm`;
+      if (axis.id === "z") return `高度 ${Math.round(value * 16)} mm`;
+      const deg = Math.round(value * 28);
+      return `${axis.name} ${deg > 0 ? "+" : ""}${deg}°`;
+    }
+
+    function previewAxes(now = performance.now()) {
+      const axes = Object.assign({}, state.axes);
+      if (state.phase === "axis") axes[AXES[state.axisIndex].id] = currentBar(now);
+      return axes;
+    }
+
     function planLaunch(build, launch) {
       const blade = resolveBlade(build);
       const spin = blade.spin === "L" ? -1 : 1;
-      const xTilt = launch.xTilt;
-      const yTilt = launch.yTilt;
+      const fromAxes = launch.axes ? tiltsFromAxes(launch.axes) : null;
+      const xTilt = fromAxes ? fromAxes.x : launch.xTilt;
+      const yTilt = fromAxes ? fromAxes.y : launch.yTilt;
       const stats = pullStats(launch.clicks);
       const tech = classify(xTilt, yTilt, spin);
       const side = launch.pos >= 0 ? 1 : -1;
-      let x = side * 46;
-      let y = 124;
+      let x = side * 46 + ((launch.axes && launch.axes.x) || 0) * 34;
+      let y = 124 - ((launch.axes && launch.axes.reach) || 0) * 16;
+      let wobble = stats.wobble;
+      if (launch.axes) wobble += Math.abs(launch.axes.z || 0) * 0.06 + (Math.abs(launch.axes.roll || 0) < 0.22 && Math.abs(launch.axes.yaw || 0) > 0.4 ? 0.05 : 0);
       let aimX = 0;
       let aimY = -1;
       let speed = 240 + (stats.rpm / 15000) * 420;
@@ -470,7 +539,7 @@
         tech, spin, ear, speed,
         rpm: stats.rpm,
         sp: stats.sp,
-        wobble: stats.wobble,
+        wobble,
         xTilt, yTilt
       };
     }
@@ -498,6 +567,9 @@
         integrity: 100,
         mode: plan.tech === "catear" ? "seekear" : "free",
         tech: plan.tech,
+        aim: plan.xTilt,
+        aimPitch: plan.yTilt * 0.35,
+        aimRoll: plan.xTilt * 0.28,
         ear: plan.ear,
         railDir: 0,
         railTime: 0,
@@ -940,339 +1012,583 @@
     }
 
     const canvas = document.getElementById("arena");
-    const ctx = canvas.getContext("2d");
+    const banner = document.getElementById("banner");
+    let view = null;
 
-    function worldToScreen(x, y) {
-      return [VIEW.cx + x * VIEW.scale, VIEW.cy + y * VIEW.scale];
+    function degRad(deg) {
+      return (deg * Math.PI) / 180;
     }
 
-    function drawStadium() {
-      ctx.clearRect(0, 0, VIEW.w, VIEW.h);
-      ctx.save();
-      ctx.translate(VIEW.cx, VIEW.cy);
-      ctx.scale(VIEW.scale, VIEW.scale);
-
-      ctx.fillStyle = "#121816";
-      roundRect(ctx, -214, -214, 428, 470, 28);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(126,240,255,.25)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.arc(0, 0, FIELD.battleR, 0, Math.PI * 2);
-      ctx.fillStyle = "#10241c";
-      ctx.fill();
-
-      const floor = ctx.createRadialGradient(0, 0, 20, 0, 0, FIELD.battleR);
-      floor.addColorStop(0, "#163528");
-      floor.addColorStop(0.55, "#10281f");
-      floor.addColorStop(1, "#0c1c16");
-      ctx.fillStyle = floor;
-      ctx.beginPath();
-      ctx.arc(0, 0, FIELD.battleR - 6, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = "rgba(255,255,255,.08)";
-      ctx.lineWidth = 10;
-      ctx.beginPath();
-      ctx.arc(0, 0, (FIELD.ridgeIn + FIELD.ridgeOut) / 2, 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.strokeStyle = "rgba(61,255,154,.16)";
-      ctx.lineWidth = 16;
-      ctx.beginPath();
-      ctx.arc(0, 0, FIELD.railR, rad(130), rad(50) + Math.PI * 2);
-      ctx.stroke();
-
-      ctx.strokeStyle = "#1f8a55";
-      ctx.lineWidth = 2;
-      for (let deg = 132; deg < 408; deg += 7) {
-        const a = rad(deg);
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(a) * (FIELD.railR - 8), Math.sin(a) * (FIELD.railR - 8));
-        ctx.lineTo(Math.cos(a) * (FIELD.railR + 8), Math.sin(a) * (FIELD.railR + 8));
-        ctx.stroke();
+    function dishHeight(r, deg) {
+      let h = 2;
+      if (r < 72) h = 1.6;
+      else if (r < 92) h = 1.6 + ((r - 72) / 20) * 6;
+      else if (r < 108) h = 7.6 + ((r - 92) / 16) * 18;
+      else if (r < 126) h = 25.6 - ((r - 108) / 18) * 16;
+      else if (r < 146) h = 9.6;
+      else h = 9.6 + ((r - 146) / 30) * 12;
+      const exit = EXITS.find((item) => deg >= item.a0 && deg <= item.a1);
+      if (exit && r > 150) {
+        const t = Math.min(1, (r - 150) / 30);
+        h = h * (1 - t) - (exit.kind === "xtreme" ? 18 : 12) * t;
       }
+      return h;
+    }
 
-      drawArrow(158, -2.6, -1, "#7ef9ff");
-      drawArrow(158, -0.4, 1, "#ff4d8d");
+    function dishColor(r, deg) {
+      const exit = EXITS.find((item) => deg >= item.a0 && deg <= item.a1);
+      if (exit && r > 150) return exit.kind === "xtreme" ? [0.84, 0.16, 0.32] : [0.93, 0.62, 0.16];
+      if (r > 152 && r < 174 && !exit) return [0.12, 0.72, 0.38];
+      if (r > 96 && r < 122) return [0.62, 0.66, 0.72];
+      if (r < 48) return [0.93, 0.94, 0.95];
+      return [0.82, 0.84, 0.86];
+    }
+
+    function makeTextSprite(text, color) {
+      const board = document.createElement("canvas");
+      board.width = 256;
+      board.height = 64;
+      const pen = board.getContext("2d");
+      pen.clearRect(0, 0, 256, 64);
+      pen.font = "700 34px sans-serif";
+      pen.fillStyle = color;
+      pen.textAlign = "center";
+      pen.textBaseline = "middle";
+      pen.fillText(text, 128, 34);
+      const texture = new THREE.CanvasTexture(board);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false }));
+      sprite.scale.set(46, 11.5, 1);
+      sprite.userData.board = board;
+      sprite.userData.pen = pen;
+      sprite.userData.texture = texture;
+      return sprite;
+    }
+
+    function rewriteSprite(sprite, text, color) {
+      if (sprite.userData.last === text) return;
+      const pen = sprite.userData.pen;
+      const board = sprite.userData.board;
+      pen.clearRect(0, 0, board.width, board.height);
+      pen.font = "700 34px sans-serif";
+      pen.fillStyle = color;
+      pen.textAlign = "center";
+      pen.textBaseline = "middle";
+      pen.fillText(text, 128, 34);
+      sprite.userData.texture.needsUpdate = true;
+      sprite.userData.last = text;
+    }
+
+    function buildStadium(parent) {
+      const rings = 36;
+      const segs = 96;
+      const positions = [];
+      const colors = [];
+      for (let i = 0; i <= rings; i += 1) {
+        const radius = (i / rings) * 180;
+        for (let j = 0; j <= segs; j += 1) {
+          const deg = (j / segs) * 360;
+          const angle = degRad(deg);
+          const height = dishHeight(radius, deg);
+          positions.push(Math.cos(angle) * radius, height, Math.sin(angle) * radius);
+          colors.push(...dishColor(radius, deg));
+        }
+      }
+      const indices = [];
+      const stride = segs + 1;
+      for (let i = 0; i < rings; i += 1) {
+        for (let j = 0; j < segs; j += 1) {
+          const a = i * stride + j;
+          indices.push(a, a + 1, a + stride, a + 1, a + stride + 1, a + stride);
+        }
+      }
+      const floorGeo = new THREE.BufferGeometry();
+      floorGeo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+      floorGeo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+      floorGeo.setIndex(indices);
+      floorGeo.computeVertexNormals();
+      const floor = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        roughness: 0.48,
+        metalness: 0.06,
+        side: THREE.DoubleSide
+      }));
+      floor.receiveShadow = true;
+      parent.add(floor);
+
+      const base = new THREE.Mesh(
+        new THREE.CylinderGeometry(214, 226, 16, 48),
+        new THREE.MeshStandardMaterial({ color: 0x14171b, roughness: 0.72, metalness: 0.18 })
+      );
+      base.position.y = -10;
+      base.receiveShadow = true;
+      parent.add(base);
+
+      const wallMat = new THREE.MeshStandardMaterial({ color: 0x3e4650, roughness: 0.4, metalness: 0.34 });
+      const shell = new THREE.Shape();
+      const shellSteps = 48;
+      const shellStart = 132;
+      const shellEnd = 408;
+      for (let i = 0; i <= shellSteps; i += 1) {
+        const angle = degRad(shellStart + ((shellEnd - shellStart) * i) / shellSteps);
+        const x = Math.cos(angle) * 228;
+        const y = Math.sin(angle) * 228;
+        if (i === 0) shell.moveTo(x, y);
+        else shell.lineTo(x, y);
+      }
+      for (let i = shellSteps; i >= 0; i -= 1) {
+        const angle = degRad(shellStart + ((shellEnd - shellStart) * i) / shellSteps);
+        shell.lineTo(Math.cos(angle) * 186, Math.sin(angle) * 186);
+      }
+      shell.closePath();
+      const shellGeo = new THREE.ExtrudeGeometry(shell, {
+        depth: 34,
+        bevelEnabled: true,
+        bevelThickness: 3,
+        bevelSize: 2.4,
+        bevelSegments: 2
+      });
+      shellGeo.rotateX(-Math.PI / 2);
+      const shellMesh = new THREE.Mesh(shellGeo, wallMat);
+      shellMesh.castShadow = true;
+      shellMesh.receiveShadow = true;
+      parent.add(shellMesh);
+
+      const ridge = new THREE.Mesh(
+        new THREE.TorusGeometry(108, 2.4, 10, 72),
+        new THREE.MeshStandardMaterial({ color: 0x9aa3ad, roughness: 0.32, metalness: 0.55 })
+      );
+      ridge.rotation.x = Math.PI / 2;
+      ridge.position.y = 27;
+      ridge.castShadow = true;
+      parent.add(ridge);
+      const toothGeo = new THREE.BoxGeometry(5.2, 4.2, 7);
+      const toothMat = new THREE.MeshStandardMaterial({ color: 0x18c26a, roughness: 0.38, metalness: 0.18, emissive: 0x063318, emissiveIntensity: 0.35 });
+      for (let deg = 136; deg < 404; deg += 6.5) {
+        const angle = degRad(deg);
+        const radius = 166;
+        const tooth = new THREE.Mesh(toothGeo, toothMat);
+        tooth.position.set(Math.cos(angle) * radius, dishHeight(radius, deg) + 3.4, Math.sin(angle) * radius);
+        tooth.rotation.y = Math.PI / 2 - angle;
+        parent.add(tooth);
+      }
 
       EXITS.forEach((exit) => {
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(rad(exit.a0)) * 150, Math.sin(rad(exit.a0)) * 150);
-        ctx.arc(0, 0, 228, rad(exit.a0), rad(exit.a1));
-        ctx.lineTo(Math.cos(rad(exit.a1)) * 150, Math.sin(rad(exit.a1)) * 150);
-        ctx.fillStyle = exit.kind === "xtreme" ? "rgba(255,77,141,.22)" : "rgba(255,224,138,.13)";
-        ctx.fill();
+        const shape = new THREE.Shape();
+        const steps = 8;
+        for (let i = 0; i <= steps; i += 1) {
+          const angle = degRad(exit.a0 + ((exit.a1 - exit.a0) * i) / steps);
+          const x = Math.cos(angle) * 158;
+          const y = Math.sin(angle) * 158;
+          if (i === 0) shape.moveTo(x, y);
+          else shape.lineTo(x, y);
+        }
+        for (let i = steps; i >= 0; i -= 1) {
+          const angle = degRad(exit.a0 + ((exit.a1 - exit.a0) * i) / steps);
+          shape.lineTo(Math.cos(angle) * 236, Math.sin(angle) * 236);
+        }
+        const pocketGeo = new THREE.ExtrudeGeometry(shape, { depth: 2.2, bevelEnabled: false });
+        pocketGeo.rotateX(-Math.PI / 2);
+        const pocket = new THREE.Mesh(pocketGeo, new THREE.MeshStandardMaterial({
+          color: exit.kind === "xtreme" ? 0xd4274a : 0xe39a22,
+          roughness: 0.62,
+          metalness: 0.06
+        }));
+        pocket.position.y = exit.kind === "xtreme" ? -8 : -4.5;
+        pocket.receiveShadow = true;
+        parent.add(pocket);
       });
 
-      CATEARS.forEach((ear) => {
-        ctx.beginPath();
-        ctx.ellipse(ear.x, ear.y, 30, 22, 0.4, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(255,77,141,.09)";
-        ctx.fill();
-        ctx.strokeStyle = "rgba(255,180,206,.7)";
-        ctx.setLineDash([3, 3]);
-        ctx.lineWidth = 1.4;
-        ctx.stroke();
-        ctx.setLineDash([]);
-      });
+      const overLabel = (angle, text) => {
+        const sprite = makeTextSprite(text, "#ffe08a");
+        const radius = 214;
+        sprite.position.set(Math.cos(degRad(angle)) * radius, 8, Math.sin(degRad(angle)) * radius);
+        parent.add(sprite);
+      };
+      overLabel(60, "Over 2");
+      overLabel(120, "Over 2");
+      const xtreme = makeTextSprite("Xtreme 3", "#ff8ab0");
+      xtreme.position.set(0, 6, 228);
+      parent.add(xtreme);
 
-      ctx.fillStyle = "rgba(126,240,255,.35)";
-      ctx.font = "700 13px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("X", 0, 5);
-      ctx.restore();
-
-      ctx.fillStyle = "#93b0a2";
-      ctx.font = "12px sans-serif";
-      ctx.textAlign = "center";
-      const left = worldToScreen(Math.cos(rad(120)) * 214, Math.sin(rad(120)) * 214);
-      const mid = worldToScreen(0, 236);
-      const right = worldToScreen(Math.cos(rad(60)) * 214, Math.sin(rad(60)) * 214);
-      ctx.fillText("Over 2", left[0], left[1]);
-      ctx.fillStyle = "#ff8ab0";
-      ctx.fillText("Xtreme 3", mid[0], mid[1]);
-      ctx.fillStyle = "#93b0a2";
-      ctx.fillText("Over 2", right[0], right[1]);
       CATEARS.forEach((ear, index) => {
-        const p = worldToScreen(ear.x, ear.y - 30);
-        ctx.fillStyle = "#ffb3cc";
-        ctx.fillText(index === 0 ? "左貓耳" : "右貓耳", p[0], p[1]);
+        const radius = Math.hypot(ear.x, ear.y);
+        const deg = normDeg(Math.atan2(ear.y, ear.x));
+        const ring = new THREE.Mesh(
+          new THREE.TorusGeometry(15, 0.8, 8, 28),
+          new THREE.MeshStandardMaterial({ color: 0xff8eb6, emissive: 0x5a1830, emissiveIntensity: 0.45, roughness: 0.35 })
+        );
+        ring.rotation.x = Math.PI / 2;
+        ring.position.set(ear.x, dishHeight(radius, deg) + 1.4, ear.y);
+        parent.add(ring);
+        const label = makeTextSprite(index === 0 ? "左貓耳" : "右貓耳", "#ffb3cc");
+        label.position.set(ear.x, ring.position.y + 10, ear.y);
+        parent.add(label);
       });
-      ctx.textAlign = "left";
-      ctx.fillStyle = "#7ef9ff";
-      ctx.fillText("青箭 右旋順軌", 18, 28);
-      ctx.fillStyle = "#ff4d8d";
-      ctx.fillText("洋紅 逆軌", 18, 46);
+
+      const xMat = new THREE.MeshStandardMaterial({ color: 0x9aa3ad, roughness: 0.4, metalness: 0.55 });
+      const armA = new THREE.Mesh(new THREE.BoxGeometry(28, 0.8, 3.2), xMat);
+      const armB = new THREE.Mesh(new THREE.BoxGeometry(28, 0.8, 3.2), xMat);
+      armA.rotation.y = Math.PI / 4;
+      armB.rotation.y = -Math.PI / 4;
+      armA.position.y = 2.2;
+      armB.position.y = 2.2;
+      parent.add(armA, armB);
     }
 
-    function rad(deg) { return (deg * Math.PI) / 180; }
-
-    function roundRect(context, x, y, w, h, r) {
-      context.beginPath();
-      context.moveTo(x + r, y);
-      context.arcTo(x + w, y, x + w, y + h, r);
-      context.arcTo(x + w, y + h, x, y + h, r);
-      context.arcTo(x, y + h, x, y, r);
-      context.arcTo(x, y, x + w, y, r);
-      context.closePath();
+    function plastic(color, roughness, metalness) {
+      return new THREE.MeshStandardMaterial({ color, roughness, metalness });
     }
 
-    function drawArrow(radius, angle, dir, color) {
-      const x = Math.cos(angle) * radius;
-      const y = Math.sin(angle) * radius;
-      const tx = Math.sin(angle) * dir;
-      const ty = Math.cos(angle) * dir;
-      ctx.strokeStyle = color;
-      ctx.fillStyle = color;
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.moveTo(x - tx * 10, y - ty * 10);
-      ctx.lineTo(x + tx * 8, y + ty * 8);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(x + tx * 8, y + ty * 8, 2.4, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    function buildBeyMesh(build) {
+      const blade = resolveBlade(build);
+      const bit = resolveBit(build);
+      const group = new THREE.Group();
+      const metal = new THREE.MeshPhysicalMaterial({
+        color: new THREE.Color(build.color),
+        metalness: 0.82,
+        roughness: 0.24,
+        clearcoat: 0.45,
+        clearcoatRoughness: 0.28
+      });
+      const ratchetMat = plastic(new THREE.Color(build.ratchetColor), 0.46, 0.08);
+      const spinGroup = new THREE.Group();
+      group.add(spinGroup);
 
-    function drawBey(bey) {
-      const [sx, sy] = worldToScreen(bey.x, bey.y);
-      ctx.save();
-      ctx.translate(sx, sy);
-      ctx.scale(VIEW.scale, VIEW.scale);
-      if (!bey.alive && bey.mode === "burst") {
-        drawLayer(bey, -16, -10, 0.3);
-        drawLayer(bey, 14, 8, -0.4);
-        drawLayer(bey, 0, 12, 0.8);
-      } else {
-        if (bey.flash > 0) {
-          ctx.shadowColor = bey.mode === "rail" ? "#7ef9ff" : "#ffffff";
-          ctx.shadowBlur = 16;
-        }
-        drawLayer(bey, 0, 0, 0);
+      const core = new THREE.Mesh(new THREE.CylinderGeometry(7.2, 7.6, 3.1, Math.max(8, build.points * 2)), ratchetMat);
+      core.position.y = 1.5;
+      spinGroup.add(core);
+      const reach = 10 + (build.height - 60) * 0.08;
+      for (let i = 0; i < build.points; i += 1) {
+        const tab = new THREE.Mesh(new THREE.BoxGeometry(reach, 2.4, 3.3), ratchetMat);
+        const angle = (i / build.points) * Math.PI * 2;
+        tab.position.set(Math.cos(angle) * (7 + reach * 0.35), 1.6, Math.sin(angle) * (7 + reach * 0.35));
+        tab.rotation.y = -angle;
+        spinGroup.add(tab);
       }
-      ctx.restore();
-      if (bey.mode === "rail" || bey.mode === "catear") {
-        ctx.fillStyle = bey.mode === "catear" ? "#ffb3cc" : (bey.tech === "counter" ? "#ff4d8d" : "#7ef9ff");
-        ctx.font = "12px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(bey.mode === "catear" ? "貓耳" : (bey.tech === "counter" ? "逆軌" : "X"), sx, sy - 42);
-      }
-    }
 
-    function drawLayer(bey, ox, oy, extra) {
-      ctx.save();
-      ctx.translate(ox, oy);
-      ctx.rotate(bey.angle + extra);
-      const blade = bey.parts.blade;
-      const tabs = bey.parts.ratchet.points;
-      const reach = 11 + (bey.parts.ratchet.height - 60) * 0.12;
-      ctx.fillStyle = bey.ratchetColor;
-      for (let i = 0; i < tabs; i += 1) {
-        ctx.rotate((Math.PI * 2) / tabs);
-        ctx.fillRect(4, -3.2, reach, 6.4);
-      }
-      ctx.rotate(-bey.angle - extra);
-      ctx.rotate(bey.angle + extra);
-      ctx.fillStyle = bey.color;
       if (blade.type === "stamina") {
-        ctx.beginPath();
-        ctx.arc(0, 0, 16, 0, Math.PI * 2);
-        ctx.arc(0, 0, 9, 0, Math.PI * 2, true);
-        ctx.fill();
-        ctx.fillRect(12, -2, 6, 4);
-        ctx.fillRect(-18, -2, 6, 4);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(15.5, 3.1, 10, 28), metal);
+        ring.rotation.x = Math.PI / 2;
+        ring.position.y = 3.3;
+        spinGroup.add(ring);
+        const inner = new THREE.Mesh(new THREE.CylinderGeometry(9.2, 9.2, 2.2, 24), metal);
+        inner.position.y = 3.2;
+        spinGroup.add(inner);
       } else if (blade.type === "defense") {
-        ctx.beginPath();
-        for (let i = 0; i < 6; i += 1) {
-          const a = (i / 6) * Math.PI * 2;
-          ctx.lineTo(Math.cos(a) * 16, Math.sin(a) * 16);
-        }
-        ctx.closePath();
-        ctx.fill();
+        const shield = new THREE.Mesh(new THREE.CylinderGeometry(16.5, 16.5, 3.4, 6), metal);
+        shield.position.y = 3.4;
+        spinGroup.add(shield);
       } else {
-        const n = Math.max(2, blade.contacts);
-        for (let i = 0; i < n; i += 1) {
-          const a = (i / n) * Math.PI * 2;
-          ctx.save();
-          ctx.rotate(a);
-          ctx.beginPath();
-          ctx.moveTo(4, -3);
-          ctx.quadraticCurveTo(16, blade.upper > 0.3 ? -8 : -2, 20, 0);
-          ctx.quadraticCurveTo(14, 5, 4, 3);
-          ctx.fill();
-          ctx.restore();
+        const count = Math.max(2, blade.contacts);
+        const shape = new THREE.Shape();
+        const lift = blade.upper > 0.3 ? -7 : -3;
+        shape.moveTo(5, -2.4);
+        shape.quadraticCurveTo(15, lift, 22, 0);
+        shape.quadraticCurveTo(15, 4.2, 5, 2.4);
+        const wingGeo = new THREE.ExtrudeGeometry(shape, {
+          depth: blade.type === "attack" ? 2.5 : 2.1,
+          bevelEnabled: true,
+          bevelThickness: 0.35,
+          bevelSize: 0.35,
+          bevelSegments: 1
+        });
+        wingGeo.translate(0, 0, -1.1);
+        wingGeo.rotateX(-Math.PI / 2);
+        for (let i = 0; i < count; i += 1) {
+          const wing = new THREE.Mesh(wingGeo, metal);
+          wing.rotation.y = (i / count) * Math.PI * 2;
+          wing.position.y = 3.2;
+          if (blade.upper > 0.25) wing.rotation.z = blade.upper * 0.35;
+          spinGroup.add(wing);
         }
       }
-      ctx.beginPath();
-      ctx.fillStyle = "#0d1411";
-      ctx.arc(0, 0, 5.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#e7f6ee";
-      ctx.font = "700 7px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(bey.spin > 0 ? "R" : "L", 0, 2.5);
-      if (bey.integrity < 42 && bey.alive) {
-        ctx.strokeStyle = "#ff4d6a";
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(-6, -2);
-        ctx.lineTo(2, 4);
-        ctx.lineTo(7, -5);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
 
-    function drawPreview() {
-      if (state.phase !== "x" && state.phase !== "y" && state.phase !== "sp") return;
-      const yTilt = state.phase === "x" ? 0 : state.lockedY || currentBar();
-      const xTilt = state.phase === "x" ? currentBar() : state.lockedX;
-      const yUse = state.phase === "y" ? currentBar() : yTilt;
-      const plan = planLaunch(state.you, {
-        xTilt, yTilt: yUse, clicks: state.phase === "sp" ? state.clicks : 8, pos: state.youSide
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.6, 1.6, 16), plastic(0x111418, 0.4, 0.3));
+      cap.position.y = 4.6;
+      spinGroup.add(cap);
+
+      let tip;
+      if (bit.style === "defense") tip = new THREE.Mesh(new THREE.ConeGeometry(1.5, 5.5, 10), plastic(0xd7dde4, 0.35, 0.4));
+      else if (bit.style === "stamina") tip = new THREE.Mesh(new THREE.SphereGeometry(2.5, 14, 12), plastic(0xd7dde4, 0.32, 0.35));
+      else if (bit.style === "balance") tip = new THREE.Mesh(new THREE.ConeGeometry(2.3, 4.2, 12), plastic(0xd7dde4, 0.35, 0.35));
+      else tip = new THREE.Mesh(new THREE.CylinderGeometry(bit.low ? 3.4 : 3.8, bit.low ? 3.4 : 3.8, 1.5, 16), plastic(0xd7dde4, 0.4, 0.25));
+      tip.position.y = bit.style === "defense" ? -2.2 : bit.style === "stamina" ? -1.2 : -0.6;
+      if (bit.style === "defense" || bit.style === "balance") tip.rotation.x = Math.PI;
+      group.add(tip);
+      group.userData.spin = spinGroup;
+      group.traverse((node) => {
+        if (node.isMesh) {
+          node.castShadow = true;
+          node.receiveShadow = true;
+        }
       });
-      ctx.save();
-      ctx.strokeStyle = "rgba(61,255,154,.8)";
-      ctx.setLineDash([5, 5]);
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      const start = worldToScreen(plan.x, plan.y);
-      ctx.moveTo(start[0], start[1]);
-      for (let t = 0.05; t <= 0.35; t += 0.05) {
-        const p = worldToScreen(plan.x + plan.vx * t, plan.y + plan.vy * t);
-        ctx.lineTo(p[0], p[1]);
-      }
-      ctx.stroke();
-      ctx.restore();
+      return group;
     }
 
-    function drawHud() {
-      const world = state.world;
-      if (!world) return;
-      ctx.font = "13px sans-serif";
-      world.beys.forEach((bey, index) => {
-        const x = index === 0 ? 16 : VIEW.w - 176;
-        ctx.fillStyle = "rgba(5,13,10,.72)";
-        ctx.fillRect(x, 60, 160, 36);
-        ctx.fillStyle = bey.color;
-        ctx.fillRect(x + 8, 74, Math.max(0, Math.min(144, (bey.rpm / 15200) * 144)), 8);
-        ctx.fillStyle = "#e7f6ee";
-        ctx.textAlign = "left";
-        ctx.fillText(`${bey.name}  ${Math.max(0, Math.round(bey.rpm))} RPM`, x + 8, 72);
+    function buildLauncher() {
+      const root = new THREE.Group();
+      const yaw = new THREE.Group();
+      const pitch = new THREE.Group();
+      const roll = new THREE.Group();
+      root.add(yaw);
+      yaw.add(pitch);
+      pitch.add(roll);
+      const bodyMat = plastic(0x3c444e, 0.38, 0.32);
+      const darkMat = plastic(0x1a1e24, 0.5, 0.2);
+      const accent = new THREE.MeshStandardMaterial({ color: 0x1ed37a, roughness: 0.35, metalness: 0.2, emissive: 0x08381c, emissiveIntensity: 0.5 });
+      const body = new THREE.Mesh(new THREE.BoxGeometry(34, 24, 52), bodyMat);
+      body.position.set(0, 0, 6);
+      roll.add(body);
+      const sideL = new THREE.Mesh(new THREE.CylinderGeometry(12, 12, 34, 16), bodyMat);
+      sideL.rotation.z = Math.PI / 2;
+      sideL.position.set(0, 0, 6);
+      roll.add(sideL);
+      const grip = new THREE.Mesh(new THREE.BoxGeometry(16, 18, 62), darkMat);
+      grip.position.set(0, -8, 52);
+      grip.rotation.x = 0.22;
+      roll.add(grip);
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(8, 2.2, 46), accent);
+      stripe.position.set(0, 13.2, 8);
+      roll.add(stripe);
+      const sight = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2, 28), accent);
+      sight.position.set(0, 15, -12);
+      roll.add(sight);
+      [-8, 8].forEach((x) => {
+        const prong = new THREE.Mesh(new THREE.BoxGeometry(3.2, 3.2, 18), darkMat);
+        prong.position.set(x, -2, -22);
+        roll.add(prong);
       });
-      if (world.calloutT > 0) {
-        ctx.textAlign = "center";
-        ctx.fillStyle = "#ffe08a";
-        ctx.font = "700 28px sans-serif";
-        const you = world.beys[0];
-        ctx.fillText(techName(you.tech, you.ear === 1 ? 1 : -1), VIEW.w / 2, 86);
+      const cord = new THREE.Group();
+      const cordBar = new THREE.Mesh(new THREE.BoxGeometry(7, 3.2, 36), plastic(0xf2f4f6, 0.45, 0.05));
+      cord.add(cordBar);
+      for (let i = 0; i < 7; i += 1) {
+        const tooth = new THREE.Mesh(new THREE.BoxGeometry(7.6, 2.2, 2.2), darkMat);
+        tooth.position.set(0, -2.2, -14 + i * 4.6);
+        cord.add(tooth);
       }
-      if (state.phase === "round" || state.phase === "match") {
-        ctx.fillStyle = "rgba(5,13,10,.78)";
-        ctx.fillRect(VIEW.w / 2 - 180, VIEW.h / 2 - 46, 360, 92);
-        ctx.textAlign = "center";
-        ctx.fillStyle = "#e7f6ee";
-        ctx.font = "700 22px sans-serif";
-        ctx.fillText(state.lastNote, VIEW.w / 2, VIEW.h / 2 - 4);
-        ctx.font = "14px sans-serif";
-        ctx.fillStyle = "#93b0a2";
-        ctx.fillText(state.phase === "match" ? "這場到 4 分了" : "可以改裝，再射下一發", VIEW.w / 2, VIEW.h / 2 + 24);
-      }
+      cord.position.set(0, -6, 24);
+      roll.add(cord);
+      const beyMount = new THREE.Group();
+      beyMount.position.set(0, -18, -46);
+      roll.add(beyMount);
+      root.traverse((node) => {
+        if (node.isMesh) {
+          node.castShadow = true;
+          node.receiveShadow = true;
+        }
+      });
+      return { root, yaw, pitch, roll, cord, beyMount, bey: null };
     }
 
-    function draw() {
-      fitCanvas();
-      drawStadium();
-      drawPreview();
-      const world = state.world;
-      if (world) {
-        world.particles.forEach((spark) => {
-          const p = worldToScreen(spark.x, spark.y);
-          ctx.globalAlpha = Math.max(0, spark.life * 3);
-          ctx.fillStyle = spark.color;
-          ctx.beginPath();
-          ctx.arc(p[0], p[1], 2.2, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.globalAlpha = 1;
+    function emptyAxes() {
+      return { x: 0, reach: 0, z: 0, roll: 0, pitch: 0, yaw: 0 };
+    }
+
+    function initView() {
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.08;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x070b09);
+      const camera = new THREE.PerspectiveCamera(38, 1, 1, 1600);
+      scene.add(new THREE.HemisphereLight(0xc5d0da, 0x1a1c16, 0.85));
+      const sun = new THREE.DirectionalLight(0xfff6ea, 2.35);
+      sun.position.set(-120, 340, 160);
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(1024, 1024);
+      sun.shadow.camera.left = -280;
+      sun.shadow.camera.right = 280;
+      sun.shadow.camera.top = 280;
+      sun.shadow.camera.bottom = -280;
+      sun.shadow.camera.near = 40;
+      sun.shadow.camera.far = 760;
+      sun.shadow.bias = -0.0008;
+      scene.add(sun);
+      const fill = new THREE.DirectionalLight(0x9ad7ff, 0.45);
+      fill.position.set(180, 80, -40);
+      scene.add(fill);
+      buildStadium(scene);
+      const youRig = buildLauncher();
+      const foeRig = buildLauncher();
+      scene.add(youRig.root, foeRig.root);
+      const sparkGeo = new THREE.BufferGeometry();
+      const sparkPos = new Float32Array(48 * 3);
+      sparkGeo.setAttribute("position", new THREE.BufferAttribute(sparkPos, 3));
+      const sparkPoints = new THREE.Points(sparkGeo, new THREE.PointsMaterial({ color: 0xfff1c2, size: 3.2, sizeAttenuation: true }));
+      scene.add(sparkPoints);
+      const rpmYou = makeTextSprite("", "#7ef0ff");
+      const rpmFoe = makeTextSprite("", "#ffb3cc");
+      scene.add(rpmYou, rpmFoe);
+      view = {
+        renderer, scene, camera, youRig, foeRig, sparkPos, sparkGeo, sparkPoints, rpmYou, rpmFoe,
+        camPos: new THREE.Vector3(30, 250, 430),
+        camLook: new THREE.Vector3(0, 8, 10),
+        desiredPos: new THREE.Vector3(),
+        desiredLook: new THREE.Vector3(),
+        meshes: new Map(),
+        recoil: 0,
+        sizeKey: ""
+      };
+    }
+
+    function beySignature(build) {
+      const blade = resolveBlade(build);
+      return [build.name, build.bladeId, blade.g, blade.type, blade.contacts, blade.spin, blade.upper, build.points, build.height, build.bitId, build.color, build.ratchetColor].join("|");
+    }
+
+    function mountBey(rig, build) {
+      const signature = beySignature(build);
+      if (rig.signature === signature) return;
+      if (rig.bey) {
+        rig.beyMount.remove(rig.bey);
+        rig.bey.traverse((node) => {
+          if (node.geometry) node.geometry.dispose();
         });
-        world.beys.forEach(drawBey);
+      }
+      rig.bey = buildBeyMesh(build);
+      rig.bey.scale.setScalar(1.45);
+      rig.beyMount.add(rig.bey);
+      rig.signature = signature;
+    }
+
+    function poseLauncher(rig, axes, side, extra) {
+      const x = side * 74 + (axes.x || 0) * 42;
+      const z = 208 - (axes.reach || 0) * 24;
+      const y = 46 + (axes.z || 0) * 16 + (extra.recoil || 0) * 8;
+      rig.root.position.set(x, y, z + (extra.recoil || 0) * 22);
+      rig.yaw.rotation.y = -(axes.yaw || 0) * 0.7;
+      rig.pitch.rotation.x = (axes.pitch || 0) * 0.55;
+      rig.roll.rotation.z = -(axes.roll || 0) * 0.7;
+      rig.cord.position.z = 24 + (extra.clicks || 0) * 2.6 + (extra.yank || 0) * 18;
+      if (rig.bey) rig.bey.visible = !extra.released;
+    }
+
+    function ensureBattleMesh(bey, build) {
+      const signature = `${bey.id}|${beySignature(build)}`;
+      let mesh = view.meshes.get(bey.id);
+      if (!mesh || mesh.userData.signature !== signature) {
+        if (mesh) view.scene.remove(mesh);
+        mesh = buildBeyMesh(build);
+        mesh.userData.signature = signature;
+        mesh.scale.setScalar(1.28);
+        mesh.userData.pitch = bey.aimPitch || 0;
+        mesh.userData.roll = bey.aimRoll || 0;
+        view.scene.add(mesh);
+        view.meshes.set(bey.id, mesh);
+      }
+      return mesh;
+    }
+
+    function renderView(dt) {
+      if (!view) initView();
+      const width = canvas.clientWidth || 640;
+      const height = canvas.clientHeight || 480;
+      const sizeKey = `${width}x${height}`;
+      if (sizeKey !== view.sizeKey && width > 0 && height > 0) {
+        view.sizeKey = sizeKey;
+        view.renderer.setSize(width, height, false);
+        view.camera.aspect = width / height;
+        view.camera.updateProjectionMatrix();
+      }
+      const youAxes = previewAxes();
+      const foeAxes = (state.foePlan && state.foePlan.axes) || emptyAxes();
+      const launching = state.phase === "axis" || state.phase === "sp";
+      mountBey(view.youRig, state.you);
+      mountBey(view.foeRig, state.foe);
+      const released = state.phase === "battle" || state.phase === "round" || state.phase === "match";
+      if (released) view.recoil = Math.min(1, view.recoil + dt * 2.2);
+      else view.recoil = 0;
+      state.yank = Math.max(0, (state.yank || 0) - dt * 3.2);
+      poseLauncher(view.youRig, youAxes, state.youSide, {
+        clicks: state.phase === "sp" ? state.clicks : 0,
+        yank: state.yank,
+        recoil: view.recoil,
+        released
+      });
+      poseLauncher(view.foeRig, foeAxes, -state.youSide, {
+        clicks: 0,
+        recoil: view.recoil,
+        released
+      });
+      const spinBoost = state.phase === "sp" ? 1 + state.clicks * 0.85 : 0.7;
+      if (view.youRig.bey) view.youRig.bey.userData.spin.rotation.y += dt * spinBoost * 4;
+      if (view.foeRig.bey) view.foeRig.bey.userData.spin.rotation.y -= dt * 2.2;
+
+      const active = new Set();
+      if (state.world) {
+        state.world.beys.forEach((bey) => {
+          const build = bey.id === "you" ? state.you : state.foe;
+          const mesh = ensureBattleMesh(bey, build);
+          active.add(bey.id);
+          const radius = Math.hypot(bey.x, bey.y);
+          const deg = normDeg(Math.atan2(bey.y, bey.x));
+          let height = dishHeight(Math.min(radius, 176), deg) + 7;
+          if (bey.mode === "pocket" || bey.mode === "ko") height = -2;
+          if (bey.mode === "burst") height += 10;
+          mesh.position.set(bey.x, height, bey.y);
+          mesh.userData.pitch *= 0.96;
+          mesh.userData.roll *= 0.96;
+          mesh.rotation.set(mesh.userData.pitch, -bey.angle, mesh.userData.roll + (bey.mode === "rail" ? bey.railDir * 0.28 : 0));
+          mesh.userData.spin.rotation.y = 0;
+          mesh.visible = true;
+          const label = bey.id === "you" ? view.rpmYou : view.rpmFoe;
+          const tag = bey.mode === "catear" ? "貓耳" : bey.tech === "counter" && bey.mode === "rail" ? "逆軌" : bey.mode === "rail" ? "X" : "";
+          rewriteSprite(label, `${bey.name} ${Math.max(0, Math.round(bey.rpm))}${tag ? " " + tag : ""}`, bey.id === "you" ? "#b8fff0" : "#ffd0e0");
+          label.position.set(bey.x, height + 28, bey.y);
+          label.visible = true;
+        });
+        const sparks = state.world.particles;
+        for (let i = 0; i < 48; i += 1) {
+          const spark = sparks[i];
+          if (spark) {
+            view.sparkPos[i * 3] = spark.x;
+            view.sparkPos[i * 3 + 1] = 12;
+            view.sparkPos[i * 3 + 2] = spark.y;
+          } else {
+            view.sparkPos[i * 3 + 1] = -80;
+          }
+        }
+        view.sparkGeo.attributes.position.needsUpdate = true;
+        view.sparkPoints.visible = sparks.length > 0;
       } else {
-        [-1, 1].forEach((side, index) => {
-          const build = index === 0 ? state.you : state.foe;
-          const ghost = makeBey(build, { xTilt: 0, yTilt: 0, clicks: 0, pos: index === 0 ? state.youSide : -state.youSide, id: index === 0 ? "you" : "foe" }, () => 0.2);
-          ghost.vx = 0;
-          ghost.vy = 0;
-          ghost.angle = performance.now() / 700 * (index === 0 ? 1 : -1);
-          drawBey(ghost);
-        });
+        view.rpmYou.visible = false;
+        view.rpmFoe.visible = false;
+        view.sparkPoints.visible = false;
       }
-      drawHud();
-    }
+      view.meshes.forEach((mesh, id) => {
+        mesh.visible = active.has(id);
+      });
 
-    let fitted = 0;
-    function fitCanvas() {
-      const parentW = canvas.parentElement ? canvas.parentElement.clientWidth : VIEW.w;
-      const maxH = Math.max(300, window.innerHeight - 290);
-      let cssW = parentW || VIEW.w;
-      let cssH = cssW * (VIEW.h / VIEW.w);
-      if (cssH > maxH) {
-        cssH = maxH;
-        cssW = cssH * (VIEW.w / VIEW.h);
+      if (launching) {
+        const rig = view.youRig.root.position;
+        view.desiredPos.set(rig.x + state.youSide * 110, 130, rig.z + 120);
+        view.desiredLook.set(rig.x, 22, rig.z - 70);
+      } else {
+        view.desiredPos.set(0, 390, 470);
+        view.desiredLook.set(0, 0, 10);
       }
-      const key = `${Math.round(cssW)}x${Math.round(cssH)}`;
-      if (key === fitted) return;
-      fitted = key;
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
-      canvas.style.width = `${cssW}px`;
-      canvas.style.height = `${cssH}px`;
-      canvas.width = Math.round(cssW * dpr);
-      canvas.height = Math.round(cssH * dpr);
-      ctx.setTransform((dpr * cssW) / VIEW.w, 0, 0, (dpr * cssH) / VIEW.h, 0, 0);
-    }
+      view.camPos.lerp(view.desiredPos, 1 - Math.exp(-dt * 3.2));
+      view.camLook.lerp(view.desiredLook, 1 - Math.exp(-dt * 3.2));
+      view.camera.position.copy(view.camPos);
+      view.camera.lookAt(view.camLook);
 
+      if ((state.phase === "battle" || state.phase === "round" || state.phase === "match") && state.world && state.world.calloutT > 0.2) {
+        const you = state.world.beys[0];
+        banner.hidden = false;
+        banner.textContent = techName(you.tech, you.aim || 0);
+      } else if (state.phase === "round" || state.phase === "match") {
+        banner.hidden = false;
+        banner.textContent = state.lastNote;
+      } else {
+        banner.hidden = true;
+      }
+      view.renderer.render(view.scene, view.camera);
+    }
     function currentBar(now = performance.now()) {
       const period = 1160;
       const u = ((now % period) + period) % period / period;
@@ -1439,7 +1755,7 @@
     }
 
     function locked() {
-      return state.phase === "x" || state.phase === "y" || state.phase === "sp" || state.phase === "battle";
+      return state.phase === "axis" || state.phase === "sp" || state.phase === "battle";
     }
 
     function paintLock() {
@@ -1475,24 +1791,32 @@
     const spFill = document.getElementById("sp-fill");
     const spRead = document.getElementById("sp-read");
 
+    const pips = document.getElementById("pips");
+
+    function paintPips() {
+      pips.hidden = state.phase !== "axis";
+      pips.innerHTML = AXES.map((axis, index) => {
+        const cls = index < state.axisIndex ? "on" : index === state.axisIndex ? "now" : "";
+        return `<i class="${cls}" title="${axis.name}"></i>`;
+      }).join("");
+    }
+
     function showDock() {
       const phase = state.phase;
-      barWrap.hidden = phase !== "x" && phase !== "y";
+      barWrap.hidden = phase !== "axis";
       spWrap.hidden = phase !== "sp";
-      readyWrap.hidden = phase === "x" || phase === "y" || phase === "sp" || phase === "battle";
+      readyWrap.hidden = phase === "axis" || phase === "sp" || phase === "battle";
+      paintPips();
       if (phase === "ready") {
         phaseLabel.textContent = "準備發射";
         startBtn.textContent = "3 · 2 · 1　Go Shoot";
-        liveRead.textContent = "指標自動左右移動";
-        hint.textContent = "點下去之後，游標會一直左右跑。第一次點鎖定左右傾斜，第二次點鎖定前後傾斜。右旋要順軌就前壓加右傾，要逆軌就前壓加左傾；要蓄貓耳就後收，並偏向你想躲的那一側。";
-      } else if (phase === "x") {
-        phaseLabel.textContent = "第 1 次 · 左右傾斜 X";
-        zones.innerHTML = "<span>左傾</span><span>垂直</span><span>右傾</span>";
-        hint.textContent = "看準游標，點這條或按空白鍵。中間接近垂直，越旁邊傾斜越大。";
-      } else if (phase === "y") {
-        phaseLabel.textContent = "第 2 次 · 前後傾斜 Y";
-        zones.innerHTML = "<span>前壓貼軌</span><span>垂直</span><span>後收貓耳</span>";
-        hint.textContent = "同一條繼續跑。左半是前壓，咬極限線；右半是後收，進貓耳。右旋：前壓＋右傾＝順軌，前壓＋左傾＝逆軌。左旋相反。";
+        liveRead.textContent = "先看發射器";
+        hint.textContent = "游標會自己左右跑，分六次鎖定發射器：站位、探出、高度、左右傾、前後傾、槍口轉向。逆軌要槍身側傾，不能只轉槍口。然後在 1.5 秒內連點拉條。";
+      } else if (phase === "axis") {
+        const axis = AXES[state.axisIndex];
+        phaseLabel.textContent = `第 ${state.axisIndex + 1}/6 軸 · ${axis.name}`;
+        zones.innerHTML = `<span>${axis.left}</span><span>${axis.mid}</span><span>${axis.right}</span>`;
+        hint.textContent = axis.hint;
       } else if (phase === "sp") {
         phaseLabel.textContent = "拉力 SP";
         liveRead.textContent = "1.5 秒";
@@ -1520,29 +1844,29 @@
         state.score.foe = 0;
         updateScore();
       }
-      state.lockedX = 0;
-      state.lockedY = 0;
+      state.axes = { x: 0, reach: 0, z: 0, roll: 0, pitch: 0, yaw: 0 };
+      state.axisIndex = 0;
       state.clicks = 0;
+      state.yank = 0;
       state.world = null;
       state.foePlan = cpuPlan(state.foe, state.difficulty, Math.random);
-      state.phase = "x";
+      state.phase = "axis";
       showDock();
       tone(520, 0.05);
     }
 
     function confirmAxis() {
-      const value = currentBar();
-      if (state.phase === "x") {
-        state.lockedX = value;
-        state.phase = "y";
-        tone(640, 0.05);
+      if (state.phase !== "axis") return;
+      const axis = AXES[state.axisIndex];
+      state.axes[axis.id] = currentBar();
+      tone(520 + state.axisIndex * 40, 0.05);
+      if (state.axisIndex < AXES.length - 1) {
+        state.axisIndex += 1;
         showDock();
-      } else if (state.phase === "y") {
-        state.lockedY = value;
+      } else {
         state.clicks = 0;
         state.spT0 = performance.now();
         state.phase = "sp";
-        tone(760, 0.05);
         showDock();
       }
     }
@@ -1550,6 +1874,7 @@
     function addPull() {
       if (state.phase !== "sp") return;
       state.clicks += 1;
+      state.yank = 1;
       const stats = pullStats(state.clicks);
       tone(380 + Math.min(18, state.clicks) * 28, 0.03);
       spFill.style.width = `${stats.sp}%`;
@@ -1560,8 +1885,7 @@
 
     function beginBattle() {
       const youLaunch = {
-        xTilt: state.lockedX,
-        yTilt: state.lockedY,
+        axes: Object.assign({}, state.axes),
         clicks: state.clicks,
         pos: state.youSide,
         id: "you"
@@ -1602,8 +1926,12 @@
       let x = 0;
       let y = 0;
       let clicks = 10;
+      const pack = (xTilt, yTilt, clicks) => ({
+        xTilt, yTilt, clicks, pos: 1,
+        axes: { x: xTilt * 0.25, reach: 0.2, z: 0, roll: xTilt, pitch: yTilt, yaw: xTilt }
+      });
       if (difficulty === "practice") {
-        return { xTilt: (rng() * 2 - 1) * 0.85, yTilt: (rng() * 2 - 1) * 0.85, clicks: 3 + Math.floor(rng() * 6), pos: 1 };
+        return pack((rng() * 2 - 1) * 0.85, (rng() * 2 - 1) * 0.85, 3 + Math.floor(rng() * 6));
       }
       if (style === "defense") {
         x = (rng() - 0.5) * 0.18;
@@ -1623,7 +1951,7 @@
         y = -0.2;
         clicks = 10;
       }
-      return { xTilt: x, yTilt: y, clicks, pos: 1 };
+      return pack(x, y, clicks);
     }
 
     let audioCtx = null;
@@ -1674,7 +2002,7 @@
       if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
       event.preventDefault();
       if (state.phase === "ready" || state.phase === "round" || state.phase === "match") beginLaunch();
-      else if (state.phase === "x" || state.phase === "y") confirmAxis();
+      else if (state.phase === "axis") confirmAxis();
       else if (state.phase === "sp") addPull();
     });
 
@@ -1683,16 +2011,15 @@
     function frame(now) {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      if (state.phase === "x" || state.phase === "y") {
+      if (state.phase === "axis") {
         const value = currentBar(now);
         marker.style.left = `${50 + value * 46}%`;
-        const deg = Math.round(value * 28);
-        if (state.phase === "x") {
-          liveRead.textContent = `X ${deg > 0 ? "+" : ""}${deg}°`;
-        } else {
-          const tech = classify(state.lockedX, value, resolveBlade(state.you).spin === "L" ? -1 : 1);
-          liveRead.textContent = `現在按：${techName(tech, state.lockedX)}　Y ${deg > 0 ? "+" : ""}${deg}°`;
-        }
+        const axis = AXES[state.axisIndex];
+        const axes = previewAxes(now);
+        const spin = resolveBlade(state.you).spin === "L" ? -1 : 1;
+        const tilts = tiltsFromAxes(axes);
+        const tech = state.axisIndex >= 3 ? `　現在按：${techName(classify(tilts.x, tilts.y, spin), tilts.x)}` : "";
+        liveRead.textContent = `${axisReadout(axis, value)}${tech}`;
       } else if (state.phase === "sp") {
         const left = Math.max(0, 1500 - (now - state.spT0));
         liveRead.textContent = `${(left / 1000).toFixed(1)} 秒`;
@@ -1702,7 +2029,7 @@
         for (let i = 0; i < steps; i += 1) stepWorld(state.world, 1 / 120);
         if (state.world.result && state.world.result.hold <= 0) finishBattle();
       }
-      draw();
+      renderView(dt);
       requestAnimationFrame(frame);
     }
 
@@ -1716,6 +2043,10 @@
       check("右旋左傾是逆軌", classify(-0.6, -0.7, 1) === "counter");
       check("垂直", classify(0.05, 0.04, 1) === "vertical");
       check("左旋左傾是順軌", classify(-0.6, -0.7, -1) === "rail");
+      const tilted = tiltsFromAxes({ roll: -0.7, yaw: -0.65, pitch: -0.75 });
+      check("槍身左傾才是逆軌", classify(tilted.x, tilted.y, 1) === "counter");
+      const aimedOnly = tiltsFromAxes({ roll: 0.05, yaw: -0.8, pitch: -0.75 });
+      check("只轉槍口不算逆軌", classify(aimedOnly.x, aimedOnly.y, 1) !== "counter");
       check("14 下拉滿", pullStats(14).sp === 100 && pullStats(14).rpm === 15200);
       check("貓耳在齒軌內側", CATEARS.every((ear) => Math.hypot(ear.x, ear.y) < FIELD.railIn - 8));
 
@@ -1798,7 +2129,7 @@
       requestAnimationFrame(frame);
     }
 
-    window.BX = { classify, planLaunch, simulate, createWorld, stepWorld, BLADES, BITS, presetBuild, PRESETS, pullStats };
+    window.BX = { classify, planLaunch, simulate, createWorld, stepWorld, BLADES, BITS, presetBuild, PRESETS, pullStats, state, showDock, tiltsFromAxes };
   </script>
 </body>
 </html>
