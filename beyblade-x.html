@@ -1,0 +1,2257 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>爆旋陀螺 X 模擬器</title>
+  <meta name="description" content="可自訂刃、棘輪、軸心的爆旋陀螺 X 對戰。左右游標分兩次鎖定傾斜，限時連點決定拉力。">
+  <style>
+    :root {
+      --bg: #07110d;
+      --bg2: #0d1b15;
+      --panel: #102019;
+      --ink: #e7f6ee;
+      --muted: #93b0a2;
+      --line: rgba(126, 240, 180, .18);
+      --cyan: #7ef0ff;
+      --green: #3dff9a;
+      --pink: #ff4d8d;
+      --gold: #ffe08a;
+      --red: #ff3b4e;
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 500px at 50% -10%, rgba(61, 255, 154, .08), transparent 50%),
+        var(--bg);
+      font-family: "WenQuanYi Micro Hei", "Noto Sans TC", "Segoe UI", sans-serif;
+    }
+
+    button, input, select { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: default; opacity: .55; }
+
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 18px 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .mark {
+      width: 36px; height: 36px; display: grid; place-items: center;
+      border: 1px solid var(--green); color: var(--green);
+      font-weight: 800; letter-spacing: -.06em;
+      transform: rotate(8deg);
+    }
+    h1 { margin: 0; font-size: 20px; letter-spacing: -.03em; }
+    h1 small { display: block; color: var(--muted); font-size: 12px; font-weight: 500; letter-spacing: 0; }
+
+    .score {
+      display: flex; align-items: center; gap: 14px;
+      font-variant-numeric: tabular-nums;
+    }
+    .score b { font-size: 28px; letter-spacing: -.04em; }
+    .score span { color: var(--muted); font-size: 12px; }
+    .tools { display: flex; gap: 8px; }
+    .tools button, .ghost {
+      background: transparent;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 7px 12px;
+    }
+    .tools button[aria-pressed="true"] { border-color: var(--green); color: var(--green); }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(260px, 320px) minmax(0, 1fr) minmax(260px, 320px);
+      gap: 12px;
+      padding: 12px;
+      align-items: start;
+    }
+
+    .panel, .dock, .codex {
+      background: linear-gradient(180deg, rgba(16, 32, 25, .96), rgba(8, 18, 14, .96));
+      border: 1px solid var(--line);
+      border-radius: 18px;
+    }
+    .panel { padding: 12px; max-height: calc(100vh - 250px); overflow: auto; }
+    .panel h2 { margin: 0 0 8px; font-size: 15px; }
+    .panel.is-locked { opacity: .72; }
+    .panel.is-locked fieldset { pointer-events: none; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+    .chips button, .side button {
+      border: 1px solid var(--line);
+      background: #0c1914;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 12px;
+    }
+    .chips button[aria-pressed="true"], .side button[aria-pressed="true"] {
+      background: var(--green); color: #062116; border-color: var(--green); font-weight: 700;
+    }
+
+    fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; }
+    label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+    select, input[type="text"], input[type="number"] {
+      background: #09140f;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 10px;
+    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .swatches { display: flex; gap: 8px; }
+    input[type="color"] { width: 100%; height: 36px; padding: 0; border: 0; background: transparent; }
+    input[type="range"] { width: 100%; accent-color: var(--green); }
+    .summary {
+      margin: 8px 0 0;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: rgba(126, 240, 255, .06);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .blurb { margin: 0; min-height: 2.6em; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .side { display: flex; gap: 6px; align-items: center; }
+    .custom { display: grid; gap: 6px; padding: 8px; border-radius: 12px; background: rgba(255,255,255,.03); }
+
+    .stage {
+      position: relative;
+      min-width: 0;
+      height: min(68vh, 680px);
+      min-height: 440px;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border-radius: 18px;
+      background: #070b09;
+      border: 1px solid var(--line);
+      touch-action: none;
+    }
+    #banner {
+      position: absolute;
+      left: 50%;
+      top: 16px;
+      transform: translateX(-50%);
+      max-width: calc(100% - 32px);
+      padding: 10px 16px;
+      border-radius: 14px;
+      background: rgba(6, 12, 10, .82);
+      border: 1px solid rgba(255, 224, 138, .35);
+      color: var(--gold);
+      font-weight: 800;
+      text-align: center;
+      pointer-events: none;
+    }
+    .pips { display: flex; gap: 6px; margin: 0 0 8px; }
+    .pips i {
+      display: block;
+      width: 36px;
+      height: 6px;
+      border-radius: 99px;
+      background: #1c2b24;
+    }
+    .pips i.on { background: var(--green); }
+    .pips i.now { background: var(--gold); }
+    .dock { position: sticky; bottom: 8px; z-index: 3; }
+
+    .dock { margin: 0 12px 12px; padding: 12px 14px 14px; }
+    .phase {
+      display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+      margin-bottom: 8px;
+    }
+    .phase strong { font-size: 16px; }
+    .phase em { color: var(--gold); font-style: normal; font-weight: 700; }
+    #hint { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; min-height: 1.5em; }
+
+    .bar-wrap { display: grid; gap: 6px; }
+    .zones { display: grid; grid-template-columns: 1fr 1.2fr 1fr; font-size: 11px; color: var(--muted); }
+    .zones span:nth-child(1) { color: var(--cyan); }
+    .zones span:nth-child(2) { text-align: center; }
+    .zones span:nth-child(3) { text-align: right; color: var(--gold); }
+    #bar {
+      position: relative;
+      height: 54px;
+      width: 100%;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(90deg, rgba(126,240,255,.18), rgba(255,255,255,.04) 38%, rgba(255,255,255,.04) 62%, rgba(255,224,138,.2));
+      overflow: hidden;
+      padding: 0;
+    }
+    #marker {
+      position: absolute;
+      top: 6px;
+      width: 42px;
+      height: 42px;
+      margin-left: -21px;
+      border-radius: 50%;
+      background: var(--green);
+      color: #062116;
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      font-weight: 800;
+      left: 50%;
+    }
+
+    .sp {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+    #pull {
+      width: 148px;
+      height: 84px;
+      border: 0;
+      border-radius: 18px;
+      background: var(--green);
+      color: #062116;
+      font-size: 28px;
+      font-weight: 800;
+      touch-action: manipulation;
+      user-select: none;
+    }
+    #pull:active { transform: scale(.97); }
+    .meter { height: 14px; border-radius: 999px; background: #09140f; border: 1px solid var(--line); overflow: hidden; }
+    .meter i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--cyan), var(--green)); }
+    .go, .next {
+      height: 52px;
+      padding: 0 22px;
+      border: 0;
+      border-radius: 14px;
+      background: var(--green);
+      color: #062116;
+      font-weight: 800;
+      font-size: 18px;
+    }
+
+    .codex { margin: 0 12px 18px; padding: 10px 14px 14px; }
+    .codex summary { cursor: pointer; font-weight: 700; }
+    .codex p, .codex li { color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .log { margin: 8px 0 0; padding-left: 18px; max-height: 140px; overflow: auto; }
+    .log li { margin: 2px 0; }
+
+    @media (max-width: 1080px) {
+      .layout { grid-template-columns: 1fr; }
+      .top { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <div class="mark">X</div>
+      <h1>爆旋陀螺 X<small>極限盤 BX-10 · 無限盤 BX-46</small></h1>
+    </div>
+    <div class="score" aria-live="polite">
+      <div><span>你</span><br><b id="score-you">0</b></div>
+      <div><span>先到 4 分</span><br><b id="score-gap">·</b></div>
+      <div><span>對手</span><br><b id="score-foe">0</b></div>
+    </div>
+    <div class="tools">
+      <button type="button" id="stad-xtreme" aria-pressed="true">極限盤</button>
+      <button type="button" id="stad-infinity" aria-pressed="false">無限盤</button>
+      <button type="button" id="speed" aria-pressed="false">速度 1×</button>
+      <button type="button" id="mute" aria-pressed="false">音效開</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="panel" id="you-panel"></aside>
+    <div class="stage">
+      <canvas id="arena"></canvas>
+      <div id="banner" hidden></div>
+    </div>
+    <aside class="panel" id="foe-panel"></aside>
+  </div>
+
+  <section class="dock" id="dock">
+    <div class="phase">
+      <strong id="phase-label">準備</strong>
+      <em id="live-read">先組好兩邊的陀螺</em>
+    </div>
+    <div class="pips" id="pips" hidden></div>
+    <div class="bar-wrap" id="bar-wrap" hidden>
+      <div class="zones" id="zones"><span>左傾</span><span>垂直</span><span>右傾</span></div>
+      <button type="button" id="bar" aria-label="確認傾斜時機"><span id="marker">X</span></button>
+    </div>
+    <div class="sp" id="sp-wrap" hidden>
+      <div>
+        <div class="meter" aria-hidden="true"><i id="sp-fill"></i></div>
+        <p id="sp-read" style="margin:8px 0 0">1.5 秒內連點</p>
+      </div>
+      <button type="button" id="pull">拉</button>
+    </div>
+    <div id="ready-wrap">
+      <button type="button" class="go" id="start">3 · 2 · 1　Go Shoot</button>
+    </div>
+    <p id="hint">游標會自己左右跑，分六次鎖定發射器的站位、探出、高度、左右傾、前後傾、槍口轉向。逆軌要靠槍身側傾。然後在時限內連點決定拉力。</p>
+  </section>
+
+  <details class="codex">
+    <summary>盤型、零件和射法是怎麼來的</summary>
+    <p>極限盤 BX-10 約 44 × 45.5 cm，戰鬥區直徑 36.5 cm。出口這一側才是得分洞：左右兩個紅色陷阱各 2 分，中間紫色極限區 3 分。藍色貓耳在對面，齒軌左右鼓成兩耳、中間收進去，構成「凹」字，蓄貓耳停在那裡。無限盤兩端是陷阱和極限區，貓耳在對面長邊。上下長軌可以連續 Infinity Dash。爆裂 2 分，停轉 1 分，先到 4 分。</p>
+    <p>陀螺分刃、棘輪、軸心。這裡的刃重用公開秤重的約值：劍龍 Dran Sword 34.8 g（BX-01）、地獄鐮刀 Hells Scythe 32.7 g（BX-02）、巫師之箭 Wizard Arrow 32.0 g（BX-03）、騎士之盾 Knight Shield 32.6 g。鯊刃 Shark Edge 取約 35 g。棘輪對齊 3-60 約 6.2 g、4-80 約 7.0 g 這類秤重。軸心約 2.0–2.3 g。拉力對上拉繩競技大約 4000–15200 RPM。</p>
+    <ul>
+      <li>蓄貓耳：第二下滑到後收，第一下又有明顯左右傾。陀螺收到出口對面兩側空位續轉，用來躲第一波極限衝擊。社區也叫躲貓耳。</li>
+      <li>逆軌要看到發射器的側傾，不是只把槍口轉過去。六軸是左右站位、探出前後、高度、左右傾、前後傾、槍口轉向。右旋要逆軌：左右傾和轉向都偏左，再前壓，齒會逆向咬上 X 線。順軌則偏右再前壓。後收進貓耳。逆跪和逆軌同音。</li>
+      <li>X Dash：軸心齒咬到外圈齒軌就加速，再甩回盤心。Accel 16 齒最快也最耗轉，Rush 10 齒較慢、較不容易衝出去，Flat 12 齒居中。</li>
+      <li>低刃打高棘輪比較容易爆。點數少（尤其 1-60）鎖得住的齒少；點數多較耐爆，但凸片也比較容易被打到。攻型軸心軸比較粗，耐爆較高。</li>
+    </ul>
+    <ol class="log" id="log"></ol>
+  </details>
+
+  <script src="./vendor/three.min.js"></script>
+  <script>
+    const FIELD = {
+      battleR: 182,
+      wall: 170,
+      railR: 158,
+      railIn: 146,
+      ridgeIn: 92,
+      ridgeOut: 116
+    };
+    const EXITS = [
+      { a0: 50, a1: 70, kind: "over" },
+      { a0: 78, a1: 102, kind: "xtreme" },
+      { a0: 110, a1: 130, kind: "over" }
+    ];
+    const CATEARS = [
+      { x: -96, y: -132 },
+      { x: 96, y: -132 }
+    ];
+    const VIEW = { w: 780, h: 720, scale: 1.5, cx: 390, cy: 330 };
+
+    const TYPE_ZH = { attack: "攻擊", defense: "防禦", stamina: "持久", balance: "平衡" };
+    const BLADES = [
+      { id: "dransword", name: "Dran Sword", zh: "劍龍", code: "BX-01", g: 34.8, type: "attack", contacts: 3, spin: "R", atk: 55, def: 24, sta: 18, upper: 0.22, outward: 0, radius: 22 },
+      { id: "hellsscythe", name: "Hells Scythe", zh: "地獄鐮刀", code: "BX-02", g: 32.7, type: "balance", contacts: 4, spin: "R", atk: 38, def: 34, sta: 40, upper: 0.05, outward: 0.2, radius: 23 },
+      { id: "wizardarrow", name: "Wizard Arrow", zh: "巫師之箭", code: "BX-03", g: 32.0, type: "stamina", contacts: 2, spin: "R", atk: 16, def: 30, sta: 64, upper: -0.08, outward: 0.85, radius: 24 },
+      { id: "knightshield", name: "Knight Shield", zh: "騎士之盾", code: "", g: 32.6, type: "defense", contacts: 6, spin: "R", atk: 20, def: 70, sta: 30, upper: 0, outward: 0.15, radius: 23 },
+      { id: "sharkedge", name: "Shark Edge", zh: "鯊刃", code: "", g: 35.0, approx: true, type: "attack", contacts: 3, spin: "R", atk: 64, def: 18, sta: 14, upper: 0.55, outward: 0, radius: 22 }
+    ];
+    const BITS = [
+      { id: "F", name: "Flat", zh: "平面", style: "attack", g: 2.22, teeth: 12, dash: 35, br: 80, friction: 0.19, dashDrain: 0.2, aggression: 1, low: 0 },
+      { id: "LF", name: "Low Flat", zh: "低平面", style: "attack", g: 2.15, teeth: 12, dash: 38, br: 75, friction: 0.23, dashDrain: 0.24, aggression: 1.12, low: 1 },
+      { id: "R", name: "Rush", zh: "衝刺", style: "attack", g: 2.0, teeth: 10, dash: 30, br: 80, friction: 0.145, dashDrain: 0.1, aggression: 0.82, low: 0 },
+      { id: "A", name: "Accel", zh: "加速", style: "attack", g: 2.2, teeth: 16, dash: 40, br: 80, friction: 0.21, dashDrain: 0.38, aggression: 1.02, low: 0 },
+      { id: "T", name: "Taper", zh: "錐形", style: "balance", g: 2.22, teeth: 12, dash: 20, br: 55, friction: 0.125, dashDrain: 0.14, aggression: 0.5, low: 0 },
+      { id: "P", name: "Point", zh: "尖點", style: "balance", g: 2.05, teeth: 12, dash: 16, br: 50, friction: 0.105, dashDrain: 0.1, aggression: 0.35, low: 0 },
+      { id: "B", name: "Ball", zh: "球型", style: "stamina", g: 2.06, teeth: 12, dash: 10, br: 30, friction: 0.082, dashDrain: 0.08, aggression: 0.12, low: 0 },
+      { id: "N", name: "Needle", zh: "針型", style: "defense", g: 2.0, teeth: 12, dash: 8, br: 60, friction: 0.088, dashDrain: 0.06, aggression: 0.05, low: 0 }
+    ];
+    const BIT_BLURB = {
+      F: "平面寬，容易上 X 線，續航差，軸粗所以較耐爆。",
+      LF: "比平面更低，更容易打到對方棘輪，自己也更耗轉。",
+      R: "10 齒。極限衝擊沒那麼暴，但比較聽控，不易自己衝出界。",
+      A: "16 齒。第一下 X Dash 最快，掉轉也最兇，容易衝進 Xtreme 區。",
+      T: "前段會走，後段還留得住轉，攻防都沾一點。",
+      P: "尖軸，半持久。會慢慢挪，但不像平面那樣追著齒軌跑。",
+      B: "球軸低摩擦，適合定點或貓耳位耗轉。軸細，被打中棘輪時較易爆。",
+      N: "針軸釘在盤心附近，拿來擋第一波。不太主動去咬 X 線。"
+    };
+    const PRESETS = [
+      { name: "劍龍", bladeId: "dransword", points: 3, height: 60, bitId: "F", color: "#ff2d3a", ratchetColor: "#e8eef2" },
+      { name: "地獄鐮刀", bladeId: "hellsscythe", points: 4, height: 60, bitId: "T", color: "#c46bff", ratchetColor: "#efe6d6" },
+      { name: "巫師之箭", bladeId: "wizardarrow", points: 4, height: 80, bitId: "B", color: "#3aa0ff", ratchetColor: "#d5e6f5" },
+      { name: "騎士之盾", bladeId: "knightshield", points: 3, height: 80, bitId: "N", color: "#e6c15a", ratchetColor: "#efe6cf" },
+      { name: "鯊刃", bladeId: "sharkedge", points: 4, height: 60, bitId: "LF", color: "#2ee6c7", ratchetColor: "#dff8f2" }
+    ];
+
+    function ratchetMass(points, height) {
+      return +(5.85 + points * 0.12 + (height - 60) * 0.032).toFixed(2);
+    }
+
+    function customBlade() {
+      return {
+        id: "custom", name: "Custom", zh: "自訂刃", code: "自訂", g: 34, approx: true,
+        type: "attack", contacts: 3, spin: "R", atk: 50, def: 30, sta: 30, upper: 0.2, outward: 0.2, radius: 22
+      };
+    }
+
+    function presetBuild(preset) {
+      return {
+        name: preset.name,
+        bladeId: preset.bladeId,
+        custom: null,
+        points: preset.points,
+        height: preset.height,
+        bitId: preset.bitId,
+        color: preset.color,
+        ratchetColor: preset.ratchetColor
+      };
+    }
+
+    const state = {
+      you: presetBuild(PRESETS[0]),
+      foe: presetBuild(PRESETS[2]),
+      youSide: -1,
+      difficulty: "even",
+      score: { you: 0, foe: 0 },
+      phase: "ready",
+      axisIndex: 0,
+      axes: { x: 0, reach: 0, z: 0, roll: 0, pitch: 0, yaw: 0 },
+      yank: 0,
+      clicks: 0,
+      spT0: 0,
+      foePlan: null,
+      world: null,
+      lastNote: "",
+      speed: 1,
+      stadium: "xtreme",
+      muted: false,
+      log: []
+    };
+
+    function resolveBlade(build) {
+      if (build.bladeId === "custom") return build.custom || customBlade();
+      return BLADES.find((blade) => blade.id === build.bladeId) || BLADES[0];
+    }
+
+    function resolveBit(build) {
+      return BITS.find((bit) => bit.id === build.bitId) || BITS[0];
+    }
+
+    function comboMass(build) {
+      const blade = resolveBlade(build);
+      return +(blade.g + ratchetMass(build.points, build.height) + resolveBit(build).g).toFixed(1);
+    }
+
+    function comboText(build) {
+      const blade = resolveBlade(build);
+      const approx = blade.approx ? "約 " : "";
+      const title = build.name === blade.zh ? blade.zh : `${build.name} · ${blade.zh}`;
+      return `${title} ${build.points}-${build.height}${build.bitId} · ${approx}${comboMass(build)} g`;
+    }
+
+    function classify(x, y, spin) {
+      if (y > 0.36 && Math.abs(x) > 0.24) return "catear";
+      if (y < -0.3 && Math.abs(x) > 0.2) return x * spin > 0 ? "rail" : "counter";
+      if (Math.abs(x) < 0.2 && Math.abs(y) < 0.24) return "vertical";
+      if (y < -0.42) return "smash";
+      return "drive";
+    }
+
+    function techName(tech, x) {
+      if (tech === "catear") return x >= 0 ? "蓄右貓耳" : "蓄左貓耳";
+      if (tech === "counter") return "逆軌";
+      if (tech === "rail") return "順軌";
+      if (tech === "vertical") return "垂直定點";
+      if (tech === "smash") return "強襲直壓";
+      return "普通斜射";
+    }
+
+    function pullStats(clicks) {
+      const sp = Math.max(0, Math.min(100, clicks * (100 / 14)));
+      const rpm = Math.round(4000 + sp * 112);
+      let wobble = 0;
+      if (clicks > 14) wobble += (clicks - 14) * 0.045;
+      if (clicks < 2) wobble += 0.1;
+      return { sp: Math.round(sp), rpm, wobble };
+    }
+
+    const AXES = [
+      { id: "x", name: "左右站位", left: "靠左", mid: "正中", right: "靠右", hint: "發射器沿出口這側左右挪。" },
+      { id: "reach", name: "探出前後", left: "縮在盤外", mid: "貼著盤緣", right: "探進場內", hint: "前後是槍口伸進場地多深。" },
+      { id: "z", name: "高度", left: "壓低", mid: "標準高度", right: "抬高", hint: "高度是發射器離盤面多高。抬太高，出手會飄。" },
+      { id: "roll", name: "左右傾", left: "左傾", mid: "槍身水平", right: "右傾", hint: "這是發射器本身的側傾。逆軌和順軌都要靠槍身傾過去，軸心齒才會從某一側咬上 X 線。" },
+      { id: "pitch", name: "前後傾", left: "前壓貼軌", mid: "槍口垂直", right: "後收貓耳", hint: "前壓讓陀螺衝去咬齒軌。後收則把陀螺收進貓耳位。" },
+      { id: "yaw", name: "槍口轉向", left: "轉向左牆", mid: "對準盤心", right: "轉向右牆", hint: "右旋要逆軌：左右傾和轉向都偏左，再前壓。順軌則偏右再前壓。只轉槍口、槍身不傾，咬不到逆向齒。" }
+    ];
+
+    function tiltsFromAxes(axes) {
+      const roll = axes.roll || 0;
+      const yaw = axes.yaw || 0;
+      const aimed = Math.abs(yaw) > Math.abs(roll) ? yaw : roll;
+      const x = Math.abs(roll) >= 0.22 ? aimed : aimed * 0.2;
+      return { x, y: axes.pitch || 0 };
+    }
+
+    function axisReadout(axis, value) {
+      if (axis.id === "x") return `左右 ${Math.round(value * 42)} mm`;
+      if (axis.id === "reach") return `前後 ${Math.round(value * 24)} mm`;
+      if (axis.id === "z") return `高度 ${Math.round(value * 16)} mm`;
+      const deg = Math.round(value * 28);
+      return `${axis.name} ${deg > 0 ? "+" : ""}${deg}°`;
+    }
+
+    function previewAxes(now = performance.now()) {
+      const axes = Object.assign({}, state.axes);
+      if (state.phase === "axis") axes[AXES[state.axisIndex].id] = currentBar(now);
+      return axes;
+    }
+
+    function planLaunch(build, launch) {
+      const blade = resolveBlade(build);
+      const spin = blade.spin === "L" ? -1 : 1;
+      const fromAxes = launch.axes ? tiltsFromAxes(launch.axes) : null;
+      const xTilt = fromAxes ? fromAxes.x : launch.xTilt;
+      const yTilt = fromAxes ? fromAxes.y : launch.yTilt;
+      const stats = pullStats(launch.clicks);
+      const tech = classify(xTilt, yTilt, spin);
+      const side = launch.pos >= 0 ? 1 : -1;
+      let x = side * 46 + ((launch.axes && launch.axes.x) || 0) * 34;
+      let y = 124 - ((launch.axes && launch.axes.reach) || 0) * 16;
+      let wobble = stats.wobble;
+      if (launch.axes) wobble += Math.abs(launch.axes.z || 0) * 0.06 + (Math.abs(launch.axes.roll || 0) < 0.22 && Math.abs(launch.axes.yaw || 0) > 0.4 ? 0.05 : 0);
+      let aimX = 0;
+      let aimY = -1;
+      let speed = 240 + (stats.rpm / 15000) * 420;
+      const ear = xTilt >= 0 ? 1 : 0;
+      if (tech === "catear") {
+        const pocket = earPoints()[ear];
+        aimX = pocket.x - x;
+        aimY = pocket.y - y;
+        speed = 300 + (stats.rpm / 15000) * 180;
+      } else if (tech === "rail" || tech === "counter") {
+        const wall = xTilt >= 0 ? 1 : -1;
+        aimX = wall * 148 - x;
+        aimY = -100 - y;
+        speed = 360 + (stats.rpm / 15000) * 520;
+      } else if (tech === "smash") {
+        aimX = xTilt * 40 - x * 0.15;
+        aimY = -210 - y;
+        speed = 320 + (stats.rpm / 15000) * 620;
+      } else if (tech === "vertical") {
+        aimX = -x;
+        aimY = -y;
+        speed = 180 + (stats.rpm / 15000) * 200;
+      } else {
+        aimX = xTilt * 170;
+        aimY = -160 + Math.max(0, yTilt) * 50;
+        speed = 260 + (stats.rpm / 15000) * 460;
+      }
+      const mag = Math.hypot(aimX, aimY) || 1;
+      return {
+        x, y,
+        vx: (aimX / mag) * speed,
+        vy: (aimY / mag) * speed,
+        tech, spin, ear, speed,
+        rpm: stats.rpm,
+        sp: stats.sp,
+        wobble,
+        xTilt, yTilt
+      };
+    }
+
+    function makeBey(build, launch, rng) {
+      const plan = planLaunch(build, launch);
+      const jitter = ((rng ? rng() : 0.5) - 0.5) * plan.wobble;
+      const cs = Math.cos(jitter);
+      const sn = Math.sin(jitter);
+      const blade = resolveBlade(build);
+      const bit = resolveBit(build);
+      const ratchet = { points: build.points, height: build.height, mass: ratchetMass(build.points, build.height) };
+      return {
+        id: launch.id,
+        name: build.name,
+        x: plan.x,
+        y: plan.y,
+        vx: plan.vx * cs - plan.vy * sn,
+        vy: plan.vx * sn + plan.vy * cs,
+        rpm: plan.rpm,
+        spin: plan.spin,
+        angle: (rng ? rng() : 0.2) * Math.PI * 2,
+        wobble: plan.wobble,
+        mass: blade.g + ratchet.mass + bit.g,
+        integrity: 100,
+        mode: plan.tech === "catear" ? "seekear" : "free",
+        tech: plan.tech,
+        aim: plan.xTilt,
+        aimPitch: plan.yTilt * 0.35,
+        aimRoll: plan.xTilt * 0.28,
+        ear: plan.ear,
+        railDir: 0,
+        railTime: 0,
+        railCooldown: 0,
+        stagger: 0,
+        dashes: 0,
+        alive: true,
+        radius: 19,
+        parts: { blade, bit, ratchet },
+        color: build.color,
+        ratchetColor: build.ratchetColor,
+        knock: 0,
+        orbit: 0,
+        flash: 0,
+        pocketT: 0,
+        pocketKind: "",
+        bursting: false,
+        sleep: false,
+        pendingKO: "",
+        phase: (rng ? rng() : 0.3) * Math.PI * 2
+      };
+    }
+
+    function normDeg(rad) {
+      let deg = (rad * 180) / Math.PI;
+      deg = ((deg % 360) + 360) % 360;
+      return deg;
+    }
+
+    function exitAt(rad) {
+      const deg = normDeg(rad);
+      return EXITS.find((exit) => deg >= exit.a0 && deg <= exit.a1) || null;
+    }
+
+    function enterRail(bey) {
+      bey.mode = "rail";
+      bey.railTime = 0;
+      bey.dashes = (bey.dashes || 0) + 1;
+      const natural = bey.spin > 0 ? -1 : 1;
+      bey.railDir = bey.tech === "counter" ? -natural : natural;
+    }
+
+    function capSpeed(bey) {
+      const speed = Math.hypot(bey.vx, bey.vy);
+      if (speed > 2600) {
+        bey.vx *= 2600 / speed;
+        bey.vy *= 2600 / speed;
+      }
+    }
+
+    function drive(bey, dt) {
+      const bit = bey.parts.bit;
+      let decay = bit.friction * (1 + bey.wobble);
+      if (bey.mode === "rail") decay += bit.dashDrain * (bey.tech === "counter" ? 1.35 : 1);
+      if (bey.mode === "catear") decay *= 0.68;
+      if (bey.tech === "vertical" && bey.mode !== "rail") decay *= 0.9;
+      bey.rpm -= bey.rpm * decay * dt;
+      if (bey.rpm < 0) bey.rpm = 0;
+      bey.flash = Math.max(0, bey.flash - dt);
+      if (bey.knock > 0) bey.knock -= dt;
+      if (bey.railCooldown > 0) bey.railCooldown -= dt;
+      if (bey.stagger > 0) bey.stagger -= dt;
+
+      if (bey.mode === "catear" && bey.knock <= 0) {
+        const ear = earPoints()[bey.ear];
+        bey.orbit += dt * bey.spin * (6.2 + bey.rpm / 5000);
+        const tx = ear.x + Math.cos(bey.orbit) * 14;
+        const ty = ear.y + Math.sin(bey.orbit) * 14;
+        bey.vx = (tx - bey.x) * 11;
+        bey.vy = (ty - bey.y) * 11;
+        return;
+      }
+
+      if (bey.mode === "pocket") {
+        bey.vx *= 0.992;
+        bey.vy *= 0.992;
+        return;
+      }
+
+      if (bey.mode === "rail" && state.stadium === "infinity") {
+        const side = bey.y >= 0 ? 1 : -1;
+        const rpmN = bey.rpm / 12000;
+        const dash = (bit.teeth / 12) * (0.55 + rpmN) * (bit.dash / 35) * 680;
+        const dir = bey.railDir || -1;
+        bey.x += dir * side * dash * dt;
+        bey.y += (side * 138 - bey.y) * Math.min(1, 8 * dt);
+        bey.vx = dir * side * dash;
+        bey.vy = 0;
+        bey.railTime += dt;
+        const hold = 0.22 + (8 / bit.teeth) * 0.12;
+        if (Math.abs(bey.x) > 188 || bey.railTime > hold) releaseRail(bey, Math.atan2(bey.y, bey.x), dash);
+        return;
+      }
+
+      if (bey.mode === "rail") {
+        const dist = Math.hypot(bey.x, bey.y) || 1;
+        const th = Math.atan2(bey.y, bey.x);
+        const radErr = dist - FIELD.railR;
+        const dir = bey.railDir || -1;
+        const tx = Math.sin(th) * dir;
+        const ty = Math.cos(th) * dir;
+        const rpmN = bey.rpm / 12000;
+        const dash = (bit.teeth / 12) * (0.55 + rpmN) * (bit.dash / 35) * 520;
+        const blend = 1 - Math.exp(-10 * dt);
+        bey.vx += ((-Math.cos(th) * radErr * 18 + tx * dash) - bey.vx) * blend;
+        bey.vy += ((-Math.sin(th) * radErr * 18 + ty * dash) - bey.vy) * blend;
+        bey.railTime += dt;
+        const hold = 0.15 + (8 / bit.teeth) * 0.1;
+        if (bey.railTime > hold || exitAt(th)) releaseRail(bey, th, dash);
+        return;
+      }
+
+      const dist = Math.hypot(bey.x, bey.y) || 1;
+      const th = Math.atan2(bey.y, bey.x);
+      const rpmN = Math.max(0, bey.rpm / 12000);
+      const style = bit.style;
+      const blend = 1 - Math.exp(-2.4 * dt);
+      const committed = bey.railCooldown > 0.48 || bey.stagger > 0;
+
+      if (committed) {
+        bey.vx *= 0.985;
+        bey.vy *= 0.985;
+      } else if (bey.mode === "seekear" || (bey.tech === "catear" && bey.mode === "free" && bey.knock <= 0)) {
+        const ear = earPoints()[bey.ear];
+        const dx = ear.x - bey.x;
+        const dy = ear.y - bey.y;
+        const distE = Math.hypot(dx, dy) || 1;
+        const desired = Math.min(460, 120 + distE * 2.4);
+        bey.vx += ((dx / distE) * desired - bey.vx) * blend;
+        bey.vy += ((dy / distE) * desired - bey.vy) * blend;
+        if (distE < 26 && bey.knock <= 0) bey.mode = "catear";
+      } else if (style === "attack") {
+        bey.phase += dt * (2.4 + rpmN * 2);
+        const want = 80 + rpmN * 150;
+        const tx = -Math.sin(th) * bey.spin;
+        const ty = Math.cos(th) * bey.spin;
+        const radial = Math.sin(bey.phase) * 64 * bit.aggression;
+        bey.vx += (tx * want + Math.cos(th) * radial - bey.vx) * blend;
+        bey.vy += (ty * want + Math.sin(th) * radial - bey.vy) * blend;
+        if (dist < 148 && rpmN > 0.35) {
+          bey.vx += Math.cos(th) * 120 * dt;
+          bey.vy += Math.sin(th) * 120 * dt;
+        }
+      } else if (style === "stamina") {
+        const want = 34 + rpmN * 36;
+        const radErr = dist - 42;
+        const tx = -Math.sin(th) * bey.spin;
+        const ty = Math.cos(th) * bey.spin;
+        bey.vx += (-Math.cos(th) * radErr * 3 + tx * want - bey.vx) * blend;
+        bey.vy += (-Math.sin(th) * radErr * 3 + ty * want - bey.vy) * blend;
+      } else if (style === "defense") {
+        const hold = 1 - Math.exp(-3.1 * dt);
+        bey.vx += (-bey.x * 2.5 - bey.vx) * hold;
+        bey.vy += (-bey.y * 2.5 - bey.vy) * hold;
+      } else {
+        const want = 58 + rpmN * 64;
+        const radErr = dist - 76;
+        const tx = -Math.sin(th) * bey.spin;
+        const ty = Math.cos(th) * bey.spin;
+        bey.vx += (-Math.cos(th) * radErr * 1.6 + tx * want - bey.vx) * blend;
+        bey.vy += (-Math.sin(th) * radErr * 1.6 + ty * want - bey.vy) * blend;
+      }
+
+      if (dist > FIELD.ridgeIn && dist < FIELD.ridgeOut && bey.mode === "free") {
+        const kick = style === "attack" ? 240 : style === "defense" ? -24 : 60;
+        bey.vx += Math.cos(th) * kick * dt;
+        bey.vy += Math.sin(th) * kick * dt;
+      }
+
+      const onInfinityRail = state.stadium === "infinity" && Math.abs(bey.y) > 112 && Math.abs(bey.y) < 168 && Math.abs(bey.x) < 185;
+      const canRail = !committed && bey.railCooldown <= 0 && bey.mode === "free" && bey.tech !== "catear" && bey.rpm > 3300 && bit.teeth > 0 && (onInfinityRail || (state.stadium !== "infinity" && dist > FIELD.railIn && dist < FIELD.wall + 6 && !exitAt(th)));
+      if (canRail) {
+        const want = bey.tech === "rail" || bey.tech === "counter" || bey.tech === "smash" || style === "attack" || dist > FIELD.railR + 6;
+        if (want) {
+          const natural = bey.spin > 0 ? -1 : 1;
+          const dir = bey.tech === "counter" ? -natural : natural;
+          if (!onInfinityRail && railHitsExit(bey, dir)) {
+            bey.vx += -Math.cos(th) * 220;
+            bey.vy += -Math.sin(th) * 220;
+            capSpeed(bey);
+          } else {
+            enterRail(bey);
+          }
+        }
+      }
+    }
+
+    function railHitsExit(bey, dir) {
+      const th = Math.atan2(bey.y, bey.x);
+      const bit = bey.parts.bit;
+      const hold = 0.15 + (8 / bit.teeth) * 0.1;
+      const rpmN = bey.rpm / 12000;
+      const dash = (bit.teeth / 12) * (0.55 + rpmN) * (bit.dash / 35) * 520;
+      const arc = (dash * hold) / FIELD.railR;
+      for (let i = 1; i <= 5; i += 1) {
+        if (exitAt(th + dir * arc * (i / 5))) return true;
+      }
+      return false;
+    }
+
+    function releaseRail(bey, th, dash) {
+      bey.mode = "free";
+      bey.railTime = 0;
+      bey.railCooldown = state.stadium === "infinity" ? 0.36 : 0.92;
+      bey.flash = 0.2;
+      const nx = Math.cos(th);
+      const ny = Math.sin(th);
+      const dir = bey.railDir || -1;
+      const tx = Math.sin(th) * dir;
+      const ty = Math.cos(th) * dir;
+      const inward = Math.max(480, dash * 0.9);
+      const side = exitAt(th) ? 0.05 : 0.18;
+      bey.vx = -nx * inward + tx * inward * side;
+      bey.vy = -ny * inward + ty * inward * side;
+      capSpeed(bey);
+    }
+
+    function applyBurst(defender, attacker, smash) {
+      if (!defender.alive || defender.integrity <= 0) return;
+      const low = attacker.parts.bit.low ? 10 : 0;
+      const snipe = attacker.parts.ratchet.height - low + 8 <= defender.parts.ratchet.height;
+      const exposure = snipe ? 1 : 0.38;
+      const points = defender.parts.ratchet.points;
+      const hitArea = 0.72 + points * 0.035;
+      const lock = 0.4 + points * 0.055;
+      const br = defender.parts.bit.br / 100;
+      const atk = attacker.parts.blade.atk / 50;
+      const rpmF = Math.max(0.35, attacker.rpm / 11000);
+      const damage = (smash / 150) * atk * exposure * hitArea * (1.35 - lock) * (1.15 - br * 0.85) * rpmF * 7.2;
+      defender.integrity -= damage;
+      if (defender.integrity <= 0) {
+        defender.integrity = 0;
+        defender.bursting = true;
+      }
+    }
+
+    function spawnSparks(world, x, y, color, count) {
+      for (let i = 0; i < count; i += 1) {
+        const angle = (i / count) * Math.PI * 2;
+        world.particles.push({
+          x, y,
+          vx: Math.cos(angle) * 220,
+          vy: Math.sin(angle) * 220,
+          life: 0.28,
+          color
+        });
+      }
+    }
+
+    function collide(a, b, world) {
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      let dist = Math.hypot(dx, dy);
+      const min = a.radius + b.radius;
+      if (dist >= min) return;
+      if (dist < 0.001) dist = 0.001;
+      const nx = dx / dist;
+      const ny = dy / dist;
+      const pen = min - dist;
+      const shareA = b.mass / (a.mass + b.mass);
+      const shareB = a.mass / (a.mass + b.mass);
+      a.x -= nx * pen * shareA;
+      a.y -= ny * pen * shareA;
+      b.x += nx * pen * shareB;
+      b.y += ny * pen * shareB;
+      const rv = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+      const close = Math.max(0, -rv);
+      const spinN = (a.rpm + b.rpm) / 14000;
+      const smash = close + spinN * 340 * ((a.parts.blade.atk + b.parts.blade.atk) / 90);
+      if (smash < 12) return;
+      world.touched = true;
+      const push = (blade) => 0.62 + blade.atk / 130 + Math.max(0, blade.upper) * 0.4;
+      const soak = (blade) => Math.max(0.42, 1 - blade.def / 210);
+      const boostA = b.railCooldown > 0 ? 1.6 : 1;
+      const boostB = a.railCooldown > 0 ? 1.6 : 1;
+      a.vx -= nx * smash * shareA * push(b.parts.blade) * soak(a.parts.blade) * boostA;
+      a.vy -= ny * smash * shareA * push(b.parts.blade) * soak(a.parts.blade) * boostA;
+      b.vx += nx * smash * shareB * push(a.parts.blade) * soak(b.parts.blade) * boostB;
+      b.vy += ny * smash * shareB * push(a.parts.blade) * soak(b.parts.blade) * boostB;
+      capSpeed(a);
+      capSpeed(b);
+      a.rpm -= smash * 0.2 * (b.parts.blade.atk / 48) * (1 - a.parts.blade.outward * 0.25);
+      b.rpm -= smash * 0.2 * (a.parts.blade.atk / 48) * (1 - b.parts.blade.outward * 0.25);
+      if (a.spin !== b.spin) {
+        const donor = a.rpm >= b.rpm ? a : b;
+        const recv = donor === a ? b : a;
+        const steal = Math.min(donor.rpm * 0.04, 600);
+        donor.rpm -= steal;
+        recv.rpm += steal * 0.55;
+      }
+      if (smash > 200) {
+        a.stagger = Math.max(a.stagger, 0.34);
+        b.stagger = Math.max(b.stagger, 0.34);
+      }
+      if (a.mode === "catear" && smash > 220) { a.mode = "free"; a.knock = 0.45; }
+      if (b.mode === "catear" && smash > 220) { b.mode = "free"; b.knock = 0.45; }
+      applyBurst(a, b, smash);
+      applyBurst(b, a, smash);
+      a.flash = 0.09;
+      b.flash = 0.09;
+      spawnSparks(world, (a.x + b.x) / 2, (a.y + b.y) / 2, "#fff6d8", 7);
+    }
+
+    function bounds(bey, dt) {
+      bey.pendingKO = "";
+      const dist = Math.hypot(bey.x, bey.y) || 1;
+      const th = Math.atan2(bey.y, bey.x);
+      const exit = exitAt(th);
+      const outward = bey.vx * Math.cos(th) + bey.vy * Math.sin(th);
+      const pocket = pocketContaining(bey.x, bey.y);
+      if (pocket && pocket.slope && Math.hypot(bey.vx, bey.vy) < 520 && bey.mode !== "ko") {
+        const back = Math.hypot(bey.x, bey.y) || 1;
+        bey.vx -= (bey.x / back) * 140;
+        bey.vy -= (bey.y / back) * 140;
+        bey.mode = "free";
+        return;
+      }
+      const leaving = !!pocket && bey.mode !== "catear" && bey.mode !== "seekear";
+      if (bey.mode === "pocket" || leaving) {
+        if (bey.mode !== "pocket") {
+          bey.mode = "pocket";
+          bey.pocketT = 0;
+          bey.pocketKind = (pocket && pocket.kind) || (exit ? exit.kind : "over");
+        }
+        bey.pocketT += dt;
+        if (dist < 158 && outward < 40) {
+          bey.mode = "free";
+          return;
+        }
+        if (bey.pocketT > 0.38 || dist > FIELD.battleR + 28) bey.pendingKO = bey.pocketKind || "over";
+        return;
+      }
+      if (state.stadium === "infinity" && bey.mode !== "rail" && !pointInPoly(bey.x, bey.y, currentArena().outline)) {
+        const pts = currentArena().outline;
+        let best = null;
+        for (let i = 0; i < pts.length; i += 1) {
+          const a = pts[i];
+          const b = pts[(i + 1) % pts.length];
+          const abx = b[0] - a[0];
+          const aby = b[1] - a[1];
+          const denom = abx * abx + aby * aby || 1;
+          const t = Math.max(0, Math.min(1, ((bey.x - a[0]) * abx + (bey.y - a[1]) * aby) / denom));
+          const px = a[0] + abx * t;
+          const py = a[1] + aby * t;
+          const d = (bey.x - px) ** 2 + (bey.y - py) ** 2;
+          if (!best || d < best.d) best = { d, x: px, y: py };
+        }
+        if (best) {
+          bey.x = best.x;
+          bey.y = best.y;
+          bey.vx *= 0.4;
+          bey.vy *= 0.4;
+        }
+      } else if (dist > FIELD.wall && bey.mode !== "rail" && bey.mode !== "catear" && bey.mode !== "seekear" && !exitAt(th)) {
+        const nx = bey.x / dist;
+        const ny = bey.y / dist;
+        bey.x = nx * FIELD.wall;
+        bey.y = ny * FIELD.wall;
+        const vn = bey.vx * nx + bey.vy * ny;
+        if (vn > 0) {
+          bey.vx -= nx * vn * 1.62;
+          bey.vy -= ny * vn * 1.62;
+          bey.rpm -= vn * 0.28;
+        }
+      }
+    }
+
+    function ageParticles(world, dt) {
+      world.particles.forEach((spark) => {
+        spark.life -= dt;
+        spark.x += spark.vx * dt;
+        spark.y += spark.vy * dt;
+      });
+      world.particles = world.particles.filter((spark) => spark.life > 0);
+    }
+
+    function stepWorld(world, dt) {
+      if (world.result) {
+        world.result.hold -= dt;
+        world.beys.forEach((bey) => {
+          if (!bey.alive) {
+            bey.x += bey.vx * dt;
+            bey.y += bey.vy * dt;
+            bey.vx *= 0.96;
+            bey.vy *= 0.96;
+          }
+          bey.angle += bey.spin * dt * (4 + bey.rpm / 1800);
+        });
+        ageParticles(world, dt);
+        return;
+      }
+
+      world.beys.forEach((bey) => { if (bey.alive) drive(bey, dt); });
+      world.beys.forEach((bey) => {
+        if (!bey.alive) return;
+        bey.x += bey.vx * dt;
+        bey.y += bey.vy * dt;
+        bey.angle += bey.spin * dt * (4 + bey.rpm / 1800);
+      });
+      if (world.beys.length >= 2 && world.beys[0].alive && world.beys[1].alive) collide(world.beys[0], world.beys[1], world);
+
+      const bursted = world.beys.filter((bey) => bey.bursting);
+      if (!world.result && world.beys.length >= 2 && bursted.length === 2) {
+        world.result = { draw: true, label: "同時爆裂", hold: 0.75 };
+      } else if (!world.result && bursted.length === 1) {
+        const loser = bursted[0];
+        loser.alive = false;
+        loser.mode = "burst";
+        const winner = world.beys.find((bey) => bey !== loser);
+        world.result = { draw: false, loser, winner, points: 2, label: "Burst Finish", hold: 0.75 };
+        spawnSparks(world, loser.x, loser.y, loser.color, 14);
+      }
+
+      if (!world.result) {
+        world.beys.forEach((bey) => { if (bey.alive) bounds(bey, dt); });
+        const pending = world.beys.filter((bey) => bey.pendingKO);
+        if (world.beys.length >= 2 && pending.length >= 2) {
+          world.result = { draw: true, label: "同時出場", hold: 0.75 };
+        } else if (pending.length === 1) {
+          const loser = pending[0];
+          loser.alive = false;
+          loser.mode = "ko";
+          const winner = world.beys.find((bey) => bey !== loser);
+          let points = loser.pendingKO === "xtreme" ? 3 : 2;
+          let label = loser.pendingKO === "xtreme" ? "Xtreme Finish" : "Over Finish";
+          if (!world.touched) {
+            points = 1;
+            label = "自爆出場";
+          }
+          world.result = { draw: false, loser, winner, points, label, hold: 0.75 };
+        }
+      }
+
+      if (!world.result && world.beys.length >= 2) {
+        world.beys.forEach((bey) => {
+          if (bey.alive && bey.rpm < 150) {
+            bey.alive = false;
+            bey.mode = "sleep";
+            bey.sleep = true;
+            bey.vx *= 0.2;
+            bey.vy *= 0.2;
+          }
+        });
+        const asleep = world.beys.filter((bey) => bey.sleep);
+        if (asleep.length >= 2) world.result = { draw: true, label: "同時停轉", hold: 0.7 };
+        else if (asleep.length === 1) {
+          const loser = asleep[0];
+          const winner = world.beys.find((bey) => bey !== loser);
+          world.result = { draw: false, loser, winner, points: 1, label: "Spin Finish", hold: 0.7 };
+        }
+      }
+
+      world.t += dt;
+      if (!world.result && world.t > 75 && world.beys.length >= 2) {
+        const [a, b] = world.beys;
+        if (Math.abs(a.rpm - b.rpm) < 40) world.result = { draw: true, label: "時間到", hold: 0.7 };
+        else {
+          const winner = a.rpm > b.rpm ? a : b;
+          const loser = winner === a ? b : a;
+          world.result = { draw: false, loser, winner, points: 1, label: "時間到 Spin", hold: 0.7 };
+        }
+      }
+      if (world.calloutT > 0) world.calloutT -= dt;
+      ageParticles(world, dt);
+    }
+
+    function createWorld(youBuild, youLaunch, foeBuild, foeLaunch, rng) {
+      const you = makeBey(youBuild, { ...youLaunch, id: "you" }, rng);
+      const foe = makeBey(foeBuild, { ...foeLaunch, id: "foe" }, rng);
+      return {
+        beys: [you, foe],
+        t: 0,
+        touched: false,
+        particles: [],
+        result: null,
+        calloutT: 1.5
+      };
+    }
+
+    function simulate(youBuild, youLaunch, foeBuild, foeLaunch, seconds, rng) {
+      const world = createWorld(youBuild, youLaunch, foeBuild, foeLaunch, rng);
+      const steps = Math.round(seconds * 120);
+      for (let i = 0; i < steps && !world.result; i += 1) stepWorld(world, 1 / 120);
+      return world;
+    }
+
+    const canvas = document.getElementById("arena");
+    const banner = document.getElementById("banner");
+    let view = null;
+
+    function degRad(deg) {
+      return (deg * Math.PI) / 180;
+    }
+
+    function dishHeight(r, deg) {
+      let h = 2;
+      if (r < 72) h = 1.6;
+      else if (r < 92) h = 1.6 + ((r - 72) / 20) * 6;
+      else if (r < 108) h = 7.6 + ((r - 92) / 16) * 18;
+      else if (r < 126) h = 25.6 - ((r - 108) / 18) * 16;
+      else if (r < 146) h = 9.6;
+      else h = 9.6 + ((r - 146) / 30) * 12;
+      const exit = EXITS.find((item) => deg >= item.a0 && deg <= item.a1);
+      if (exit && r > 150) {
+        const t = Math.min(1, (r - 150) / 30);
+        h = h * (1 - t) - (exit.kind === "xtreme" ? 18 : 12) * t;
+      }
+      return h;
+    }
+
+    function dishColor(r, deg) {
+      const exit = EXITS.find((item) => deg >= item.a0 && deg <= item.a1);
+      if (exit && r > 150) return exit.kind === "xtreme" ? [0.84, 0.16, 0.32] : [0.93, 0.62, 0.16];
+      if (r > 152 && r < 174 && !exit) return [0.12, 0.72, 0.38];
+      if (r > 96 && r < 122) return [0.62, 0.66, 0.72];
+      if (r < 48) return [0.93, 0.94, 0.95];
+      return [0.82, 0.84, 0.86];
+    }
+
+    function makeTextSprite(text, color) {
+      const board = document.createElement("canvas");
+      board.width = 256;
+      board.height = 64;
+      const pen = board.getContext("2d");
+      pen.clearRect(0, 0, 256, 64);
+      pen.font = "700 34px sans-serif";
+      pen.fillStyle = color;
+      pen.textAlign = "center";
+      pen.textBaseline = "middle";
+      pen.fillText(text, 128, 34);
+      const texture = new THREE.CanvasTexture(board);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false }));
+      sprite.scale.set(46, 11.5, 1);
+      sprite.userData.board = board;
+      sprite.userData.pen = pen;
+      sprite.userData.texture = texture;
+      return sprite;
+    }
+
+    function rewriteSprite(sprite, text, color) {
+      if (sprite.userData.last === text) return;
+      const pen = sprite.userData.pen;
+      const board = sprite.userData.board;
+      pen.clearRect(0, 0, board.width, board.height);
+      pen.font = "700 34px sans-serif";
+      pen.fillStyle = color;
+      pen.textAlign = "center";
+      pen.textBaseline = "middle";
+      pen.fillText(text, 128, 34);
+      sprite.userData.texture.needsUpdate = true;
+      sprite.userData.last = text;
+    }
+
+    function pointInPoly(x, y, poly) {
+      let inside = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i, i += 1) {
+        const xi = poly[i][0];
+        const yi = poly[i][1];
+        const xj = poly[j][0];
+        const yj = poly[j][1];
+        const hit = ((yi > y) !== (yj > y)) && (x < ((xj - xi) * (y - yi)) / ((yj - yi) || 1e-6) + xi);
+        if (hit) inside = !inside;
+      }
+      return inside;
+    }
+
+    function xtremeLayout() {
+      const radius = 156;
+      const bowl = [];
+      for (let deg = 150; deg <= 390; deg += 4) {
+        const angle = degRad(deg);
+        bowl.push([Math.cos(angle) * radius, Math.sin(angle) * radius]);
+      }
+      const outline = bowl.concat([
+        [132, 108], [108, 128], [78, 146], [42, 132], [18, 112],
+        [0, 102],
+        [-18, 112], [-42, 132], [-78, 146], [-108, 128], [-132, 108]
+      ]);
+      return {
+        id: "xtreme",
+        outline,
+        housing: [470, 520],
+        ears: CATEARS,
+        pockets: [
+          { kind: "over", slope: false, name: "左陷阱", poly: [[-168, 108], [-236, 128], [-240, 196], [-162, 188], [-150, 132]] },
+          { kind: "xtreme", slope: false, name: "極限區", poly: [[-108, 188], [-116, 262], [116, 262], [108, 188]] },
+          { kind: "over", slope: false, name: "右陷阱", poly: [[168, 108], [150, 132], [162, 188], [240, 196], [236, 128]] }
+        ],
+        rail(parent, toothGeo, toothMat) {
+          const radiusAt = (deg) => {
+            const d = ((deg % 360) + 360) % 360;
+            const ear = (center) => {
+              const dist = Math.abs(d - center);
+              return dist < 26 ? Math.cos((dist / 26) * Math.PI / 2) : 0;
+            };
+            const valley = Math.abs(d - 270) < 18 ? 1 - Math.abs(d - 270) / 18 : 0;
+            return 146 + Math.max(ear(232), ear(308)) * 22 - valley * 24;
+          };
+          for (let deg = 158; deg < 382; deg += 6) {
+            const angle = degRad(deg);
+            const radius = radiusAt(deg);
+            const tooth = new THREE.Mesh(toothGeo, toothMat);
+            tooth.position.set(Math.cos(angle) * radius, 7.2, Math.sin(angle) * radius);
+            tooth.rotation.y = Math.PI / 2 - angle;
+            parent.add(tooth);
+          }
+        }
+      };
+    }
+
+    function infinityLayout() {
+      const yRail = 146;
+      const outline = [];
+      for (let x = 170; x >= -170; x -= 16) outline.push([x, -yRail]);
+      outline.push(
+        [-186, -92], [-210, -70], [-198, -36], [-176, -18],
+        [-188, 0],
+        [-176, 18], [-198, 36], [-210, 70], [-186, 92]
+      );
+      for (let x = -170; x <= 170; x += 16) outline.push([x, yRail]);
+      outline.push(
+        [186, 92], [210, 70], [198, 36], [176, 18],
+        [188, 0],
+        [176, -18], [198, -36], [210, -70], [186, -92]
+      );
+      const endPockets = (sign) => ([
+        { kind: "over", slope: true, name: sign > 0 ? "右上擊飛" : "左上擊飛", poly: [[sign * 230, -24], [sign * 230, -108], [sign * 292, -96], [sign * 300, -30], [sign * 246, -16]] },
+        { kind: "xtreme", slope: false, name: sign > 0 ? "右極限" : "左極限", poly: [[sign * 236, -22], [sign * 236, 22], [sign * 292, 16], [sign * 292, -16]] },
+        { kind: "over", slope: true, name: sign > 0 ? "右下擊飛" : "左下擊飛", poly: [[sign * 230, 24], [sign * 246, 16], [sign * 300, 30], [sign * 292, 96], [sign * 230, 108]] }
+      ]);
+      return {
+        id: "infinity",
+        outline,
+        housing: [680, 390],
+        ears: [{ x: -100, y: -158 }, { x: 100, y: -158 }],
+        pockets: endPockets(-1).concat(endPockets(1)),
+        rail(parent, toothGeo, toothMat) {
+          [-1, 1].forEach((side) => {
+            for (let x = -150; x <= 150; x += 14) {
+              let z = side * 138;
+              if (side < 0) {
+                const ear = Math.exp(-((Math.abs(x) - 100) ** 2) / 700);
+                const mid = Math.exp(-(x * x) / 900);
+                z = -138 - ear * 26 + mid * 16;
+              }
+              const tooth = new THREE.Mesh(toothGeo, toothMat);
+              tooth.position.set(x, 7.2, z);
+              tooth.rotation.y = side > 0 ? 0 : Math.PI;
+              parent.add(tooth);
+            }
+          });
+        }
+      };
+    }
+
+    function currentArena() {
+      return state.stadium === "infinity" ? infinityLayout() : xtremeLayout();
+    }
+
+    function earPoints() {
+      return currentArena().ears;
+    }
+
+    function pocketContaining(x, y) {
+      return currentArena().pockets.find((pocket) => pointInPoly(x, y, pocket.poly)) || null;
+    }
+
+    function buildStadium(parent) {
+      const arena = currentArena();
+      const shape = new THREE.Shape();
+      arena.outline.forEach((point, index) => {
+        const x = point[0];
+        const y = -point[1];
+        if (index === 0) shape.moveTo(x, y);
+        else shape.lineTo(x, y);
+      });
+      shape.closePath();
+      const floorGeo = new THREE.ExtrudeGeometry(shape, { depth: 6, bevelEnabled: true, bevelThickness: 1.2, bevelSize: 1.2, bevelSegments: 1 });
+      floorGeo.rotateX(-Math.PI / 2);
+      const floor = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({
+        color: 0xd5d8dc,
+        roughness: 0.46,
+        metalness: 0.08,
+        side: THREE.DoubleSide
+      }));
+      floor.receiveShadow = true;
+      parent.add(floor);
+
+      const plateShape = new THREE.Shape();
+      const halfW = arena.housing[0] / 2;
+      const halfH = arena.housing[1] / 2;
+      const rad = 28;
+      plateShape.moveTo(-halfW + rad, -halfH);
+      plateShape.lineTo(halfW - rad, -halfH);
+      plateShape.quadraticCurveTo(halfW, -halfH, halfW, -halfH + rad);
+      plateShape.lineTo(halfW, halfH - rad);
+      plateShape.quadraticCurveTo(halfW, halfH, halfW - rad, halfH);
+      plateShape.lineTo(-halfW + rad, halfH);
+      plateShape.quadraticCurveTo(-halfW, halfH, -halfW, halfH - rad);
+      plateShape.lineTo(-halfW, -halfH + rad);
+      plateShape.quadraticCurveTo(-halfW, -halfH, -halfW + rad, -halfH);
+      const plateGeo = new THREE.ExtrudeGeometry(plateShape, { depth: 18, bevelEnabled: true, bevelThickness: 3, bevelSize: 3, bevelSegments: 2 });
+      plateGeo.rotateX(-Math.PI / 2);
+      const plate = new THREE.Mesh(plateGeo, new THREE.MeshStandardMaterial({ color: 0x2a3038, roughness: 0.45, metalness: 0.32 }));
+      plate.position.y = -16;
+      plate.receiveShadow = true;
+      parent.add(plate);
+
+      arena.pockets.forEach((pocket) => {
+        const pocketShape = new THREE.Shape();
+        pocket.poly.forEach((point, index) => {
+          if (index === 0) pocketShape.moveTo(point[0], -point[1]);
+          else pocketShape.lineTo(point[0], -point[1]);
+        });
+        pocketShape.closePath();
+        const pocketGeo = new THREE.ExtrudeGeometry(pocketShape, { depth: 8, bevelEnabled: false });
+        pocketGeo.rotateX(-Math.PI / 2);
+        const pocketMesh = new THREE.Mesh(pocketGeo, new THREE.MeshStandardMaterial({
+          color: pocket.kind === "xtreme" ? 0x7c3aed : 0xe11d48,
+          roughness: 0.55,
+          metalness: 0.06
+        }));
+        pocketMesh.position.y = pocket.kind === "xtreme" ? -3 : -1.2;
+        pocketMesh.receiveShadow = true;
+        parent.add(pocketMesh);
+        const cx = pocket.poly.reduce((sum, point) => sum + point[0], 0) / pocket.poly.length;
+        const cy = pocket.poly.reduce((sum, point) => sum + point[1], 0) / pocket.poly.length;
+        const label = makeTextSprite(pocket.kind === "xtreme" ? "極限區" : "陷阱", pocket.kind === "xtreme" ? "#e9d5ff" : "#fecdd3");
+        label.position.set(cx, 16, cy);
+        parent.add(label);
+      });
+      arena.ears.forEach((ear, index) => {
+        const ring = new THREE.Mesh(
+          new THREE.TorusGeometry(16, 1.1, 8, 24),
+          new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0c4a6e, emissiveIntensity: 0.7, roughness: 0.28 })
+        );
+        ring.rotation.x = Math.PI / 2;
+        ring.position.set(ear.x, 8.6, ear.y);
+        parent.add(ring);
+        const label = makeTextSprite(index === 0 ? "左貓耳" : "右貓耳", "#7dd3fc");
+        label.position.set(ear.x, 18, ear.y - 22);
+        parent.add(label);
+      });
+
+      const toothGeo = new THREE.BoxGeometry(5.4, 4.4, 8);
+      const toothMat = new THREE.MeshStandardMaterial({ color: 0x18c26a, roughness: 0.36, metalness: 0.16, emissive: 0x063318, emissiveIntensity: 0.4 });
+      arena.rail(parent, toothGeo, toothMat);
+
+      const ridge = new THREE.Mesh(
+        new THREE.TorusGeometry(state.stadium === "infinity" ? 96 : 104, 2.6, 10, 72),
+        new THREE.MeshStandardMaterial({ color: 0xb7c0c8, roughness: 0.3, metalness: 0.62 })
+      );
+      ridge.rotation.x = Math.PI / 2;
+      ridge.position.y = 8;
+      parent.add(ridge);
+      const xMat = new THREE.MeshStandardMaterial({ color: 0x8e98a3, roughness: 0.35, metalness: 0.6 });
+      const armA = new THREE.Mesh(new THREE.BoxGeometry(34, 1.1, 4), xMat);
+      const armB = armA.clone();
+      armA.rotation.y = Math.PI / 4;
+      armB.rotation.y = -Math.PI / 4;
+      armA.position.y = 8.4;
+      armB.position.y = 8.4;
+      parent.add(armA, armB);
+    }
+
+    function plastic(color, roughness, metalness) {
+      return new THREE.MeshStandardMaterial({ color, roughness, metalness });
+    }
+
+    function buildBeyMesh(build) {
+      const blade = resolveBlade(build);
+      const bit = resolveBit(build);
+      const group = new THREE.Group();
+      const metal = new THREE.MeshPhysicalMaterial({
+        color: new THREE.Color(build.color),
+        metalness: 0.82,
+        roughness: 0.24,
+        clearcoat: 0.45,
+        clearcoatRoughness: 0.28
+      });
+      const ratchetMat = plastic(new THREE.Color(build.ratchetColor), 0.46, 0.08);
+      const spinGroup = new THREE.Group();
+      group.add(spinGroup);
+
+      const core = new THREE.Mesh(new THREE.CylinderGeometry(7.2, 7.6, 3.1, Math.max(8, build.points * 2)), ratchetMat);
+      core.position.y = 1.5;
+      spinGroup.add(core);
+      const reach = 10 + (build.height - 60) * 0.08;
+      for (let i = 0; i < build.points; i += 1) {
+        const tab = new THREE.Mesh(new THREE.BoxGeometry(reach, 2.4, 3.3), ratchetMat);
+        const angle = (i / build.points) * Math.PI * 2;
+        tab.position.set(Math.cos(angle) * (7 + reach * 0.35), 1.6, Math.sin(angle) * (7 + reach * 0.35));
+        tab.rotation.y = -angle;
+        spinGroup.add(tab);
+      }
+
+      if (blade.type === "stamina") {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(15.5, 3.1, 10, 28), metal);
+        ring.rotation.x = Math.PI / 2;
+        ring.position.y = 3.3;
+        spinGroup.add(ring);
+        const inner = new THREE.Mesh(new THREE.CylinderGeometry(9.2, 9.2, 2.2, 24), metal);
+        inner.position.y = 3.2;
+        spinGroup.add(inner);
+      } else if (blade.type === "defense") {
+        const shield = new THREE.Mesh(new THREE.CylinderGeometry(16.5, 16.5, 3.4, 6), metal);
+        shield.position.y = 3.4;
+        spinGroup.add(shield);
+      } else {
+        const count = Math.max(2, blade.contacts);
+        const shape = new THREE.Shape();
+        const lift = blade.upper > 0.3 ? -7 : -3;
+        shape.moveTo(5, -2.4);
+        shape.quadraticCurveTo(15, lift, 22, 0);
+        shape.quadraticCurveTo(15, 4.2, 5, 2.4);
+        const wingGeo = new THREE.ExtrudeGeometry(shape, {
+          depth: blade.type === "attack" ? 2.5 : 2.1,
+          bevelEnabled: true,
+          bevelThickness: 0.35,
+          bevelSize: 0.35,
+          bevelSegments: 1
+        });
+        wingGeo.translate(0, 0, -1.1);
+        wingGeo.rotateX(-Math.PI / 2);
+        for (let i = 0; i < count; i += 1) {
+          const wing = new THREE.Mesh(wingGeo, metal);
+          wing.rotation.y = (i / count) * Math.PI * 2;
+          wing.position.y = 3.2;
+          if (blade.upper > 0.25) wing.rotation.z = blade.upper * 0.35;
+          spinGroup.add(wing);
+        }
+      }
+
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.6, 1.6, 16), plastic(0x111418, 0.4, 0.3));
+      cap.position.y = 4.6;
+      spinGroup.add(cap);
+
+      let tip;
+      if (bit.style === "defense") tip = new THREE.Mesh(new THREE.ConeGeometry(1.5, 5.5, 10), plastic(0xd7dde4, 0.35, 0.4));
+      else if (bit.style === "stamina") tip = new THREE.Mesh(new THREE.SphereGeometry(2.5, 14, 12), plastic(0xd7dde4, 0.32, 0.35));
+      else if (bit.style === "balance") tip = new THREE.Mesh(new THREE.ConeGeometry(2.3, 4.2, 12), plastic(0xd7dde4, 0.35, 0.35));
+      else tip = new THREE.Mesh(new THREE.CylinderGeometry(bit.low ? 3.4 : 3.8, bit.low ? 3.4 : 3.8, 1.5, 16), plastic(0xd7dde4, 0.4, 0.25));
+      tip.position.y = bit.style === "defense" ? -2.2 : bit.style === "stamina" ? -1.2 : -0.6;
+      if (bit.style === "defense" || bit.style === "balance") tip.rotation.x = Math.PI;
+      group.add(tip);
+      group.userData.spin = spinGroup;
+      group.traverse((node) => {
+        if (node.isMesh) {
+          node.castShadow = true;
+          node.receiveShadow = true;
+        }
+      });
+      return group;
+    }
+
+    function buildLauncher() {
+      const root = new THREE.Group();
+      const yaw = new THREE.Group();
+      const pitch = new THREE.Group();
+      const roll = new THREE.Group();
+      root.add(yaw);
+      yaw.add(pitch);
+      pitch.add(roll);
+      const bodyMat = plastic(0x3c444e, 0.38, 0.32);
+      const darkMat = plastic(0x1a1e24, 0.5, 0.2);
+      const accent = new THREE.MeshStandardMaterial({ color: 0x1ed37a, roughness: 0.35, metalness: 0.2, emissive: 0x08381c, emissiveIntensity: 0.5 });
+      const body = new THREE.Mesh(new THREE.BoxGeometry(34, 24, 52), bodyMat);
+      body.position.set(0, 0, 6);
+      roll.add(body);
+      const sideL = new THREE.Mesh(new THREE.CylinderGeometry(12, 12, 34, 16), bodyMat);
+      sideL.rotation.z = Math.PI / 2;
+      sideL.position.set(0, 0, 6);
+      roll.add(sideL);
+      const grip = new THREE.Mesh(new THREE.BoxGeometry(16, 18, 62), darkMat);
+      grip.position.set(0, -8, 52);
+      grip.rotation.x = 0.22;
+      roll.add(grip);
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(8, 2.2, 46), accent);
+      stripe.position.set(0, 13.2, 8);
+      roll.add(stripe);
+      const sight = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2, 28), accent);
+      sight.position.set(0, 15, -12);
+      roll.add(sight);
+      [-8, 8].forEach((x) => {
+        const prong = new THREE.Mesh(new THREE.BoxGeometry(3.2, 3.2, 18), darkMat);
+        prong.position.set(x, -2, -22);
+        roll.add(prong);
+      });
+      const cord = new THREE.Group();
+      const cordBar = new THREE.Mesh(new THREE.BoxGeometry(7, 3.2, 36), plastic(0xf2f4f6, 0.45, 0.05));
+      cord.add(cordBar);
+      for (let i = 0; i < 7; i += 1) {
+        const tooth = new THREE.Mesh(new THREE.BoxGeometry(7.6, 2.2, 2.2), darkMat);
+        tooth.position.set(0, -2.2, -14 + i * 4.6);
+        cord.add(tooth);
+      }
+      cord.position.set(0, -6, 24);
+      roll.add(cord);
+      const beyMount = new THREE.Group();
+      beyMount.position.set(0, -18, -46);
+      roll.add(beyMount);
+      root.traverse((node) => {
+        if (node.isMesh) {
+          node.castShadow = true;
+          node.receiveShadow = true;
+        }
+      });
+      return { root, yaw, pitch, roll, cord, beyMount, bey: null };
+    }
+
+    function emptyAxes() {
+      return { x: 0, reach: 0, z: 0, roll: 0, pitch: 0, yaw: 0 };
+    }
+
+    function initView() {
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.08;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x070b09);
+      const camera = new THREE.PerspectiveCamera(38, 1, 1, 1600);
+      scene.add(new THREE.HemisphereLight(0xc5d0da, 0x1a1c16, 0.85));
+      const sun = new THREE.DirectionalLight(0xfff6ea, 2.35);
+      sun.position.set(-120, 340, 160);
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(1024, 1024);
+      sun.shadow.camera.left = -280;
+      sun.shadow.camera.right = 280;
+      sun.shadow.camera.top = 280;
+      sun.shadow.camera.bottom = -280;
+      sun.shadow.camera.near = 40;
+      sun.shadow.camera.far = 760;
+      sun.shadow.bias = -0.0008;
+      scene.add(sun);
+      const fill = new THREE.DirectionalLight(0x9ad7ff, 0.45);
+      fill.position.set(180, 80, -40);
+      scene.add(fill);
+      const stadiumRoot = new THREE.Group();
+      scene.add(stadiumRoot);
+      buildStadium(stadiumRoot);
+      const youRig = buildLauncher();
+      const foeRig = buildLauncher();
+      scene.add(youRig.root, foeRig.root);
+      const sparkGeo = new THREE.BufferGeometry();
+      const sparkPos = new Float32Array(48 * 3);
+      sparkGeo.setAttribute("position", new THREE.BufferAttribute(sparkPos, 3));
+      const sparkPoints = new THREE.Points(sparkGeo, new THREE.PointsMaterial({ color: 0xfff1c2, size: 3.2, sizeAttenuation: true }));
+      scene.add(sparkPoints);
+      const rpmYou = makeTextSprite("", "#7ef0ff");
+      const rpmFoe = makeTextSprite("", "#ffb3cc");
+      scene.add(rpmYou, rpmFoe);
+      view = {
+        renderer, scene, camera, youRig, foeRig, sparkPos, sparkGeo, sparkPoints, rpmYou, rpmFoe,
+        camPos: new THREE.Vector3(30, 250, 430),
+        camLook: new THREE.Vector3(0, 8, 10),
+        desiredPos: new THREE.Vector3(),
+        desiredLook: new THREE.Vector3(),
+        meshes: new Map(),
+        recoil: 0,
+        sizeKey: "",
+        stadiumRoot
+      };
+    }
+
+    function beySignature(build) {
+      const blade = resolveBlade(build);
+      return [build.name, build.bladeId, blade.g, blade.type, blade.contacts, blade.spin, blade.upper, build.points, build.height, build.bitId, build.color, build.ratchetColor].join("|");
+    }
+
+    function mountBey(rig, build) {
+      const signature = beySignature(build);
+      if (rig.signature === signature) return;
+      if (rig.bey) {
+        rig.beyMount.remove(rig.bey);
+        rig.bey.traverse((node) => {
+          if (node.geometry) node.geometry.dispose();
+        });
+      }
+      rig.bey = buildBeyMesh(build);
+      rig.bey.scale.setScalar(1.45);
+      rig.beyMount.add(rig.bey);
+      rig.signature = signature;
+    }
+
+    function poseLauncher(rig, axes, side, extra) {
+      const x = side * 74 + (axes.x || 0) * 42;
+      const z = 208 - (axes.reach || 0) * 24;
+      const y = 46 + (axes.z || 0) * 16 + (extra.recoil || 0) * 8;
+      rig.root.position.set(x, y, z + (extra.recoil || 0) * 22);
+      rig.yaw.rotation.y = -(axes.yaw || 0) * 0.7;
+      rig.pitch.rotation.x = (axes.pitch || 0) * 0.55;
+      rig.roll.rotation.z = -(axes.roll || 0) * 0.7;
+      rig.cord.position.z = 24 + (extra.clicks || 0) * 2.6 + (extra.yank || 0) * 18;
+      if (rig.bey) rig.bey.visible = !extra.released;
+    }
+
+    function ensureBattleMesh(bey, build) {
+      const signature = `${bey.id}|${beySignature(build)}`;
+      let mesh = view.meshes.get(bey.id);
+      if (!mesh || mesh.userData.signature !== signature) {
+        if (mesh) view.scene.remove(mesh);
+        mesh = buildBeyMesh(build);
+        mesh.userData.signature = signature;
+        mesh.scale.setScalar(1.28);
+        mesh.userData.pitch = bey.aimPitch || 0;
+        mesh.userData.roll = bey.aimRoll || 0;
+        view.scene.add(mesh);
+        view.meshes.set(bey.id, mesh);
+      }
+      return mesh;
+    }
+
+    function renderView(dt) {
+      if (!view) initView();
+      const width = canvas.clientWidth || 640;
+      const height = canvas.clientHeight || 480;
+      const sizeKey = `${width}x${height}`;
+      if (sizeKey !== view.sizeKey && width > 0 && height > 0) {
+        view.sizeKey = sizeKey;
+        view.renderer.setSize(width, height, false);
+        view.camera.aspect = width / height;
+        view.camera.updateProjectionMatrix();
+      }
+      const youAxes = previewAxes();
+      const foeAxes = (state.foePlan && state.foePlan.axes) || emptyAxes();
+      const launching = state.phase === "axis" || state.phase === "sp";
+      mountBey(view.youRig, state.you);
+      mountBey(view.foeRig, state.foe);
+      const released = state.phase === "battle" || state.phase === "round" || state.phase === "match";
+      if (released) view.recoil = Math.min(1, view.recoil + dt * 2.2);
+      else view.recoil = 0;
+      state.yank = Math.max(0, (state.yank || 0) - dt * 3.2);
+      poseLauncher(view.youRig, youAxes, state.youSide, {
+        clicks: state.phase === "sp" ? state.clicks : 0,
+        yank: state.yank,
+        recoil: view.recoil,
+        released
+      });
+      poseLauncher(view.foeRig, foeAxes, -state.youSide, {
+        clicks: 0,
+        recoil: view.recoil,
+        released
+      });
+      const spinBoost = state.phase === "sp" ? 1 + state.clicks * 0.85 : 0.7;
+      if (view.youRig.bey) view.youRig.bey.userData.spin.rotation.y += dt * spinBoost * 4;
+      if (view.foeRig.bey) view.foeRig.bey.userData.spin.rotation.y -= dt * 2.2;
+
+      const active = new Set();
+      if (state.world) {
+        state.world.beys.forEach((bey) => {
+          const build = bey.id === "you" ? state.you : state.foe;
+          const mesh = ensureBattleMesh(bey, build);
+          active.add(bey.id);
+          let height = 9;
+          if (bey.mode === "pocket" || bey.mode === "ko") height = -2;
+          if (bey.mode === "burst") height += 10;
+          mesh.position.set(bey.x, height, bey.y);
+          mesh.userData.pitch *= 0.96;
+          mesh.userData.roll *= 0.96;
+          mesh.rotation.set(mesh.userData.pitch, -bey.angle, mesh.userData.roll + (bey.mode === "rail" ? bey.railDir * 0.28 : 0));
+          mesh.userData.spin.rotation.y = 0;
+          mesh.visible = true;
+          const label = bey.id === "you" ? view.rpmYou : view.rpmFoe;
+          const tag = bey.mode === "catear" ? "貓耳" : bey.tech === "counter" && bey.mode === "rail" ? "逆軌" : bey.mode === "rail" ? "X" : "";
+          rewriteSprite(label, `${bey.name} ${Math.max(0, Math.round(bey.rpm))}${tag ? " " + tag : ""}`, bey.id === "you" ? "#b8fff0" : "#ffd0e0");
+          label.position.set(bey.x, height + 28, bey.y);
+          label.visible = true;
+        });
+        const sparks = state.world.particles;
+        for (let i = 0; i < 48; i += 1) {
+          const spark = sparks[i];
+          if (spark) {
+            view.sparkPos[i * 3] = spark.x;
+            view.sparkPos[i * 3 + 1] = 12;
+            view.sparkPos[i * 3 + 2] = spark.y;
+          } else {
+            view.sparkPos[i * 3 + 1] = -80;
+          }
+        }
+        view.sparkGeo.attributes.position.needsUpdate = true;
+        view.sparkPoints.visible = sparks.length > 0;
+      } else {
+        view.rpmYou.visible = false;
+        view.rpmFoe.visible = false;
+        view.sparkPoints.visible = false;
+      }
+      view.meshes.forEach((mesh, id) => {
+        mesh.visible = active.has(id);
+      });
+
+      if (launching) {
+        const rig = view.youRig.root.position;
+        view.desiredPos.set(rig.x + state.youSide * 110, 130, rig.z + 120);
+        view.desiredLook.set(rig.x, 22, rig.z - 70);
+      } else {
+        const wide = state.stadium === "infinity";
+        view.desiredPos.set(0, wide ? 520 : 390, wide ? 620 : 470);
+        view.desiredLook.set(0, 0, wide ? 0 : 10);
+      }
+      view.camPos.lerp(view.desiredPos, 1 - Math.exp(-dt * 3.2));
+      view.camLook.lerp(view.desiredLook, 1 - Math.exp(-dt * 3.2));
+      view.camera.position.copy(view.camPos);
+      view.camera.lookAt(view.camLook);
+
+      if ((state.phase === "battle" || state.phase === "round" || state.phase === "match") && state.world && state.world.calloutT > 0.2) {
+        const you = state.world.beys[0];
+        banner.hidden = false;
+        banner.textContent = techName(you.tech, you.aim || 0);
+      } else if (state.phase === "round" || state.phase === "match") {
+        banner.hidden = false;
+        banner.textContent = state.lastNote;
+      } else {
+        banner.hidden = true;
+      }
+      view.renderer.render(view.scene, view.camera);
+    }
+    function currentBar(now = performance.now()) {
+      const period = 1160;
+      const u = ((now % period) + period) % period / period;
+      const tri = u < 0.5 ? u * 2 : 2 - u * 2;
+      return tri * 2 - 1;
+    }
+
+    function renderBuilder(role) {
+      const build = state[role];
+      const panel = document.getElementById(`${role}-panel`);
+      const title = role === "you" ? "你的陀螺" : "對手的陀螺";
+      const bladeOptions = BLADES.map((blade) => `<option value="${blade.id}">${blade.zh} ${blade.name}</option>`).join("");
+      const bitOptions = BITS.map((bit) => `<option value="${bit.id}">${bit.id} ${bit.zh} · ${bit.teeth}齒 · ${bit.g}g</option>`).join("");
+      const pointOptions = [1, 2, 3, 4, 5, 6, 7, 9].map((n) => `<option value="${n}">${n} 點</option>`).join("");
+      const custom = build.bladeId === "custom";
+      panel.innerHTML = `
+        <h2>${title}</h2>
+        <div class="chips" role="group" aria-label="${title}預設">
+          ${PRESETS.map((preset, index) => `<button type="button" data-preset="${index}">${preset.name}</button>`).join("")}
+          <button type="button" data-preset="custom">自訂刃</button>
+        </div>
+        <fieldset>
+          <label>名字<input id="${role}-name" type="text" maxlength="16" value="${escapeAttr(build.name)}"></label>
+          <label>刃 Blade<select id="${role}-blade">${bladeOptions}<option value="custom">自訂刃</option></select></label>
+          <div class="custom" id="${role}-custom" ${custom ? "" : "hidden"}>
+            <label>重量 <b data-out="g"></b><input data-custom="g" type="range" min="28" max="42" step="0.1"></label>
+            <label>接觸點 <b data-out="contacts"></b><input data-custom="contacts" type="range" min="1" max="8" step="1"></label>
+            <div class="row">
+              <label>類型<select data-custom="type"><option value="attack">攻擊</option><option value="balance">平衡</option><option value="defense">防禦</option><option value="stamina">持久</option></select></label>
+              <label>旋向<select data-custom="spin"><option value="R">右旋 R</option><option value="L">左旋 L</option></select></label>
+            </div>
+            <label>攻擊 <b data-out="atk"></b><input data-custom="atk" type="range" min="8" max="75" step="1"></label>
+            <label>防禦 <b data-out="def"></b><input data-custom="def" type="range" min="8" max="75" step="1"></label>
+            <label>持久 <b data-out="sta"></b><input data-custom="sta" type="range" min="8" max="75" step="1"></label>
+            <label>上挑 <b data-out="upper"></b><input data-custom="upper" type="range" min="-40" max="60" step="1"></label>
+          </div>
+          <div class="row">
+            <label>棘輪點數<select id="${role}-points">${pointOptions}</select></label>
+            <label>高度<select id="${role}-height"><option value="60">60 低</option><option value="70">70</option><option value="80">80 高</option></select></label>
+          </div>
+          <label>軸心 Bit<select id="${role}-bit">${bitOptions}</select></label>
+          <p class="blurb" id="${role}-blurb"></p>
+          <div class="row swatches">
+            <label>刃色<input id="${role}-color" type="color" value="${build.color}"></label>
+            <label>棘輪色<input id="${role}-ratchet" type="color" value="${build.ratchetColor}"></label>
+          </div>
+          ${role === "you" ? `<div class="side"><span>站位</span><button type="button" data-side="-1">出口左側</button><button type="button" data-side="1">出口右側</button></div>` : `<label>對手射法<select id="foe-diff"><option value="practice">練習，拉力不穩</option><option value="even">對等</option><option value="champion">冠軍，會挑射法</option></select></label>`}
+        </fieldset>
+        <p class="summary" id="${role}-summary"></p>`;
+      panel.querySelector(`#${role}-blade`).value = build.bladeId;
+      panel.querySelector(`#${role}-points`).value = String(build.points);
+      panel.querySelector(`#${role}-height`).value = String(build.height);
+      panel.querySelector(`#${role}-bit`).value = build.bitId;
+      if (role === "foe") panel.querySelector("#foe-diff").value = state.difficulty;
+      if (role === "you") {
+        panel.querySelectorAll("[data-side]").forEach((button) => {
+          button.setAttribute("aria-pressed", String(Number(button.dataset.side) === state.youSide));
+        });
+      }
+      panel.querySelectorAll("[data-preset]").forEach((button) => {
+        const on = button.dataset.preset === "custom" ? build.bladeId === "custom" : PRESETS[button.dataset.preset]?.bladeId === build.bladeId && build.bladeId !== "custom";
+        button.setAttribute("aria-pressed", String(on));
+      });
+      fillCustom(role);
+      refreshSummary(role);
+      panel.oninput = () => syncBuilder(role);
+      panel.onchange = () => syncBuilder(role);
+      panel.onclick = (event) => {
+        const preset = event.target.closest("[data-preset]");
+        if (preset) applyPreset(role, preset.dataset.preset);
+        const side = event.target.closest("[data-side]");
+        if (side && state.phase === "ready" || side && state.phase === "round" || side && state.phase === "match") {
+          state.youSide = Number(side.dataset.side);
+          renderBuilder("you");
+        }
+      };
+    }
+
+    function escapeAttr(value) {
+      return String(value).replace(/[&"]/g, (ch) => (ch === "&" ? "&amp;" : "&quot;"));
+    }
+
+    function fillCustom(role) {
+      const build = state[role];
+      if (!build.custom) build.custom = customBlade();
+      const box = document.getElementById(`${role}-custom`);
+      if (!box) return;
+      box.querySelectorAll("[data-custom]").forEach((input) => {
+        const key = input.dataset.custom;
+        if (key === "upper") input.value = String(Math.round(build.custom.upper * 100));
+        else input.value = build.custom[key];
+      });
+      writeCustomOut(role);
+    }
+
+    function writeCustomOut(role) {
+      const blade = state[role].custom;
+      const box = document.getElementById(`${role}-custom`);
+      if (!box || !blade) return;
+      box.querySelector('[data-out="g"]').textContent = `${blade.g.toFixed(1)} g`;
+      box.querySelector('[data-out="contacts"]').textContent = blade.contacts;
+      box.querySelector('[data-out="atk"]').textContent = blade.atk;
+      box.querySelector('[data-out="def"]').textContent = blade.def;
+      box.querySelector('[data-out="sta"]').textContent = blade.sta;
+      box.querySelector('[data-out="upper"]').textContent = blade.upper.toFixed(2);
+    }
+
+    function syncBuilder(role) {
+      if (locked()) return;
+      const build = state[role];
+      build.name = document.getElementById(`${role}-name`).value.slice(0, 16) || (role === "you" ? "我的陀螺" : "對手");
+      const bladeId = document.getElementById(`${role}-blade`).value;
+      if (bladeId === "custom" && build.bladeId !== "custom") {
+        build.bladeId = "custom";
+        if (!build.custom) build.custom = customBlade();
+        renderBuilder(role);
+        return;
+      }
+      build.bladeId = bladeId;
+      build.points = Number(document.getElementById(`${role}-points`).value);
+      build.height = Number(document.getElementById(`${role}-height`).value);
+      build.bitId = document.getElementById(`${role}-bit`).value;
+      build.color = document.getElementById(`${role}-color`).value;
+      build.ratchetColor = document.getElementById(`${role}-ratchet`).value;
+      if (role === "foe") state.difficulty = document.getElementById("foe-diff").value;
+      if (build.bladeId === "custom") {
+        const box = document.getElementById(`${role}-custom`);
+        box.querySelectorAll("[data-custom]").forEach((input) => {
+          const key = input.dataset.custom;
+          if (key === "type" || key === "spin") build.custom[key] = input.value;
+          else if (key === "upper") build.custom.upper = Number(input.value) / 100;
+          else if (key === "g") build.custom.g = Number(input.value);
+          else build.custom[key] = Number(input.value);
+        });
+        build.custom.outward = build.custom.type === "stamina" ? 0.8 : 0.15;
+        writeCustomOut(role);
+      }
+      refreshSummary(role);
+    }
+
+    function refreshSummary(role) {
+      const build = state[role];
+      const blade = resolveBlade(build);
+      const bit = resolveBit(build);
+      const node = document.getElementById(`${role}-summary`);
+      if (node) node.textContent = `${comboText(build)} · ${TYPE_ZH[blade.type]} · 耐爆 ${bit.br} · X Dash ${bit.dash}`;
+      const blurb = document.getElementById(`${role}-blurb`);
+      if (blurb) blurb.textContent = BIT_BLURB[bit.id] || "";
+    }
+
+    function applyPreset(role, key) {
+      if (locked()) return;
+      if (key === "custom") {
+        state[role].bladeId = "custom";
+        if (!state[role].custom) state[role].custom = customBlade();
+        state[role].name = "自訂";
+      } else {
+        const preset = PRESETS[Number(key)];
+        const name = state[role].name;
+        state[role] = presetBuild(preset);
+        if (role === "foe" && name === "對手") state[role].name = preset.name;
+      }
+      renderBuilder(role);
+    }
+
+    function locked() {
+      return state.phase === "axis" || state.phase === "sp" || state.phase === "battle";
+    }
+
+    function paintLock() {
+      document.querySelectorAll(".panel").forEach((panel) => panel.classList.toggle("is-locked", locked()));
+    }
+
+    function pushLog(text) {
+      state.log.unshift(text);
+      state.log = state.log.slice(0, 8);
+      const list = document.getElementById("log");
+      list.innerHTML = "";
+      state.log.forEach((line) => {
+        const item = document.createElement("li");
+        item.textContent = line;
+        list.appendChild(item);
+      });
+    }
+
+    function updateScore() {
+      document.getElementById("score-you").textContent = state.score.you;
+      document.getElementById("score-foe").textContent = state.score.foe;
+    }
+
+    const phaseLabel = document.getElementById("phase-label");
+    const liveRead = document.getElementById("live-read");
+    const barWrap = document.getElementById("bar-wrap");
+    const spWrap = document.getElementById("sp-wrap");
+    const readyWrap = document.getElementById("ready-wrap");
+    const zones = document.getElementById("zones");
+    const marker = document.getElementById("marker");
+    const hint = document.getElementById("hint");
+    const startBtn = document.getElementById("start");
+    const spFill = document.getElementById("sp-fill");
+    const spRead = document.getElementById("sp-read");
+
+    const pips = document.getElementById("pips");
+
+    function paintPips() {
+      pips.hidden = state.phase !== "axis";
+      pips.innerHTML = AXES.map((axis, index) => {
+        const cls = index < state.axisIndex ? "on" : index === state.axisIndex ? "now" : "";
+        return `<i class="${cls}" title="${axis.name}"></i>`;
+      }).join("");
+    }
+
+    function showDock() {
+      const phase = state.phase;
+      barWrap.hidden = phase !== "axis";
+      spWrap.hidden = phase !== "sp";
+      readyWrap.hidden = phase === "axis" || phase === "sp" || phase === "battle";
+      paintPips();
+      if (phase === "ready") {
+        phaseLabel.textContent = "準備發射";
+        startBtn.textContent = "3 · 2 · 1　Go Shoot";
+        liveRead.textContent = "先看發射器";
+        hint.textContent = "游標會自己左右跑，分六次鎖定發射器：站位、探出、高度、左右傾、前後傾、槍口轉向。逆軌要槍身側傾，不能只轉槍口。然後在 1.5 秒內連點拉條。";
+      } else if (phase === "axis") {
+        const axis = AXES[state.axisIndex];
+        phaseLabel.textContent = `第 ${state.axisIndex + 1}/6 軸 · ${axis.name}`;
+        zones.innerHTML = `<span>${axis.left}</span><span>${axis.mid}</span><span>${axis.right}</span>`;
+        hint.textContent = axis.hint;
+      } else if (phase === "sp") {
+        phaseLabel.textContent = "拉力 SP";
+        liveRead.textContent = "1.5 秒";
+        hint.textContent = "時限內連點。大約 14 下拉滿，再多會過拉，出手變飄。";
+      } else if (phase === "battle") {
+        phaseLabel.textContent = "對戰中";
+        hint.textContent = state.lastNote;
+      } else if (phase === "round") {
+        phaseLabel.textContent = "這回結束";
+        startBtn.textContent = "下一發";
+        liveRead.textContent = `${state.score.you} : ${state.score.foe}`;
+        hint.textContent = state.lastNote;
+      } else if (phase === "match") {
+        phaseLabel.textContent = state.score.you >= 4 ? "你贏了這場" : "對手贏了這場";
+        startBtn.textContent = "再比一場";
+        liveRead.textContent = `${state.score.you} : ${state.score.foe}`;
+        hint.textContent = state.lastNote;
+      }
+      paintLock();
+    }
+
+    function beginLaunch() {
+      if (state.phase === "match") {
+        state.score.you = 0;
+        state.score.foe = 0;
+        updateScore();
+      }
+      state.axes = { x: 0, reach: 0, z: 0, roll: 0, pitch: 0, yaw: 0 };
+      state.axisIndex = 0;
+      state.clicks = 0;
+      state.yank = 0;
+      state.world = null;
+      state.foePlan = cpuPlan(state.foe, state.difficulty, Math.random);
+      state.phase = "axis";
+      showDock();
+      tone(520, 0.05);
+    }
+
+    function confirmAxis() {
+      if (state.phase !== "axis") return;
+      const axis = AXES[state.axisIndex];
+      state.axes[axis.id] = currentBar();
+      tone(520 + state.axisIndex * 40, 0.05);
+      if (state.axisIndex < AXES.length - 1) {
+        state.axisIndex += 1;
+        showDock();
+      } else {
+        state.clicks = 0;
+        state.spT0 = performance.now();
+        state.phase = "sp";
+        showDock();
+      }
+    }
+
+    function addPull() {
+      if (state.phase !== "sp") return;
+      state.clicks += 1;
+      state.yank = 1;
+      const stats = pullStats(state.clicks);
+      tone(380 + Math.min(18, state.clicks) * 28, 0.03);
+      spFill.style.width = `${stats.sp}%`;
+      const warn = state.clicks > 14 ? " · 過拉" : "";
+      spRead.textContent = `${state.clicks} 下 · SP ${stats.sp} · ${stats.rpm} RPM${warn}`;
+      liveRead.textContent = `SP ${stats.sp}`;
+    }
+
+    function beginBattle() {
+      const youLaunch = {
+        axes: Object.assign({}, state.axes),
+        clicks: state.clicks,
+        pos: state.youSide,
+        id: "you"
+      };
+      const foeLaunch = { ...state.foePlan, pos: -state.youSide, id: "foe" };
+      state.world = createWorld(state.you, youLaunch, state.foe, foeLaunch, Math.random);
+      const youPlan = planLaunch(state.you, youLaunch);
+      const foePlan = planLaunch(state.foe, foeLaunch);
+      state.lastNote = `你：${techName(youPlan.tech, youPlan.xTilt)}　SP ${youPlan.sp}　${youPlan.rpm} RPM。對手：${techName(foePlan.tech, foePlan.xTilt)}　SP ${foePlan.sp}。`;
+      pushLog(state.lastNote);
+      state.phase = "battle";
+      showDock();
+      tone(180, 0.09, "sawtooth");
+    }
+
+    function finishBattle() {
+      const result = state.world.result;
+      if (result.draw) {
+        state.lastNote = `${result.label}，這回重賽`;
+        pushLog(state.lastNote);
+        state.phase = "round";
+      } else {
+        const youWin = result.winner && result.winner.id === "you";
+        if (youWin) state.score.you += result.points;
+        else state.score.foe += result.points;
+        updateScore();
+        state.lastNote = `${youWin ? "你" : "對手"} ${result.label} +${result.points}`;
+        pushLog(state.lastNote);
+        state.phase = state.score.you >= 4 || state.score.foe >= 4 ? "match" : "round";
+        tone(youWin ? 880 : 140, 0.12);
+      }
+      showDock();
+    }
+
+    function cpuPlan(build, difficulty, rng) {
+      const spin = resolveBlade(build).spin === "L" ? -1 : 1;
+      const style = resolveBit(build).style;
+      let x = 0;
+      let y = 0;
+      let clicks = 10;
+      const pack = (xTilt, yTilt, clicks) => ({
+        xTilt, yTilt, clicks, pos: 1,
+        axes: { x: xTilt * 0.25, reach: 0.2, z: 0, roll: xTilt, pitch: yTilt, yaw: xTilt }
+      });
+      if (difficulty === "practice") {
+        return pack((rng() * 2 - 1) * 0.85, (rng() * 2 - 1) * 0.85, 3 + Math.floor(rng() * 6));
+      }
+      if (style === "defense") {
+        x = (rng() - 0.5) * 0.18;
+        y = (rng() - 0.5) * 0.18;
+        clicks = difficulty === "champion" ? 13 : 10;
+      } else if (style === "stamina") {
+        x = rng() < 0.5 ? -0.68 : 0.68;
+        y = 0.74;
+        clicks = difficulty === "champion" ? 12 : 9;
+      } else if (style === "attack") {
+        const counter = rng() < (difficulty === "champion" ? 0.45 : 0.28);
+        x = (counter ? -0.68 : 0.68) * spin;
+        y = -0.76;
+        clicks = difficulty === "champion" ? 14 : 11;
+      } else {
+        x = (rng() < 0.5 ? -0.45 : 0.45);
+        y = -0.2;
+        clicks = 10;
+      }
+      return pack(x, y, clicks);
+    }
+
+    let audioCtx = null;
+    function tone(freq, dur, type) {
+      if (state.muted) return;
+      try {
+        audioCtx = audioCtx || new AudioContext();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type || "square";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + dur);
+      } catch (error) {
+        /* autoplay or missing audio device */
+      }
+    }
+
+    document.getElementById("bar").addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      confirmAxis();
+    });
+    document.getElementById("pull").addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      addPull();
+    });
+    startBtn.addEventListener("click", beginLaunch);
+    function rebuildStadium() {
+      if (!view) return;
+      const root = view.stadiumRoot;
+      while (root.children.length) root.remove(root.children[0]);
+      buildStadium(root);
+    }
+
+    function chooseStadium(id) {
+      if (locked()) return;
+      state.stadium = id;
+      document.getElementById("stad-xtreme").setAttribute("aria-pressed", String(id === "xtreme"));
+      document.getElementById("stad-infinity").setAttribute("aria-pressed", String(id === "infinity"));
+      rebuildStadium();
+    }
+
+    document.getElementById("stad-xtreme").addEventListener("click", () => chooseStadium("xtreme"));
+    document.getElementById("stad-infinity").addEventListener("click", () => chooseStadium("infinity"));
+    document.getElementById("speed").addEventListener("click", () => {
+      state.speed = state.speed === 1 ? 2 : 1;
+      const button = document.getElementById("speed");
+      button.textContent = `速度 ${state.speed}×`;
+      button.setAttribute("aria-pressed", String(state.speed === 2));
+    });
+    document.getElementById("mute").addEventListener("click", () => {
+      state.muted = !state.muted;
+      const button = document.getElementById("mute");
+      button.textContent = state.muted ? "音效關" : "音效開";
+      button.setAttribute("aria-pressed", String(state.muted));
+    });
+    window.addEventListener("keydown", (event) => {
+      if (event.code !== "Space" && event.code !== "Enter") return;
+      if (event.repeat) return;
+      const tag = document.activeElement && document.activeElement.tagName;
+      if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+      event.preventDefault();
+      if (state.phase === "ready" || state.phase === "round" || state.phase === "match") beginLaunch();
+      else if (state.phase === "axis") confirmAxis();
+      else if (state.phase === "sp") addPull();
+    });
+
+    let last = performance.now();
+    let awarded = false;
+    function frame(now) {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      if (state.phase === "axis") {
+        const value = currentBar(now);
+        marker.style.left = `${50 + value * 46}%`;
+        const axis = AXES[state.axisIndex];
+        const axes = previewAxes(now);
+        const spin = resolveBlade(state.you).spin === "L" ? -1 : 1;
+        const tilts = tiltsFromAxes(axes);
+        const tech = state.axisIndex >= 3 ? `　現在按：${techName(classify(tilts.x, tilts.y, spin), tilts.x)}` : "";
+        liveRead.textContent = `${axisReadout(axis, value)}${tech}`;
+      } else if (state.phase === "sp") {
+        const left = Math.max(0, 1500 - (now - state.spT0));
+        liveRead.textContent = `${(left / 1000).toFixed(1)} 秒`;
+        if (left <= 0) beginBattle();
+      } else if (state.phase === "battle" && state.world) {
+        const steps = Math.max(1, Math.round(dt * 120 * state.speed));
+        for (let i = 0; i < steps; i += 1) stepWorld(state.world, 1 / 120);
+        if (state.world.result && state.world.result.hold <= 0) finishBattle();
+      }
+      renderView(dt);
+      requestAnimationFrame(frame);
+    }
+
+    function runSimTests() {
+      const lines = [];
+      const check = (name, cond, extra) => {
+        lines.push(`${cond ? "PASS" : "FAIL"} ${name}${cond ? "" : " " + (extra || "")}`);
+      };
+      check("蓄左貓耳", classify(-0.6, 0.7, 1) === "catear");
+      check("右旋右傾是順軌", classify(0.6, -0.7, 1) === "rail");
+      check("右旋左傾是逆軌", classify(-0.6, -0.7, 1) === "counter");
+      check("垂直", classify(0.05, 0.04, 1) === "vertical");
+      check("左旋左傾是順軌", classify(-0.6, -0.7, -1) === "rail");
+      const tilted = tiltsFromAxes({ roll: -0.7, yaw: -0.65, pitch: -0.75 });
+      check("槍身左傾才是逆軌", classify(tilted.x, tilted.y, 1) === "counter");
+      const aimedOnly = tiltsFromAxes({ roll: 0.05, yaw: -0.8, pitch: -0.75 });
+      check("只轉槍口不算逆軌", classify(aimedOnly.x, aimedOnly.y, 1) !== "counter");
+      check("14 下拉滿", pullStats(14).sp === 100 && pullStats(14).rpm === 15200);
+      check("貓耳在陷阱對面", CATEARS[0].x < 0 && CATEARS[1].x > 0 && CATEARS[0].y < -40 && CATEARS[1].y < -40);
+
+      const rng = () => 0.5;
+      const bey = makeBey(presetBuild(PRESETS[0]), { xTilt: -0.7, yTilt: -0.8, clicks: 12, pos: -1, id: "you" }, rng);
+      bey.x = -FIELD.railR;
+      bey.y = 0;
+      bey.vx = 0;
+      bey.vy = 0;
+      bey.tech = "rail";
+      enterRail(bey);
+      drive(bey, 1 / 60);
+      const railCross = Math.sign(bey.x * bey.vy - bey.y * bey.vx);
+      bey.tech = "counter";
+      bey.vx = 0;
+      bey.vy = 0;
+      enterRail(bey);
+      drive(bey, 1 / 60);
+      const counterCross = Math.sign(bey.x * bey.vy - bey.y * bey.vx);
+      check("順軌和逆軌方向相反", railCross !== 0 && railCross === -counterCross, `${railCross} ${counterCross}`);
+
+      const arrow = presetBuild(PRESETS[2]);
+      const solo = createWorld(arrow, { xTilt: -0.7, yTilt: 0.8, clicks: 10, pos: -1, id: "you" }, arrow, { xTilt: 0, yTilt: 0, clicks: 1, pos: 1, id: "foe" }, rng);
+      solo.beys.pop();
+      for (let i = 0; i < 4 * 120; i += 1) stepWorld(solo, 1 / 120);
+      const parked = solo.beys[0];
+      const parkDist = Math.hypot(parked.x - CATEARS[0].x, parked.y - CATEARS[0].y);
+      check("蓄貓耳會停進左耳", parked.mode === "catear" && parkDist < 36, `mode ${parked.mode} dist ${parkDist.toFixed(1)}`);
+
+      const knight = presetBuild(PRESETS[3]);
+      const calm = simulate(arrow, { xTilt: 0, yTilt: 0, clicks: 8, pos: -1 }, knight, { xTilt: 0, yTilt: 0, clicks: 8, pos: 1 }, 12, rng);
+      check("垂直持久開局不會馬上出界", !calm.result || calm.result.label.indexOf("Spin") >= 0 || calm.t > 8, calm.result && calm.result.label);
+
+      const shark = presetBuild(PRESETS[4]);
+      const soft = presetBuild(PRESETS[2]);
+      soft.points = 1;
+      soft.height = 60;
+      soft.bitId = "B";
+      const attack = simulate(shark, { xTilt: -0.66, yTilt: -0.78, clicks: 14, pos: -1 }, soft, { xTilt: 0.1, yTilt: 0.05, clicks: 6, pos: 1 }, 25, rng);
+      check("強襲在 25 秒內分出勝負", !!attack.result, `t ${attack.t.toFixed(1)} rpm ${attack.beys.map((b) => Math.round(b.rpm)).join(",")}`);
+
+      const victim = (points, height, bitId) => {
+        const build = presetBuild(PRESETS[2]);
+        build.points = points;
+        build.height = height;
+        build.bitId = bitId;
+        return makeBey(build, { xTilt: 0, yTilt: 0, clicks: 8, pos: 1, id: "foe" }, rng);
+      };
+      const hitter = makeBey(shark, { xTilt: -0.6, yTilt: -0.7, clicks: 14, pos: -1, id: "you" }, rng);
+      hitter.rpm = 14000;
+      const fragile = victim(1, 80, "B");
+      const solid = victim(9, 60, "F");
+      applyBurst(fragile, hitter, 900);
+      applyBurst(solid, hitter, 900);
+      check("低鎖高棘輪比厚鎖低刃容易爆", (100 - fragile.integrity) > (100 - solid.integrity) * 1.8, `${fragile.integrity.toFixed(1)} vs ${solid.integrity.toFixed(1)}`);
+
+      const light = makeBey(Object.assign(presetBuild(PRESETS[2]), { bladeId: "custom", custom: Object.assign(customBlade(), { g: 28, type: "stamina", atk: 20 }) }), { xTilt: 0, yTilt: 0, clicks: 4, pos: -1, id: "you" }, rng);
+      const heavy = makeBey(Object.assign(presetBuild(PRESETS[4]), { bladeId: "custom", custom: Object.assign(customBlade(), { g: 42, type: "attack", atk: 60 }) }), { xTilt: 0, yTilt: 0, clicks: 4, pos: 1, id: "foe" }, rng);
+      light.x = 0; light.y = 0; light.vx = 0; light.vy = 0; light.rpm = 10000;
+      heavy.x = 30; heavy.y = 0; heavy.vx = 0; heavy.vy = 0; heavy.rpm = 10000;
+      collide(light, heavy, { touched: false, particles: [] });
+      check("輕刃被撞得更快", Math.abs(light.vx) > Math.abs(heavy.vx), `${light.vx.toFixed(1)} ${heavy.vx.toFixed(1)}`);
+      return lines;
+    }
+
+    renderBuilder("you");
+    renderBuilder("foe");
+    showDock();
+
+    if (location.hash === "#test") {
+      const pre = document.createElement("pre");
+      pre.id = "testout";
+      try {
+        pre.textContent = runSimTests().join("\n");
+      } catch (error) {
+        pre.textContent = `FAIL threw ${error && error.stack}`;
+      }
+      document.body.prepend(pre);
+    } else {
+      requestAnimationFrame(frame);
+    }
+
+    window.BX = { classify, planLaunch, simulate, createWorld, stepWorld, BLADES, BITS, presetBuild, PRESETS, pullStats, state, showDock, tiltsFromAxes };
+  </script>
+</body>
+</html>
