@@ -1717,6 +1717,17 @@
       ctx.setTransform(scale, 0, 0, scale, 0, 0);
     }
 
+    function spinLabel(name) {
+      const key = {
+        single: "tspinSingle",
+        double: "tspinDouble",
+        triple: "tspinTriple",
+        mini: "tspinMini",
+        "mini-single": "tspinMiniSingle",
+      }[name] || "tspin";
+      return t(key);
+    }
+
     function pushCallout(kind, text, life = 880) {
       callouts.unshift({ kind, text, t: 0, life });
     }
@@ -2068,9 +2079,9 @@
             const dur = step.type === "clear" ? (step.blasts?.length ? 520 : step.sand ? 180 : 240) : step.type === "sand" ? 16 : step.type === "drop" ? 120 + distance * 18 : step.type === "spin" ? 560 : step.type === "reward" && step.reward === "sand" ? 480 : step.type === "reward" ? 720 : 460;
             anim = { step, t: 0, dur };
             if (step.type === "clear") {
-              if (step.tspin) {
+              if (step.tspin || step.spinName) {
                 sound.playTspin();
-                pushCallout("tspin", t("tspin"));
+                pushCallout("tspin", spinLabel(step.spinName));
                 spinBurst();
               }
               sound.playClear(step.sand ? 2 : step.rows.length);
@@ -2088,7 +2099,7 @@
             }
             if (step.type === "spin") {
               sound.playTspin();
-              pushCallout("tspin", t("tspin"));
+              pushCallout("tspin", spinLabel(step.spinName));
               spinBurst();
             }
             if (step.type === "flip" || (step.type === "reward" && step.reward !== "sand")) sound.blip(180, 0.08);

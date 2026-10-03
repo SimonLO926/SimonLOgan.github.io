@@ -6,6 +6,12 @@ export const H = ROWS * CELL;
 
 export function createSession(kind, grid, stage, random) {
   const speed = Math.min(460, 220 + (Math.max(1, stage) - 1) * 16);
+  if (kind === "pinball" && grid?.[0]?.length) {
+    for (let y = ROWS - 6; y < ROWS; y += 1) {
+      if (!grid[y]) continue;
+      for (let x = 0; x < COLS; x += 1) grid[y][x] = null;
+    }
+  }
   return {
     kind,
     grid,
@@ -21,7 +27,7 @@ export function createSession(kind, grid, stage, random) {
     paddleW: 88,
     aim: -Math.PI / 2,
     chances: kind === "bbtan" ? 3 : 1,
-    balls: [],
+    balls: kind === "pinball" ? [restBall()] : [],
     queueLeft: 0,
     queueTime: 0,
     aiming: kind === "bbtan",
@@ -120,14 +126,21 @@ function collidePaddle(session, ball) {
   ball.y = top - ball.r - 1;
 }
 
+function tableWalls() {
+  return [
+    [22, H - 190, 22, H - 52],
+    [22, H - 52, 78, H - 26],
+    [W - 22, H - 190, W - 22, H - 52],
+    [W - 22, H - 52, W - 78, H - 26],
+  ];
+}
+
 function flipper(side, raised) {
   const left = side === "left";
-  const pivotX = left ? 58 : W - 58;
-  const pivotY = H - 42;
-  const rest = left ? -0.4 : Math.PI + 0.4;
-  const up = left ? -1.15 : Math.PI + 1.15;
-  const angle = raised ? up : rest;
-  const len = 74;
+  const pivotX = left ? 78 : W - 78;
+  const pivotY = H - 26;
+  const angle = left ? (raised ? -1.2 : -0.42) : (raised ? Math.PI + 1.2 : Math.PI + 0.42);
+  const len = 62;
   return {
     x1: pivotX,
     y1: pivotY,
@@ -136,50 +149,76 @@ function flipper(side, raised) {
   };
 }
 
-function collideFlipper(ball, segment, kicking) {
+function restBall() {
+  const seat = flipper("left", false);
+  return {
+    x: W / 2,
+    y: Math.min(seat.y1, seat.y2) - 16,
+    vx: 0,
+    vy: 0,
+    r: 7,
+    gravity: true,
+  };
+}
+
+function collideSegment(ball, segment, kicking) {
   const { x1, y1, x2, y2 } = segment;
   const dx = x2 - x1;
   const dy = y2 - y1;
   const len2 = dx * dx + dy * dy || 1;
-  let t = ((ball.x - x1) * dx + (ball.y - y1) * dy) / len2;
-  t = Math.max(0, Math.min(1, t));
-  const qx = x1 + t * dx;
-  const qy = y1 + t * dy;
+  let along = ((ball.x - x1) * dx + (ball.y - y1) * dy) / len2;
+  along = Math.max(0, Math.min(1, along));
+  const qx = x1 + along * dx;
+  const qy = y1 + along * dy;
   const dist = Math.hypot(ball.x - qx, ball.y - qy);
-  if (dist > ball.r + 5) return;
-  const nx = (ball.x - qx) / (dist || 1);
-  const ny = (ball.y - qy) / (dist || 1);
+  if (dist > ball.r + 6) return false;
+  const nx = dist ? (ball.x - qx) / dist : 0;
+  const ny = dist ? (ball.y - qy) / dist : -1;
+  const outwardY = ny > 0 ? ny : -ny;
   const dot = ball.vx * nx + ball.vy * ny;
-  ball.vx -= 2 * dot * nx;
-  ball.vy -= 2 * dot * ny;
-  if (kicking) ball.vy = Math.min(ball.vy, -340);
-  ball.x = qx + nx * (ball.r + 6);
-  ball.y = qy + ny * (ball.r + 6);
+  if (dot < 0) {
+    ball.vx -= 2 * dot * nx;
+    ball.vy -= 2 * dot * ny;
+  }
+  if (kicking) {
+    ball.vy = Math.min(ball.vy, -720);
+    ball.vx += nx * 80;
+  }
+  ball.x = qx + nx * (ball.r + 7);
+  ball.y = qy - outwardY * (ball.r + 7);
+  return true;
 }
 
 function stepBall(session, ball, dt) {
-  if (ball.gravity) ball.vy += 760 * dt;
-  ball.x += ball.vx * dt;
-  ball.y += ball.vy * dt;
-  if (ball.x < ball.r) {
-    ball.x = ball.r;
-    ball.vx = Math.abs(ball.vx);
+  const slices = session.kind === "pinball" ? 4 : 1;
+  const step = dt / slices;
+  for (let i = 0; i < slices; i += 1) {
+    if (ball.gravity) ball.vy += 520 * step;
+    ball.x += ball.vx * step;
+    ball.y += ball.vy * step;
+    if (ball.x < ball.r) {
+      ball.x = ball.r;
+      ball.vx = Math.abs(ball.vx);
+    }
+    if (ball.x > W - ball.r) {
+      ball.x = W - ball.r;
+      ball.vx = -Math.abs(ball.vx);
+    }
+    if (ball.y < ball.r) {
+      ball.y = ball.r;
+      ball.vy = Math.abs(ball.vy);
+    }
+    collideBricks(session, ball);
+    if (session.kind === "breakout") collidePaddle(session, ball);
+    if (session.kind === "pinball") {
+      for (const wall of tableWalls()) {
+        collideSegment(ball, { x1: wall[0], y1: wall[1], x2: wall[2], y2: wall[3] }, false);
+      }
+      collideSegment(ball, flipper("left", session.left), session.left);
+      collideSegment(ball, flipper("right", session.right), session.right);
+    }
   }
-  if (ball.x > W - ball.r) {
-    ball.x = W - ball.r;
-    ball.vx = -Math.abs(ball.vx);
-  }
-  if (ball.y < ball.r) {
-    ball.y = ball.r;
-    ball.vy = Math.abs(ball.vy);
-  }
-  collideBricks(session, ball);
-  if (session.kind === "breakout") collidePaddle(session, ball);
-  if (session.kind === "pinball") {
-    collideFlipper(ball, flipper("left", session.left), session.left);
-    collideFlipper(ball, flipper("right", session.right), session.right);
-  }
-  const limit = session.kind === "pinball" ? 520 : session.speed * 1.4;
+  const limit = session.kind === "pinball" ? 900 : session.speed * 1.4;
   const mag = Math.hypot(ball.vx, ball.vy);
   if (mag > limit) {
     ball.vx = (ball.vx / mag) * limit;
@@ -207,9 +246,19 @@ export function updateSession(session, dtMs) {
     session.launched = true;
   }
   if (session.kind === "pinball" && !session.launched) {
-    const tilt = (session.random() - 0.5) * 0.4;
-    session.balls.push(makeBall(session, -Math.PI / 2 + tilt, W / 2, H - 96));
-    session.launched = true;
+    if (!session.balls.length) session.balls.push(restBall());
+    const ball = session.balls[0];
+    const seat = restBall();
+    ball.x = seat.x;
+    ball.y = seat.y;
+    ball.vx = 0;
+    ball.vy = 0;
+    if (session.prep <= 0 && (session.left || session.right || session.fire)) {
+      session.launched = true;
+      ball.vx = session.right && !session.left ? -200 : 200;
+      ball.vy = -720;
+    }
+    return session;
   }
   if (session.kind === "breakout") movePaddle(session, dt);
   if (session.kind === "bbtan") {
@@ -301,12 +350,10 @@ export function drawSession(ctx, session, ink) {
     ctx.lineWidth = 8;
     ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(16, H - 118);
-    ctx.lineTo(16, H - 28);
-    ctx.lineTo(54, H - 18);
-    ctx.moveTo(W - 16, H - 118);
-    ctx.lineTo(W - 16, H - 28);
-    ctx.lineTo(W - 54, H - 18);
+    for (const [x1, y1, x2, y2] of tableWalls()) {
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+    }
     ctx.stroke();
     ctx.lineWidth = 12;
     for (const side of ["left", "right"]) {
