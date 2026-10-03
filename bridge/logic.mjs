@@ -74,14 +74,26 @@ export function sandColorOf(type) {
   return sandColorsOf(type)[0];
 }
 
-export function sandPaint(type, cells) {
+export const SAND_MIX_CHANCE = 1 / 3;
+
+export function sandMark(type, random = Math.random) {
+  return random() < SAND_MIX_CHANCE ? [...sandColorsOf(type)] : sandColorOf(type);
+}
+
+export function sandPaint(type, cells, mix = true) {
   const [first, second] = sandColorsOf(type);
-  if (cells.length < 2) return cells.map(() => first);
+  if (!mix || cells.length < 2) return cells.map(() => first);
   const xs = cells.map(([x]) => x);
   const ys = cells.map(([, y]) => y);
   const splitX = Math.max(...xs) !== Math.min(...xs);
   const mid = splitX ? (Math.min(...xs) + Math.max(...xs)) / 2 : (Math.min(...ys) + Math.max(...ys)) / 2;
   return cells.map(([x, y]) => ((splitX ? x : y) <= mid ? first : second));
+}
+
+export function sandPaintsFor(type, cells, sand) {
+  if (Array.isArray(sand)) return sandPaint(type, cells, true);
+  if (typeof sand === "number") return cells.map(() => sand);
+  return sandPaint(type, cells, true);
 }
 export const TSPIN_SCORE = [400, 800, 1200, 1600];
 
@@ -115,6 +127,14 @@ export function paceOf(game) {
   const pace = Number(game?.pace);
   if (!Number.isFinite(pace)) return 1;
   return Math.min(10, Math.max(0.5, Math.round(pace * 2) / 2));
+}
+
+export function paceScale(game) {
+  const pace = paceOf(game);
+  const stage = Math.max(1, game?.stage || 1);
+  const steep = game?.paceName === "hard" || pace > 2;
+  const stageRate = steep ? 1 + (stage - 1) * 0.5 : 1;
+  return pace * stageRate;
 }
 
 const KICKS = [
@@ -197,7 +217,7 @@ export function createGame(options = {}) {
       bombIndex: marked ? Math.floor(random() * SHAPES[type][0].length) : null,
       curse,
     };
-    if (game.sanding) piece.sand = sandColorOf(type);
+    if (game.sanding) piece.sand = sandMark(type, random);
     return piece;
   }
 
@@ -516,11 +536,8 @@ export function beginSand(game, drops = SAND_DROPS) {
   game.sandLeft = drops;
   game.sandExit = false;
   const tint = (piece) => {
-    if (piece) piece.sand = sandColorOf(piece.type);
+    if (piece) piece.sand = sandMark(piece.type, game.random);
   };
-  for (const piece of game.queue) tint(piece);
-  tint(game.hold);
-  tint(game.active);
   const grid = emptySandGrid();
   const groups = new Map();
   for (let y = 0; y < ROWS; y += 1) {
@@ -534,9 +551,13 @@ export function beginSand(game, drops = SAND_DROPS) {
     }
   }
   for (const group of groups.values()) {
-    const paints = sandPaint(group[0].type, group.map((cell) => [cell.x, cell.y]));
+    const coords = group.map((cell) => [cell.x, cell.y]);
+    const paints = sandPaintsFor(group[0].type, coords, sandMark(group[0].type, game.random));
     group.forEach((cell, index) => stampSand(grid, cell.x, cell.y, paints[index] + 1));
   }
+  for (const piece of game.queue) tint(piece);
+  tint(game.hold);
+  tint(game.active);
   game.sandGrid = grid;
 }
 
@@ -637,7 +658,7 @@ export function lockActive(game) {
   const sanding = !!game.sanding && game.sandGrid;
   const cells = cellsOf(game.active.type, game.active.rot, game.active.x, game.active.y);
   if (sanding) {
-    const paints = sandPaint(game.active.type, cells);
+    const paints = sandPaintsFor(game.active.type, cells, game.active.sand);
     cells.forEach(([x, y], index) => stampSand(game.sandGrid, x, y, paints[index] + 1));
     game.sandLeft -= 1;
     if (game.sandLeft <= 0) game.sandExit = true;
@@ -960,5 +981,5 @@ export function gravityMs(game) {
     ? Math.max(80, 820 - Math.floor(game.lines / 10) * 140)
     : Math.max(80, 980 - (game.stage - 1) * 110);
   if (classic) return base;
-  return Math.max(40, Math.round(base / paceOf(game)));
+  return Math.max(40, Math.round(base / paceScale(game)));
 }

@@ -13,8 +13,11 @@ import {
   paceOf,
   sandClearColors,
   sandPaint,
+  SAND_MIX_CHANCE,
   SAND_SCALE,
   sandColorsOf,
+  sandMark,
+  paceScale,
   sandColorOf,
   sandFallStep,
   tSpinKind,
@@ -230,9 +233,10 @@ test("sand mode lasts twenty drops and uses four colors", () => {
   assert.equal(game.sandGrid[18 * SAND_SCALE][SAND_SCALE], sandColorOf("O") + 1);
   assert.equal(game.queue[0].sand, sandColorOf("T"));
   assert.equal(game.queue[1].sand, sandColorOf("L"));
-  assert.equal(game.queue[2].sand, sandColorOf("J"));
+  assert.deepEqual(game.queue[2].sand, sandColorsOf("J"));
   const pulled = game.pull();
-  assert.equal(pulled.sand, sandColorOf(pulled.type));
+  if (Array.isArray(pulled.sand)) assert.deepEqual(pulled.sand, sandColorsOf(pulled.type));
+  else assert.equal(pulled.sand, sandColorOf(pulled.type));
   assert.equal(["I", "O", "T", "S", "Z", "J", "L"].includes(game.pull().type), true);
   const grain = emptySandGrid();
   const grainHeight = grain.length;
@@ -248,7 +252,12 @@ test("sand mode lasts twenty drops and uses four colors", () => {
   assert.equal(blocked[blockedHeight - 2][2], 0);
   assert.ok(blocked[blockedHeight - 1][1] === 1 || blocked[blockedHeight - 1][3] === 1);
   const painted = sandPaint("I", [[0, 0], [1, 0], [2, 0], [3, 0]]);
+  assert.equal(SAND_MIX_CHANCE, 1 / 3);
   assert.equal(new Set(painted).size, 2);
+  const solid = sandPaint("I", [[0, 0], [1, 0], [2, 0], [3, 0]], false);
+  assert.deepEqual(solid, [sandColorOf("I"), sandColorOf("I"), sandColorOf("I"), sandColorOf("I")]);
+  assert.deepEqual(sandMark("T", () => 0), sandColorsOf("T"));
+  assert.equal(sandMark("T", () => 1 / 3), sandColorOf("T"));
   assert.equal(painted[0], sandColorsOf("I")[0]);
   assert.equal(painted[3], sandColorsOf("I")[1]);
   const span = Array.from({ length: 3 }, () => Array(6).fill(0));
@@ -372,11 +381,33 @@ test("hard starts twice as fast and weights the score", () => {
   hard.pace = 2;
   hard.stage = 1;
   assert.equal(gravityMs(hard), Math.round(gravityMs(normal) / 2));
+  hard.paceName = "hard";
+  normal.stage = 2;
+  hard.stage = 2;
+  assert.equal(paceScale(hard), 3);
+  assert.equal(gravityMs(hard), Math.round(gravityMs(normal) / 3));
+  normal.stage = 3;
+  hard.stage = 3;
   const custom = createGame({ mode: "marathon" });
-  custom.pace = 10;
-  assert.equal(gravityMs(custom), Math.max(40, Math.round(gravityMs(normal) / 10)));
+  custom.pace = 4;
+  custom.stage = 3;
+  assert.equal(paceScale(hard), 4);
+  assert.equal(paceScale(custom), 8);
+  assert.equal(gravityMs(hard), Math.round(gravityMs(normal) / 4));
+  assert.equal(gravityMs(custom), Math.round(gravityMs(normal) / 8));
+  const mild = createGame({ mode: "marathon" });
+  mild.pace = 1.5;
+  mild.paceName = "custom";
+  mild.stage = 3;
+  assert.equal(paceScale(mild), 1.5);
+  assert.equal(gravityMs(mild), Math.round(gravityMs(normal) / 1.5));
+  normal.stage = 1;
+  const fast = createGame({ mode: "marathon" });
+  fast.pace = 10;
+  assert.equal(gravityMs(fast), Math.max(40, Math.round(gravityMs(normal) / 10)));
   assert.equal(paceOf({ pace: 0.2 }), 0.5);
   assert.equal(paceOf({ pace: 12 }), 10);
+  hard.stage = 1;
   hard.phase = "resolving";
   hard.comboArmed = true;
   hard.sanding = false;
