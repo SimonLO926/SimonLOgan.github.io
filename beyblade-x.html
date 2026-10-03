@@ -254,7 +254,7 @@
   <header class="top">
     <div class="brand">
       <div class="mark">X</div>
-      <h1>爆旋陀螺 X<small>BX-10 極限盤 · 自訂對戰</small></h1>
+      <h1>爆旋陀螺 X<small>極限盤 BX-10 · 無限盤 BX-46</small></h1>
     </div>
     <div class="score" aria-live="polite">
       <div><span>你</span><br><b id="score-you">0</b></div>
@@ -262,6 +262,8 @@
       <div><span>對手</span><br><b id="score-foe">0</b></div>
     </div>
     <div class="tools">
+      <button type="button" id="stad-xtreme" aria-pressed="true">極限盤</button>
+      <button type="button" id="stad-infinity" aria-pressed="false">無限盤</button>
       <button type="button" id="speed" aria-pressed="false">速度 1×</button>
       <button type="button" id="mute" aria-pressed="false">音效開</button>
     </div>
@@ -301,7 +303,7 @@
 
   <details class="codex">
     <summary>盤型、零件和射法是怎麼來的</summary>
-    <p>對戰盤按 BX-10 Xtreme Stadium 的公開尺寸：約 44 × 45.5 × 15.5 cm，戰鬥區直徑 36.5 cm，龍捲稜直徑 21 cm。出口全在同一側：兩側 Over 區 2 分，中間較寬的 Xtreme 區 3 分。爆裂 2 分，停轉 1 分，先到 4 分。全程沒碰到對手就自己出場，只算 1 分自爆。</p>
+    <p>極限盤 BX-10 是圓碗前面缺一截，左右兩個貓耳 Over 口袋加中間較寬的 Xtreme 口，合成「凹」字，不是整圓。約 44 × 45.5 cm，戰鬥區直徑 36.5 cm，龍捲稜 21 cm。Over 口寬約 12 cm，Xtreme 口寬約 19 cm。無限盤 BX-46 是長方形，左右兩端各一個同樣的凹字口，上下兩條長齒軌可以連續 Infinity Dash。Over 2 分，Xtreme 3 分，爆裂 2 分，停轉 1 分，先到 4 分。</p>
     <p>陀螺分刃、棘輪、軸心。這裡的刃重用公開秤重的約值：劍龍 Dran Sword 34.8 g（BX-01）、地獄鐮刀 Hells Scythe 32.7 g（BX-02）、巫師之箭 Wizard Arrow 32.0 g（BX-03）、騎士之盾 Knight Shield 32.6 g。鯊刃 Shark Edge 取約 35 g。棘輪對齊 3-60 約 6.2 g、4-80 約 7.0 g 這類秤重。軸心約 2.0–2.3 g。拉力對上拉繩競技大約 4000–15200 RPM。</p>
     <ul>
       <li>蓄貓耳：第二下滑到後收，第一下又有明顯左右傾。陀螺收到出口對面兩側空位續轉，用來躲第一波極限衝擊。社區也叫躲貓耳。</li>
@@ -328,8 +330,8 @@
       { a0: 110, a1: 130, kind: "over" }
     ];
     const CATEARS = [
-      { x: -96, y: -60 },
-      { x: 96, y: -60 }
+      { x: -118, y: 96 },
+      { x: 118, y: 96 }
     ];
     const VIEW = { w: 780, h: 720, scale: 1.5, cx: 390, cy: 330 };
 
@@ -409,6 +411,7 @@
       world: null,
       lastNote: "",
       speed: 1,
+      stadium: "xtreme",
       muted: false,
       log: []
     };
@@ -509,7 +512,7 @@
       let speed = 240 + (stats.rpm / 15000) * 420;
       const ear = xTilt >= 0 ? 1 : 0;
       if (tech === "catear") {
-        const pocket = CATEARS[ear];
+        const pocket = earPoints()[ear];
         aimX = pocket.x - x;
         aimY = pocket.y - y;
         speed = 300 + (stats.rpm / 15000) * 180;
@@ -634,7 +637,7 @@
       if (bey.stagger > 0) bey.stagger -= dt;
 
       if (bey.mode === "catear" && bey.knock <= 0) {
-        const ear = CATEARS[bey.ear];
+        const ear = earPoints()[bey.ear];
         bey.orbit += dt * bey.spin * (6.2 + bey.rpm / 5000);
         const tx = ear.x + Math.cos(bey.orbit) * 14;
         const ty = ear.y + Math.sin(bey.orbit) * 14;
@@ -646,6 +649,21 @@
       if (bey.mode === "pocket") {
         bey.vx *= 0.992;
         bey.vy *= 0.992;
+        return;
+      }
+
+      if (bey.mode === "rail" && state.stadium === "infinity") {
+        const side = bey.y >= 0 ? 1 : -1;
+        const rpmN = bey.rpm / 12000;
+        const dash = (bit.teeth / 12) * (0.55 + rpmN) * (bit.dash / 35) * 680;
+        const dir = bey.railDir || -1;
+        bey.x += dir * side * dash * dt;
+        bey.y += (side * 138 - bey.y) * Math.min(1, 8 * dt);
+        bey.vx = dir * side * dash;
+        bey.vy = 0;
+        bey.railTime += dt;
+        const hold = 0.22 + (8 / bit.teeth) * 0.12;
+        if (Math.abs(bey.x) > 188 || bey.railTime > hold) releaseRail(bey, Math.atan2(bey.y, bey.x), dash);
         return;
       }
 
@@ -678,7 +696,7 @@
         bey.vx *= 0.985;
         bey.vy *= 0.985;
       } else if (bey.mode === "seekear" || (bey.tech === "catear" && bey.mode === "free" && bey.knock <= 0)) {
-        const ear = CATEARS[bey.ear];
+        const ear = earPoints()[bey.ear];
         const dx = ear.x - bey.x;
         const dy = ear.y - bey.y;
         const distE = Math.hypot(dx, dy) || 1;
@@ -724,13 +742,14 @@
         bey.vy += Math.sin(th) * kick * dt;
       }
 
-      const canRail = !committed && bey.railCooldown <= 0 && bey.mode === "free" && bey.tech !== "catear" && dist > FIELD.railIn && dist < FIELD.wall + 6 && !exitAt(th) && bey.rpm > 3300 && bit.teeth > 0;
+      const onInfinityRail = state.stadium === "infinity" && Math.abs(bey.y) > 112 && Math.abs(bey.y) < 168 && Math.abs(bey.x) < 185;
+      const canRail = !committed && bey.railCooldown <= 0 && bey.mode === "free" && bey.tech !== "catear" && bey.rpm > 3300 && bit.teeth > 0 && (onInfinityRail || (state.stadium !== "infinity" && dist > FIELD.railIn && dist < FIELD.wall + 6 && !exitAt(th)));
       if (canRail) {
         const want = bey.tech === "rail" || bey.tech === "counter" || bey.tech === "smash" || style === "attack" || dist > FIELD.railR + 6;
         if (want) {
           const natural = bey.spin > 0 ? -1 : 1;
           const dir = bey.tech === "counter" ? -natural : natural;
-          if (railHitsExit(bey, dir)) {
+          if (!onInfinityRail && railHitsExit(bey, dir)) {
             bey.vx += -Math.cos(th) * 220;
             bey.vy += -Math.sin(th) * 220;
             capSpeed(bey);
@@ -757,7 +776,7 @@
     function releaseRail(bey, th, dash) {
       bey.mode = "free";
       bey.railTime = 0;
-      bey.railCooldown = 0.92;
+      bey.railCooldown = state.stadium === "infinity" ? 0.36 : 0.92;
       bey.flash = 0.2;
       const nx = Math.cos(th);
       const ny = Math.sin(th);
@@ -863,12 +882,20 @@
       const th = Math.atan2(bey.y, bey.x);
       const exit = exitAt(th);
       const outward = bey.vx * Math.cos(th) + bey.vy * Math.sin(th);
-      const leaving = exit && dist > 164 && outward > 70 && bey.mode !== "catear" && bey.mode !== "seekear";
+      const pocket = pocketContaining(bey.x, bey.y);
+      if (pocket && pocket.slope && Math.hypot(bey.vx, bey.vy) < 520 && bey.mode !== "ko") {
+        const back = Math.hypot(bey.x, bey.y) || 1;
+        bey.vx -= (bey.x / back) * 140;
+        bey.vy -= (bey.y / back) * 140;
+        bey.mode = "free";
+        return;
+      }
+      const leaving = !!pocket && bey.mode !== "catear" && bey.mode !== "seekear";
       if (bey.mode === "pocket" || leaving) {
         if (bey.mode !== "pocket") {
           bey.mode = "pocket";
           bey.pocketT = 0;
-          bey.pocketKind = exit ? exit.kind : "over";
+          bey.pocketKind = (pocket && pocket.kind) || (exit ? exit.kind : "over");
         }
         bey.pocketT += dt;
         if (dist < 158 && outward < 40) {
@@ -878,7 +905,28 @@
         if (bey.pocketT > 0.38 || dist > FIELD.battleR + 28) bey.pendingKO = bey.pocketKind || "over";
         return;
       }
-      if (dist > FIELD.wall && bey.mode !== "rail") {
+      if (state.stadium === "infinity" && bey.mode !== "rail" && !pointInPoly(bey.x, bey.y, currentArena().outline)) {
+        const pts = currentArena().outline;
+        let best = null;
+        for (let i = 0; i < pts.length; i += 1) {
+          const a = pts[i];
+          const b = pts[(i + 1) % pts.length];
+          const abx = b[0] - a[0];
+          const aby = b[1] - a[1];
+          const denom = abx * abx + aby * aby || 1;
+          const t = Math.max(0, Math.min(1, ((bey.x - a[0]) * abx + (bey.y - a[1]) * aby) / denom));
+          const px = a[0] + abx * t;
+          const py = a[1] + aby * t;
+          const d = (bey.x - px) ** 2 + (bey.y - py) ** 2;
+          if (!best || d < best.d) best = { d, x: px, y: py };
+        }
+        if (best) {
+          bey.x = best.x;
+          bey.y = best.y;
+          bey.vx *= 0.4;
+          bey.vy *= 0.4;
+        }
+      } else if (dist > FIELD.wall && bey.mode !== "rail" && !exitAt(th)) {
         const nx = bey.x / dist;
         const ny = bey.y / dist;
         bey.x = nx * FIELD.wall;
@@ -1079,160 +1127,187 @@
       sprite.userData.last = text;
     }
 
+    function pointInPoly(x, y, poly) {
+      let inside = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i, i += 1) {
+        const xi = poly[i][0];
+        const yi = poly[i][1];
+        const xj = poly[j][0];
+        const yj = poly[j][1];
+        const hit = ((yi > y) !== (yj > y)) && (x < ((xj - xi) * (y - yi)) / ((yj - yi) || 1e-6) + xi);
+        if (hit) inside = !inside;
+      }
+      return inside;
+    }
+
+    function xtremeLayout() {
+      const radius = 156;
+      const bowl = [];
+      for (let deg = 150; deg <= 390; deg += 4) {
+        const angle = degRad(deg);
+        bowl.push([Math.cos(angle) * radius, Math.sin(angle) * radius]);
+      }
+      const outline = bowl.concat([
+        [150, 112], [176, 150], [168, 196], [124, 176], [112, 138],
+        [96, 156], [90, 214], [0, 228], [-90, 214], [-96, 156],
+        [-112, 138], [-124, 176], [-168, 196], [-176, 150], [-150, 112]
+      ]);
+      return {
+        id: "xtreme",
+        outline,
+        housing: [470, 500],
+        ears: CATEARS,
+        pockets: [
+          { kind: "over", slope: false, name: "右貓耳", poly: [[118, 130], [176, 150], [186, 198], [130, 188], [112, 150]] },
+          { kind: "xtreme", slope: false, name: "Xtreme", poly: [[-78, 150], [-96, 236], [96, 236], [78, 150]] },
+          { kind: "over", slope: false, name: "左貓耳", poly: [[-118, 130], [-112, 150], [-130, 188], [-186, 198], [-176, 150]] }
+        ],
+        rail(parent, toothGeo, toothMat) {
+          for (let deg = 154; deg < 386; deg += 6) {
+            const angle = degRad(deg);
+            const tooth = new THREE.Mesh(toothGeo, toothMat);
+            tooth.position.set(Math.cos(angle) * 148, 7.2, Math.sin(angle) * 148);
+            tooth.rotation.y = Math.PI / 2 - angle;
+            parent.add(tooth);
+          }
+        }
+      };
+    }
+
+    function infinityLayout() {
+      const yRail = 146;
+      const outline = [];
+      for (let x = 170; x >= -170; x -= 16) outline.push([x, -yRail]);
+      outline.push(
+        [-188, -108], [-246, -86], [-262, -48], [-214, -24],
+        [-236, 0],
+        [-214, 24], [-262, 48], [-246, 86], [-188, 108]
+      );
+      for (let x = -170; x <= 170; x += 16) outline.push([x, yRail]);
+      outline.push(
+        [188, 108], [246, 86], [262, 48], [214, 24],
+        [236, 0],
+        [214, -24], [262, -48], [246, -86], [188, -108]
+      );
+      const endPockets = (sign) => ([
+        { kind: "over", slope: true, name: sign > 0 ? "右上貓耳" : "左上貓耳", poly: [[sign * 188, -20], [sign * 188, -100], [sign * 258, -90], [sign * 268, -36], [sign * 220, -16]] },
+        { kind: "xtreme", slope: false, name: sign > 0 ? "右 Xtreme" : "左 Xtreme", poly: [[sign * 196, -28], [sign * 196, 28], [sign * 246, 18], [sign * 246, -18]] },
+        { kind: "over", slope: true, name: sign > 0 ? "右下貓耳" : "左下貓耳", poly: [[sign * 188, 20], [sign * 220, 16], [sign * 268, 36], [sign * 258, 90], [sign * 188, 100]] }
+      ]);
+      return {
+        id: "infinity",
+        outline,
+        housing: [640, 390],
+        ears: [{ x: -198, y: 62 }, { x: 198, y: 62 }],
+        pockets: endPockets(-1).concat(endPockets(1)),
+        rail(parent, toothGeo, toothMat) {
+          [-1, 1].forEach((side) => {
+            for (let x = -168; x <= 168; x += 14) {
+              const tooth = new THREE.Mesh(toothGeo, toothMat);
+              tooth.position.set(x, 7.2, side * 138);
+              tooth.rotation.y = side > 0 ? 0 : Math.PI;
+              parent.add(tooth);
+            }
+          });
+        }
+      };
+    }
+
+    function currentArena() {
+      return state.stadium === "infinity" ? infinityLayout() : xtremeLayout();
+    }
+
+    function earPoints() {
+      return currentArena().ears;
+    }
+
+    function pocketContaining(x, y) {
+      return currentArena().pockets.find((pocket) => pointInPoly(x, y, pocket.poly)) || null;
+    }
+
     function buildStadium(parent) {
-      const rings = 36;
-      const segs = 96;
-      const positions = [];
-      const colors = [];
-      for (let i = 0; i <= rings; i += 1) {
-        const radius = (i / rings) * 180;
-        for (let j = 0; j <= segs; j += 1) {
-          const deg = (j / segs) * 360;
-          const angle = degRad(deg);
-          const height = dishHeight(radius, deg);
-          positions.push(Math.cos(angle) * radius, height, Math.sin(angle) * radius);
-          colors.push(...dishColor(radius, deg));
-        }
-      }
-      const indices = [];
-      const stride = segs + 1;
-      for (let i = 0; i < rings; i += 1) {
-        for (let j = 0; j < segs; j += 1) {
-          const a = i * stride + j;
-          indices.push(a, a + 1, a + stride, a + 1, a + stride + 1, a + stride);
-        }
-      }
-      const floorGeo = new THREE.BufferGeometry();
-      floorGeo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-      floorGeo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-      floorGeo.setIndex(indices);
-      floorGeo.computeVertexNormals();
+      const arena = currentArena();
+      const shape = new THREE.Shape();
+      arena.outline.forEach((point, index) => {
+        const x = point[0];
+        const y = -point[1];
+        if (index === 0) shape.moveTo(x, y);
+        else shape.lineTo(x, y);
+      });
+      shape.closePath();
+      const floorGeo = new THREE.ExtrudeGeometry(shape, { depth: 6, bevelEnabled: true, bevelThickness: 1.2, bevelSize: 1.2, bevelSegments: 1 });
+      floorGeo.rotateX(-Math.PI / 2);
       const floor = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({
-        vertexColors: true,
-        roughness: 0.48,
-        metalness: 0.06,
+        color: 0xd5d8dc,
+        roughness: 0.46,
+        metalness: 0.08,
         side: THREE.DoubleSide
       }));
       floor.receiveShadow = true;
       parent.add(floor);
 
-      const base = new THREE.Mesh(
-        new THREE.CylinderGeometry(214, 226, 16, 48),
-        new THREE.MeshStandardMaterial({ color: 0x14171b, roughness: 0.72, metalness: 0.18 })
-      );
-      base.position.y = -10;
-      base.receiveShadow = true;
-      parent.add(base);
+      const plateShape = new THREE.Shape();
+      const halfW = arena.housing[0] / 2;
+      const halfH = arena.housing[1] / 2;
+      const rad = 28;
+      plateShape.moveTo(-halfW + rad, -halfH);
+      plateShape.lineTo(halfW - rad, -halfH);
+      plateShape.quadraticCurveTo(halfW, -halfH, halfW, -halfH + rad);
+      plateShape.lineTo(halfW, halfH - rad);
+      plateShape.quadraticCurveTo(halfW, halfH, halfW - rad, halfH);
+      plateShape.lineTo(-halfW + rad, halfH);
+      plateShape.quadraticCurveTo(-halfW, halfH, -halfW, halfH - rad);
+      plateShape.lineTo(-halfW, -halfH + rad);
+      plateShape.quadraticCurveTo(-halfW, -halfH, -halfW + rad, -halfH);
+      const plateGeo = new THREE.ExtrudeGeometry(plateShape, { depth: 18, bevelEnabled: true, bevelThickness: 3, bevelSize: 3, bevelSegments: 2 });
+      plateGeo.rotateX(-Math.PI / 2);
+      const plate = new THREE.Mesh(plateGeo, new THREE.MeshStandardMaterial({ color: 0x2a3038, roughness: 0.45, metalness: 0.32 }));
+      plate.position.y = -16;
+      plate.receiveShadow = true;
+      parent.add(plate);
 
-      const wallMat = new THREE.MeshStandardMaterial({ color: 0x3e4650, roughness: 0.4, metalness: 0.34 });
-      const shell = new THREE.Shape();
-      const shellSteps = 48;
-      const shellStart = 132;
-      const shellEnd = 408;
-      for (let i = 0; i <= shellSteps; i += 1) {
-        const angle = degRad(shellStart + ((shellEnd - shellStart) * i) / shellSteps);
-        const x = Math.cos(angle) * 228;
-        const y = Math.sin(angle) * 228;
-        if (i === 0) shell.moveTo(x, y);
-        else shell.lineTo(x, y);
-      }
-      for (let i = shellSteps; i >= 0; i -= 1) {
-        const angle = degRad(shellStart + ((shellEnd - shellStart) * i) / shellSteps);
-        shell.lineTo(Math.cos(angle) * 186, Math.sin(angle) * 186);
-      }
-      shell.closePath();
-      const shellGeo = new THREE.ExtrudeGeometry(shell, {
-        depth: 34,
-        bevelEnabled: true,
-        bevelThickness: 3,
-        bevelSize: 2.4,
-        bevelSegments: 2
-      });
-      shellGeo.rotateX(-Math.PI / 2);
-      const shellMesh = new THREE.Mesh(shellGeo, wallMat);
-      shellMesh.castShadow = true;
-      shellMesh.receiveShadow = true;
-      parent.add(shellMesh);
-
-      const ridge = new THREE.Mesh(
-        new THREE.TorusGeometry(108, 2.4, 10, 72),
-        new THREE.MeshStandardMaterial({ color: 0x9aa3ad, roughness: 0.32, metalness: 0.55 })
-      );
-      ridge.rotation.x = Math.PI / 2;
-      ridge.position.y = 27;
-      ridge.castShadow = true;
-      parent.add(ridge);
-      const toothGeo = new THREE.BoxGeometry(5.2, 4.2, 7);
-      const toothMat = new THREE.MeshStandardMaterial({ color: 0x18c26a, roughness: 0.38, metalness: 0.18, emissive: 0x063318, emissiveIntensity: 0.35 });
-      for (let deg = 136; deg < 404; deg += 6.5) {
-        const angle = degRad(deg);
-        const radius = 166;
-        const tooth = new THREE.Mesh(toothGeo, toothMat);
-        tooth.position.set(Math.cos(angle) * radius, dishHeight(radius, deg) + 3.4, Math.sin(angle) * radius);
-        tooth.rotation.y = Math.PI / 2 - angle;
-        parent.add(tooth);
-      }
-
-      EXITS.forEach((exit) => {
-        const shape = new THREE.Shape();
-        const steps = 8;
-        for (let i = 0; i <= steps; i += 1) {
-          const angle = degRad(exit.a0 + ((exit.a1 - exit.a0) * i) / steps);
-          const x = Math.cos(angle) * 158;
-          const y = Math.sin(angle) * 158;
-          if (i === 0) shape.moveTo(x, y);
-          else shape.lineTo(x, y);
-        }
-        for (let i = steps; i >= 0; i -= 1) {
-          const angle = degRad(exit.a0 + ((exit.a1 - exit.a0) * i) / steps);
-          shape.lineTo(Math.cos(angle) * 236, Math.sin(angle) * 236);
-        }
-        const pocketGeo = new THREE.ExtrudeGeometry(shape, { depth: 2.2, bevelEnabled: false });
+      arena.pockets.forEach((pocket) => {
+        const pocketShape = new THREE.Shape();
+        pocket.poly.forEach((point, index) => {
+          if (index === 0) pocketShape.moveTo(point[0], -point[1]);
+          else pocketShape.lineTo(point[0], -point[1]);
+        });
+        pocketShape.closePath();
+        const pocketGeo = new THREE.ExtrudeGeometry(pocketShape, { depth: 8, bevelEnabled: false });
         pocketGeo.rotateX(-Math.PI / 2);
-        const pocket = new THREE.Mesh(pocketGeo, new THREE.MeshStandardMaterial({
-          color: exit.kind === "xtreme" ? 0xd4274a : 0xe39a22,
-          roughness: 0.62,
-          metalness: 0.06
+        const pocketMesh = new THREE.Mesh(pocketGeo, new THREE.MeshStandardMaterial({
+          color: pocket.kind === "xtreme" ? 0xd4274a : 0xd7a03a,
+          roughness: 0.58,
+          metalness: 0.08
         }));
-        pocket.position.y = exit.kind === "xtreme" ? -8 : -4.5;
-        pocket.receiveShadow = true;
-        parent.add(pocket);
-      });
-
-      const overLabel = (angle, text) => {
-        const sprite = makeTextSprite(text, "#ffe08a");
-        const radius = 214;
-        sprite.position.set(Math.cos(degRad(angle)) * radius, 8, Math.sin(degRad(angle)) * radius);
-        parent.add(sprite);
-      };
-      overLabel(60, "Over 2");
-      overLabel(120, "Over 2");
-      const xtreme = makeTextSprite("Xtreme 3", "#ff8ab0");
-      xtreme.position.set(0, 6, 228);
-      parent.add(xtreme);
-
-      CATEARS.forEach((ear, index) => {
-        const radius = Math.hypot(ear.x, ear.y);
-        const deg = normDeg(Math.atan2(ear.y, ear.x));
-        const ring = new THREE.Mesh(
-          new THREE.TorusGeometry(15, 0.8, 8, 28),
-          new THREE.MeshStandardMaterial({ color: 0xff8eb6, emissive: 0x5a1830, emissiveIntensity: 0.45, roughness: 0.35 })
-        );
-        ring.rotation.x = Math.PI / 2;
-        ring.position.set(ear.x, dishHeight(radius, deg) + 1.4, ear.y);
-        parent.add(ring);
-        const label = makeTextSprite(index === 0 ? "左貓耳" : "右貓耳", "#ffb3cc");
-        label.position.set(ear.x, ring.position.y + 10, ear.y);
+        pocketMesh.position.y = pocket.kind === "xtreme" ? -3 : -1.2;
+        pocketMesh.receiveShadow = true;
+        parent.add(pocketMesh);
+        const cx = pocket.poly.reduce((sum, point) => sum + point[0], 0) / pocket.poly.length;
+        const cy = pocket.poly.reduce((sum, point) => sum + point[1], 0) / pocket.poly.length;
+        const label = makeTextSprite(pocket.kind === "xtreme" ? "Xtreme 3" : `${pocket.name} 2`, pocket.kind === "xtreme" ? "#ffd0dc" : "#ffe08a");
+        label.position.set(cx, 14, cy);
         parent.add(label);
       });
 
-      const xMat = new THREE.MeshStandardMaterial({ color: 0x9aa3ad, roughness: 0.4, metalness: 0.55 });
-      const armA = new THREE.Mesh(new THREE.BoxGeometry(28, 0.8, 3.2), xMat);
-      const armB = new THREE.Mesh(new THREE.BoxGeometry(28, 0.8, 3.2), xMat);
+      const toothGeo = new THREE.BoxGeometry(5.4, 4.4, 8);
+      const toothMat = new THREE.MeshStandardMaterial({ color: 0x18c26a, roughness: 0.36, metalness: 0.16, emissive: 0x063318, emissiveIntensity: 0.4 });
+      arena.rail(parent, toothGeo, toothMat);
+
+      const ridge = new THREE.Mesh(
+        new THREE.TorusGeometry(state.stadium === "infinity" ? 96 : 104, 2.6, 10, 72),
+        new THREE.MeshStandardMaterial({ color: 0xb7c0c8, roughness: 0.3, metalness: 0.62 })
+      );
+      ridge.rotation.x = Math.PI / 2;
+      ridge.position.y = 8;
+      parent.add(ridge);
+      const xMat = new THREE.MeshStandardMaterial({ color: 0x8e98a3, roughness: 0.35, metalness: 0.6 });
+      const armA = new THREE.Mesh(new THREE.BoxGeometry(34, 1.1, 4), xMat);
+      const armB = armA.clone();
       armA.rotation.y = Math.PI / 4;
       armB.rotation.y = -Math.PI / 4;
-      armA.position.y = 2.2;
-      armB.position.y = 2.2;
+      armA.position.y = 8.4;
+      armB.position.y = 8.4;
       parent.add(armA, armB);
     }
 
@@ -1412,7 +1487,9 @@
       const fill = new THREE.DirectionalLight(0x9ad7ff, 0.45);
       fill.position.set(180, 80, -40);
       scene.add(fill);
-      buildStadium(scene);
+      const stadiumRoot = new THREE.Group();
+      scene.add(stadiumRoot);
+      buildStadium(stadiumRoot);
       const youRig = buildLauncher();
       const foeRig = buildLauncher();
       scene.add(youRig.root, foeRig.root);
@@ -1432,7 +1509,8 @@
         desiredLook: new THREE.Vector3(),
         meshes: new Map(),
         recoil: 0,
-        sizeKey: ""
+        sizeKey: "",
+        stadiumRoot
       };
     }
 
@@ -1525,9 +1603,7 @@
           const build = bey.id === "you" ? state.you : state.foe;
           const mesh = ensureBattleMesh(bey, build);
           active.add(bey.id);
-          const radius = Math.hypot(bey.x, bey.y);
-          const deg = normDeg(Math.atan2(bey.y, bey.x));
-          let height = dishHeight(Math.min(radius, 176), deg) + 7;
+          let height = 9;
           if (bey.mode === "pocket" || bey.mode === "ko") height = -2;
           if (bey.mode === "burst") height += 10;
           mesh.position.set(bey.x, height, bey.y);
@@ -1569,8 +1645,9 @@
         view.desiredPos.set(rig.x + state.youSide * 110, 130, rig.z + 120);
         view.desiredLook.set(rig.x, 22, rig.z - 70);
       } else {
-        view.desiredPos.set(0, 390, 470);
-        view.desiredLook.set(0, 0, 10);
+        const wide = state.stadium === "infinity";
+        view.desiredPos.set(0, wide ? 520 : 390, wide ? 620 : 470);
+        view.desiredLook.set(0, 0, wide ? 0 : 10);
       }
       view.camPos.lerp(view.desiredPos, 1 - Math.exp(-dt * 3.2));
       view.camLook.lerp(view.desiredLook, 1 - Math.exp(-dt * 3.2));
@@ -1983,6 +2060,23 @@
       addPull();
     });
     startBtn.addEventListener("click", beginLaunch);
+    function rebuildStadium() {
+      if (!view) return;
+      const root = view.stadiumRoot;
+      while (root.children.length) root.remove(root.children[0]);
+      buildStadium(root);
+    }
+
+    function chooseStadium(id) {
+      if (locked()) return;
+      state.stadium = id;
+      document.getElementById("stad-xtreme").setAttribute("aria-pressed", String(id === "xtreme"));
+      document.getElementById("stad-infinity").setAttribute("aria-pressed", String(id === "infinity"));
+      rebuildStadium();
+    }
+
+    document.getElementById("stad-xtreme").addEventListener("click", () => chooseStadium("xtreme"));
+    document.getElementById("stad-infinity").addEventListener("click", () => chooseStadium("infinity"));
     document.getElementById("speed").addEventListener("click", () => {
       state.speed = state.speed === 1 ? 2 : 1;
       const button = document.getElementById("speed");
@@ -2048,7 +2142,7 @@
       const aimedOnly = tiltsFromAxes({ roll: 0.05, yaw: -0.8, pitch: -0.75 });
       check("只轉槍口不算逆軌", classify(aimedOnly.x, aimedOnly.y, 1) !== "counter");
       check("14 下拉滿", pullStats(14).sp === 100 && pullStats(14).rpm === 15200);
-      check("貓耳在齒軌內側", CATEARS.every((ear) => Math.hypot(ear.x, ear.y) < FIELD.railIn - 8));
+      check("貓耳在前方凹口兩側", CATEARS[0].x < 0 && CATEARS[1].x > 0 && CATEARS[0].y > 40 && CATEARS[1].y > 40);
 
       const rng = () => 0.5;
       const bey = makeBey(presetBuild(PRESETS[0]), { xTilt: -0.7, yTilt: -0.8, clicks: 12, pos: -1, id: "you" }, rng);
