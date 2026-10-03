@@ -17,6 +17,8 @@ import {
   sandColorsOf,
   sandColorOf,
   sandFallStep,
+  tSpinKind,
+  tSpinName,
   tSpinReady,
   dropComponents,
   cellsOf,
@@ -31,6 +33,7 @@ import {
   pickReward,
   pump,
   startGame,
+  tryRotate,
   unsupportedComponents,
 } from "./logic.mjs";
 
@@ -275,6 +278,48 @@ test("sand mode lasts twenty drops and uses four colors", () => {
   for (const row of game.grid) for (const cell of row) if (cell) assert.equal(cell.sand, null);
 });
 
+function tSpinCavity(game, base, column) {
+  game.grid = emptyGrid();
+  for (let x = 0; x < COLS; x += 1) {
+    if (x !== column) game.grid[base][x] = { type: "O", g: 1 };
+    if (x < column - 1 || x > column + 1) game.grid[base + 1][x] = { type: "O", g: 1 };
+    if (x !== column) game.grid[base + 2][x] = { type: "O", g: 1 };
+  }
+}
+
+test("a rotated T that clears one line is a T-spin single", () => {
+  const game = createGame({ mode: "marathon", sequence: ["T", "T", "T", "T"] });
+  game.phase = "playing";
+  game.stage = 1;
+  game.pace = 1;
+  tSpinCavity(game, 16, 4);
+  game.active = { type: "T", rot: 1, x: 2, y: 17, bombIndex: null, curse: null, sand: null };
+  assert.equal(tryRotate(game, -1), true);
+  assert.equal(tSpinKind(game), "tspin");
+  lockActive(game);
+  const step = pump(game);
+  assert.equal(step.spinName, "single");
+  assert.equal(step.rows.length, 1);
+  assert.equal(game.score, 800);
+});
+
+test("a rotated T that clears two lines is a T-spin double", () => {
+  const game = createGame({ mode: "marathon", sequence: ["T", "T", "T", "T"] });
+  game.phase = "playing";
+  game.stage = 1;
+  game.pace = 1;
+  tSpinCavity(game, 16, 4);
+  game.active = { type: "T", rot: 0, x: 3, y: 16, bombIndex: null, curse: null, sand: null };
+  assert.equal(tryRotate(game, 1), true);
+  assert.equal(tSpinKind(game), "tspin");
+  lockActive(game);
+  const step = pump(game);
+  assert.equal(step.spinName, "double");
+  assert.equal(step.rows.length, 2);
+  assert.equal(game.score, 1200);
+  assert.equal(tSpinName("tspin", 2), "double");
+});
+
 test("a t-spin scores more than a plain single", () => {
   const game = createGame({ mode: "marathon", sequence: ["I", "I", "I", "I", "I", "I"] });
   game.stage = 1;
@@ -368,6 +413,35 @@ test("a sealed row stays until a bomb is cleared with it", () => {
   game.grid[19][4].type = "B";
   assert.equal(pump(game).type, "clear");
   assert.equal(game.grid[19][3], null);
+});
+
+test("plain tetris is a bag of seven pieces and a full row drops without filling holes", () => {
+  const game = createGame({ mode: "tetris", random: () => 0 });
+  const seen = new Set();
+  for (let i = 0; i < 21; i += 1) seen.add(game.pull().type);
+  assert.deepEqual([...seen].sort(), ["I", "J", "L", "O", "S", "T", "Z"]);
+  const sprint = createGame({ mode: "sprint" });
+  sprint.lines = 0;
+  const classic = createGame({ mode: "tetris" });
+  classic.lines = 0;
+  assert.equal(gravityMs(classic), gravityMs(sprint));
+  startGame(game, "tetris");
+  game.active = null;
+  game.phase = "resolving";
+  game.grid[17][0] = { type: "O", g: 1, bomb: false, reward: null, curse: null, sand: null };
+  for (let x = 1; x < COLS; x += 1) {
+    game.grid[18][x] = { type: "I", g: 2, bomb: false, reward: null, curse: null, sand: null };
+  }
+  for (let x = 0; x < COLS; x += 1) {
+    game.grid[19][x] = { type: "O", g: 3, bomb: false, reward: null, curse: null, sand: null };
+  }
+  assert.equal(pump(game).type, "clear");
+  assert.equal(game.grid[18][0].type, "O");
+  assert.equal(game.grid[19][0], null);
+  assert.equal(game.grid[19][1].type, "I");
+  assert.equal(pump(game).type, "spawn");
+  assert.equal(game.grid[18][0].type, "O");
+  assert.equal(game.grid[19][0], null);
 });
 
 test("flipping the board turns it upside down", () => {

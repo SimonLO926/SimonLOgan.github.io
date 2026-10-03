@@ -128,6 +128,19 @@ const KICKS = [
   [1, -1],
 ];
 
+// Guideline wall kicks for J, L, S, T and Z. Y grows downward, so the
+// published up/down offsets are flipped.
+const SRS_KICKS = {
+  "0>1": [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],
+  "1>0": [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],
+  "1>2": [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],
+  "2>1": [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],
+  "2>3": [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]],
+  "3>2": [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]],
+  "3>0": [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]],
+  "0>3": [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]],
+};
+
 const LINE_SCORE = [0, 100, 300, 500, 800];
 
 export function emptyGrid() {
@@ -193,11 +206,11 @@ export function createGame(options = {}) {
       if (!sequence.length) throw new Error("piece sequence exhausted");
       return describe(sequence.shift());
     }
+    if (mode === "tetris" || mode === "sand" || (mode === "marathon" && game.sanding)) {
+      if (!bag.length) bag.push(...shuffle(TYPES, random));
+      return describe(bag.pop());
+    }
     if (mode === "marathon") {
-      if (game.sanding) {
-        if (!bag.length) bag.push(...shuffle(TYPES, random));
-        return describe(bag.pop());
-      }
       if (random() < CURSE_CHANCE) {
         return describe("C", CURSES[Math.floor(random() * CURSES.length)]);
       }
@@ -326,12 +339,15 @@ export function tryRotate(game, dir) {
   const { type, rot, x, y } = game.active;
   const count = SHAPES[type].length;
   const next = (rot + dir + count) % count;
-  for (const [kx, ky] of KICKS) {
+  const kicks = SRS_KICKS[`${rot}>${next}`] && "JLSTZ".includes(type) ? SRS_KICKS[`${rot}>${next}`] : KICKS;
+  for (let index = 0; index < kicks.length; index += 1) {
+    const [kx, ky] = kicks[index];
     if (fits(game.grid, type, next, x + kx, y + ky, game)) {
       game.active.rot = next;
       game.active.x += kx;
       game.active.y += ky;
       game.spinEligible = true;
+      game.lastKick = index;
       return true;
     }
   }
@@ -404,7 +420,7 @@ function rewardOn(piece, index) {
 }
 
 function scoreMult(game) {
-  if (game.mode === "sprint") return 1 + Math.floor(game.lines / 10);
+  if (game.mode === "sprint" || game.mode === "tetris") return 1 + Math.floor(game.lines / 10);
   return game.stage * paceOf(game);
 }
 
@@ -427,18 +443,43 @@ function explodeFrom(grid, bombs, random) {
   return blasted;
 }
 
-export function tSpinReady(game) {
+const T_FRONT = {
+  0: [[-1, -1], [1, -1]],
+  1: [[1, -1], [1, 1]],
+  2: [[-1, 1], [1, 1]],
+  3: [[-1, -1], [-1, 1]],
+};
+
+export function tSpinKind(game) {
   const piece = game.active;
-  if (!piece || piece.type !== "T" || !game.spinEligible) return false;
+  if (!piece || piece.type !== "T" || !game.spinEligible) return null;
   const cx = piece.x + 1;
   const cy = piece.y + 1;
-  let filled = 0;
-  for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+  const blocked = (dx, dy) => {
     const x = cx + dx;
     const y = cy + dy;
-    if (x < 0 || x >= COLS || y < 0 || y >= ROWS || game.grid[y][x]) filled += 1;
-  }
-  return filled >= 3;
+    return x < 0 || x >= COLS || y < 0 || y >= ROWS || !!game.grid[y][x];
+  };
+  const filled = [[-1, -1], [1, -1], [-1, 1], [1, 1]].filter(([dx, dy]) => blocked(dx, dy)).length;
+  if (filled < 3) return null;
+  const front = T_FRONT[piece.rot].filter(([dx, dy]) => blocked(dx, dy)).length;
+  if (front === 2 || game.lastKick === 4) return "tspin";
+  return "mini";
+}
+
+export function tSpinReady(game) {
+  return tSpinKind(game) != null;
+}
+
+export function tSpinScore(kind, lines) {
+  const count = Math.max(0, Math.min(3, lines));
+  if (kind === "mini") return [100, 200, 400, 400][count];
+  return [400, 800, 1200, 1600][count];
+}
+
+export function tSpinName(kind, lines) {
+  if (kind === "mini") return lines === 1 ? "mini-single" : "mini";
+  return ["tspin", "single", "double", "triple"][Math.max(0, Math.min(3, lines))];
 }
 
 function paintCell(cell, sand) {
@@ -470,9 +511,9 @@ function stampSand(grid, cx, cy, value) {
   }
 }
 
-export function beginSand(game) {
+export function beginSand(game, drops = SAND_DROPS) {
   game.sanding = true;
-  game.sandLeft = SAND_DROPS;
+  game.sandLeft = drops;
   game.sandExit = false;
   const tint = (piece) => {
     if (piece) piece.sand = sandColorOf(piece.type);
@@ -591,7 +632,7 @@ export function sandClearColors(grid) {
 
 export function lockActive(game) {
   if (!game.active) return;
-  game.spin = tSpinReady(game) ? "tspin" : null;
+  game.spin = tSpinKind(game);
   const gid = takeGid(game);
   const sanding = !!game.sanding && game.sandGrid;
   const cells = cellsOf(game.active.type, game.active.rot, game.active.x, game.active.y);
@@ -746,10 +787,11 @@ function noteLines(game, count) {
 export function pump(game) {
   if (game.phase !== "resolving") return null;
   if (game.sanding) {
-    if (game.spin === "tspin") {
+    if (game.spin) {
+      const kind = game.spin;
       game.spin = null;
-      game.score += TSPIN_SCORE[0] * scoreMult(game);
-      return { type: "spin", kind: "tspin", combo: game.combo };
+      game.score += tSpinScore(kind, 0) * scoreMult(game);
+      return { type: "spin", kind, spinName: tSpinName(kind, 0), combo: game.combo };
     }
     const moved = game.sandGrid && sandFallStep(game.sandGrid);
     if (moved) return { type: "sand", moves: [] };
@@ -787,24 +829,26 @@ export function pump(game) {
     }
     const blasts = explodeFrom(game.grid, bombs, game.random);
     game.score += blasts.length * 15 * paceOf(game);
-    const tspin = game.spin === "tspin";
+    const kind = game.spin;
     game.spin = null;
     const mult = scoreMult(game);
     const bonus = awardCombo(game);
-    const lineScore = tspin ? TSPIN_SCORE[Math.min(3, rows.length)] : LINE_SCORE[rows.length];
+    const lineScore = kind ? tSpinScore(kind, rows.length) : LINE_SCORE[rows.length];
     game.score += lineScore * mult + bonus;
     noteLines(game, rows.length);
+    if (game.mode === "tetris") collapseRows(game.grid, rows);
     if (game.mode === "marathon") {
       const reward = pickReward(rewards);
       if (reward) game.pendingReward = reward;
     }
-    return { type: "clear", rows, cells, blasts, combo: game.combo, tspin, bonus };
+    return { type: "clear", rows, cells, blasts, combo: game.combo, tspin: kind === "tspin", spinName: kind ? tSpinName(kind, rows.length) : null, bonus };
   }
 
-  if (game.spin === "tspin") {
+  if (game.spin) {
+    const kind = game.spin;
     game.spin = null;
-    game.score += TSPIN_SCORE[0] * scoreMult(game);
-    return { type: "spin", kind: "tspin", combo: game.combo };
+    game.score += tSpinScore(kind, 0) * scoreMult(game);
+    return { type: "spin", kind, spinName: tSpinName(kind, 0), combo: game.combo };
   }
 
   if (game.pendingReward) {
@@ -819,10 +863,12 @@ export function pump(game) {
     }
   }
 
-  const comps = unsupportedComponents(game.grid);
-  if (comps.length) {
-    const moves = dropComponents(game.grid, comps, () => takeGid(game));
-    return { type: "drop", moves };
+  if (game.mode !== "tetris") {
+    const comps = unsupportedComponents(game.grid);
+    if (comps.length) {
+      const moves = dropComponents(game.grid, comps, () => takeGid(game));
+      return { type: "drop", moves };
+    }
   }
 
   if (game.mode === "marathon" && game.pendingFlips > 0) {
@@ -898,10 +944,21 @@ export function chainBlast(grid, x, y, random) {
   return removed;
 }
 
+function collapseRows(grid, rows) {
+  const gone = new Set(rows);
+  const kept = [];
+  for (let y = 0; y < ROWS; y += 1) {
+    if (!gone.has(y)) kept.push(grid[y]);
+  }
+  while (kept.length < ROWS) kept.unshift(Array(COLS).fill(null));
+  for (let y = 0; y < ROWS; y += 1) grid[y] = kept[y];
+}
+
 export function gravityMs(game) {
-  const base = game.mode === "sprint"
+  const classic = game.mode === "sprint" || game.mode === "tetris";
+  const base = classic
     ? Math.max(80, 820 - Math.floor(game.lines / 10) * 140)
     : Math.max(80, 980 - (game.stage - 1) * 110);
-  if (game.mode === "sprint") return base;
+  if (classic) return base;
   return Math.max(40, Math.round(base / paceOf(game)));
 }
