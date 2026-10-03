@@ -3,11 +3,24 @@ import test from "node:test";
 import {
   COLS,
   REWARD_CHANCE,
+  SAND_COLORS,
+  SAND_DROPS,
+  SAND_MATCH,
+  TSPIN_SCORE,
+  beginSand,
   createGame,
+  gravityMs,
+  paceOf,
+  sandClusters,
+  SAND_SCALE,
+  sandColorOf,
+  sandFallStep,
+  tSpinReady,
   dropComponents,
   cellsOf,
   chainBlast,
   emptyGrid,
+  emptySandGrid,
   flipGrid,
   fullRows,
   hardDrop,
@@ -181,7 +194,8 @@ test("mystery pieces show up five times as often", () => {
   assert.equal(REWARD_CHANCE.breakout, 0.005);
   assert.equal(REWARD_CHANCE.bbtan, 0.005);
   assert.equal(REWARD_CHANCE.pinball, 0.01);
-  const rolls = [0.5, 0.0049, 0.5, 0.005, 0, 0.5, 0.0199, 0.5, 0.02];
+  assert.equal(REWARD_CHANCE.sand, 0.005);
+  const rolls = [0.5, 0.0049, 0.5, 0.005, 0, 0.5, 0.0199, 0.5, 0.02, 0.5, 0.025];
   let index = 0;
   const game = createGame({
     mode: "marathon",
@@ -194,7 +208,127 @@ test("mystery pieces show up five times as often", () => {
   assert.equal(game.pull().type, "R");
   assert.equal(game.pull().type, "X");
   assert.equal(game.pull().type, "D");
+  assert.equal(game.pull().type, "A");
   assert.equal(["I", "O", "T", "S", "Z", "J", "L", "B"].includes(game.pull().type), true);
+});
+
+test("sand mode lasts twenty drops and uses three colors", () => {
+  let n = 0;
+  const game = createGame({ mode: "marathon", random: () => (n++ % 3) / 3 });
+  game.grid[18][0] = { type: "I", g: 1, bomb: true, reward: "breakout", curse: "seal", sand: null };
+  game.grid[18][1] = { type: "O", g: 1, bomb: false, reward: null, curse: null, sand: null };
+  game.queue = [{ type: "T" }, { type: "L" }, { type: "J" }];
+  beginSand(game);
+  assert.equal(game.sandLeft, SAND_DROPS);
+  assert.equal(game.grid[18][0], null);
+  assert.equal(game.sandGrid[18 * SAND_SCALE][0], sandColorOf("I") + 1);
+  assert.equal(game.sandGrid[18 * SAND_SCALE][SAND_SCALE], sandColorOf("O") + 1);
+  assert.equal(game.queue[0].sand, sandColorOf("T"));
+  assert.equal(game.queue[1].sand, sandColorOf("L"));
+  assert.equal(game.queue[2].sand, sandColorOf("J"));
+  const pulled = game.pull();
+  assert.equal(pulled.sand, sandColorOf(pulled.type));
+  assert.equal(["I", "O", "T", "S", "Z", "J", "L"].includes(game.pull().type), true);
+  const grain = emptySandGrid();
+  const grainHeight = grain.length;
+  grain[grainHeight - 3][4] = 1;
+  assert.equal(sandFallStep(grain), true);
+  assert.equal(grain[grainHeight - 2][4], 1);
+  assert.equal(grain[grainHeight - 3][4], 0);
+  const blocked = emptySandGrid();
+  const blockedHeight = blocked.length;
+  blocked[blockedHeight - 1][2] = 2;
+  blocked[blockedHeight - 2][2] = 1;
+  assert.equal(sandFallStep(blocked), true);
+  assert.equal(blocked[blockedHeight - 2][2], 0);
+  assert.ok(blocked[blockedHeight - 1][1] === 1 || blocked[blockedHeight - 1][3] === 1);
+  const cluster = Array.from({ length: 4 }, () => Array(12).fill(0));
+  for (let i = 0; i < 8; i += 1) cluster[3][i] = 3;
+  cluster[2][0] = 1;
+  const found = sandClusters(cluster, 8);
+  assert.equal(found.length, 1);
+  assert.equal(found[0].length, 8);
+  game.sandLeft = 1;
+  game.sandExit = false;
+  game.phase = "playing";
+  game.active = { type: "O", rot: 0, x: 3, y: 18, bombIndex: null, curse: null, sand: 0 };
+  lockActive(game);
+  assert.equal(game.sandLeft, 0);
+  assert.equal(game.sandExit, true);
+  let guard = 0;
+  while (game.sanding && game.phase === "resolving" && guard < 400) {
+    pump(game);
+    guard += 1;
+  }
+  assert.equal(game.sanding, false);
+  for (const row of game.grid) for (const cell of row) if (cell) assert.equal(cell.sand, null);
+});
+
+test("a t-spin scores more than a plain single", () => {
+  const game = createGame({ mode: "marathon", sequence: ["I", "I", "I", "I", "I", "I"] });
+  game.stage = 1;
+  game.pace = 1;
+  game.phase = "playing";
+  game.grid = emptyGrid();
+  game.active = { type: "T", rot: 0, x: 3, y: 16, bombIndex: null, curse: null, sand: null };
+  game.grid[16][3] = { type: "I", g: 1 };
+  game.grid[16][5] = { type: "I", g: 2 };
+  game.grid[18][5] = { type: "I", g: 3 };
+  game.spinEligible = true;
+  assert.equal(tSpinReady(game), true);
+  game.spinEligible = false;
+  assert.equal(tSpinReady(game), false);
+  game.spinEligible = true;
+  const before = game.score;
+  lockActive(game);
+  const step = pump(game);
+  assert.equal(step.type, "spin");
+  assert.equal(step.kind, "tspin");
+  assert.equal(game.score - before, TSPIN_SCORE[0]);
+});
+
+test("back to back clears raise the combo bonus", () => {
+  const game = createGame({ mode: "marathon", sequence: ["I", "I", "I", "I", "I", "I", "I", "I"] });
+  startGame(game);
+  game.grid = emptyGrid();
+  game.phase = "resolving";
+  game.combo = 0;
+  game.comboArmed = true;
+  game.spin = null;
+  game.sanding = false;
+  for (let x = 0; x < COLS; x += 1) game.grid[19][x] = { type: "O", g: 1, bomb: false, reward: null, curse: null, sand: null };
+  const first = pump(game);
+  assert.equal(first.combo, 1);
+  assert.equal(first.bonus, 0);
+  game.phase = "resolving";
+  game.comboArmed = true;
+  for (let x = 0; x < COLS; x += 1) game.grid[19][x] = { type: "O", g: 2, bomb: false, reward: null, curse: null, sand: null };
+  const second = pump(game);
+  assert.equal(second.combo, 2);
+  assert.equal(second.bonus, 50);
+});
+
+test("hard starts twice as fast and weights the score", () => {
+  const normal = createGame({ mode: "marathon" });
+  normal.pace = paceOf({ pace: 1 });
+  normal.stage = 1;
+  const hard = createGame({ mode: "marathon" });
+  hard.pace = 2;
+  hard.stage = 1;
+  assert.equal(gravityMs(hard), Math.round(gravityMs(normal) / 2));
+  const custom = createGame({ mode: "marathon" });
+  custom.pace = 10;
+  assert.equal(gravityMs(custom), Math.max(40, Math.round(gravityMs(normal) / 10)));
+  assert.equal(paceOf({ pace: 0.2 }), 0.5);
+  assert.equal(paceOf({ pace: 12 }), 10);
+  hard.phase = "resolving";
+  hard.comboArmed = true;
+  hard.sanding = false;
+  hard.spin = null;
+  for (let x = 0; x < COLS; x += 1) hard.grid[19][x] = { type: "O", g: 4, bomb: false, reward: null, curse: null, sand: null };
+  const scored = hard.score;
+  pump(hard);
+  assert.equal(hard.score - scored, 100 * 2);
 });
 
 test("one marathon pull in thirty is a penalty cell", () => {

@@ -262,7 +262,65 @@
 
     .hint { margin: 10px 0 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
 
-    .hero-actions { display: flex; gap: 14px; margin-top: 32px; }
+    .hero-actions { display: flex; gap: 14px; margin-top: 32px; flex-wrap: wrap; justify-content: center; }
+    .pace-row, .boards {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+    .pace-row button, .boards div {
+      min-width: 0;
+      padding: 8px 14px;
+      font-size: 16px;
+      border-radius: 999px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, .28);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .45);
+    }
+    .pace-row button[aria-pressed="true"] { background: var(--blue); color: white; box-shadow: none; }
+    .pace-slider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 10px;
+      color: var(--ink);
+    }
+    .pace-slider[hidden] { display: none !important; }
+    .pace-slider input { width: min(220px, 46vw); }
+    .pace-slider b, .board-line b { font-variant-numeric: tabular-nums; }
+    .menu-links { display: flex; gap: 8px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+    .board-card { width: min(420px, 100%); margin-top: 28px; padding: 8px 22px; text-align: left; }
+    .board-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 16px;
+      padding: 18px 0;
+      border-top: 1px solid var(--line);
+      font-size: 22px;
+    }
+    .board-line:first-child { border-top: 0; }
+    .board-line b { font-size: 40px; color: var(--blue); }
+    .stat.is-live b { color: var(--md-primary); }
+    .callout {
+      position: absolute;
+      left: 50%;
+      top: 16%;
+      z-index: 3;
+      transform: translateX(-50%);
+      pointer-events: none;
+      text-align: center;
+      color: white;
+      text-shadow: 0 2px 0 #041e49;
+    }
+    .callout[hidden] { display: none !important; }
+    .callout b { font-size: 28px; letter-spacing: .04em; }
+    .callout.tspin b { color: #ffd60a; }
+    .callout.combo b { color: #7ee0ff; }
+    .callout.sand b { color: #ffd60a; }
 
     .settings-card {
       width: min(420px, 100%);
@@ -792,7 +850,20 @@
           <button id="go-marathon" class="primary" type="button" data-i18n="marathon">Marathon</button>
           <button id="go-sprint" class="secondary" type="button" data-i18n="sprint">40-line sprint</button>
         </div>
-        <button id="go-settings" class="chip" type="button" data-i18n="settings">Settings</button>
+        <div class="pace-row" id="pace-row">
+          <button id="pace-normal" type="button" data-i18n="normal">Normal</button>
+          <button id="pace-hard" type="button"><span data-i18n="hard">Hard</span> ×2</button>
+          <button id="pace-custom" type="button" data-i18n="custom">Custom</button>
+        </div>
+        <label class="pace-slider" id="pace-slider" hidden>
+          <span data-i18n="pace">Speed</span>
+          <input id="pace-range" type="range" min="0.5" max="10" step="0.5" value="1">
+          <b id="pace-value">×1</b>
+        </label>
+        <div class="menu-links">
+          <button id="go-boards" class="chip" type="button" data-i18n="boards">Ranks</button>
+          <button id="go-settings" class="chip" type="button" data-i18n="settings">Settings</button>
+        </div>
       </div>
     </section>
 
@@ -914,6 +985,15 @@
       <button id="settings-back" class="text-btn" type="button" data-i18n="close">Back</button>
     </section>
 
+    <section id="boards" class="settings-wrap" hidden>
+      <h1 data-i18n="boards">Ranks</h1>
+      <div class="board-card glass">
+        <div class="board-line"><span data-i18n="normal">Normal</span><b id="board-normal">0</b></div>
+        <div class="board-line"><span><span data-i18n="hard">Hard</span> ×2</span><b id="board-hard">0</b></div>
+      </div>
+      <button id="boards-back" class="text-btn" type="button" data-i18n="close">Back</button>
+    </section>
+
     <section id="game" hidden>
       <div class="nav">
         <svg class="logo compact" viewBox="0 0 196 36" role="img" aria-label="Bridge">
@@ -1024,6 +1104,7 @@
               <button id="veil-btn" class="primary" type="button"></button>
               <button id="veil-menu" class="text-btn" type="button" data-i18n="menu">Menu</button>
             </div>
+            <div id="callout" class="callout" hidden><b id="callout-text"></b></div>
             <div id="coach" class="coach" hidden>
               <b id="coach-count"></b>
               <p id="coach-copy" hidden></p>
@@ -1038,7 +1119,8 @@
             </section>
             <section class="box">
               <div class="stat hero-stat"><span data-i18n="score">Score</span><b id="score">0</b></div>
-              <div class="stat"><span data-i18n="best">Best</span><b id="best">0</b></div>
+              <p class="hint" id="pace-note" hidden></p>
+              <div class="stat" id="best-single"><span data-i18n="best">Best</span><b id="best">0</b></div>
               <div class="meter" aria-hidden="true"><i id="meter-bar"></i></div>
             </section>
           </aside>
@@ -1082,14 +1164,15 @@
     import { createSession, drawSession, updateSession } from "./arcade.mjs";
     import { translate } from "./i18n.mjs";
     import {
-      COLS, ROWS, SHAPES, cellsOf, createGame, fits, flipGrid, ghostY, gravityMs,
-      hardDrop, hold, lockActive, pump, startGame, tryMove, tryRotate,
+      COLS, ROWS, SAND_DROPS, SAND_SCALE, SHAPES, beginSand, cellsOf, createGame, fits, flipGrid, ghostY, gravityMs,
+      hardDrop, hold, lockActive, paceOf, pump, startGame, tryMove, tryRotate,
     } from "./logic.mjs";
 
     const COLORS = {
       I: "#64d2ff", O: "#ffd60a", T: "#bf5af2", S: "#30d158", Z: "#ff453a",
-      J: "#0a84ff", L: "#ff9f0a", B: "#8e8e93", X: "#5e5ce6", D: "#ff9f0a", R: "#ff375f",
+      J: "#0a84ff", L: "#ff9f0a", B: "#8e8e93", X: "#5e5ce6", D: "#ff9f0a", R: "#ff375f", A: "#e7d3a1",
     };
+    const SAND_HEX = ["#ffd84a", "#ff4b4b", "#3c8dff"];
     const CELL = 28;
     const board = document.querySelector("#board");
     const holdCanvas = document.querySelector("#hold-canvas");
@@ -1116,6 +1199,7 @@
     let dasOn = false;
     const sound = createSound(() => settings.volume);
     const fx = [];
+    const callouts = [];
     const curseUntil = { reverse: 0, blind: 0, rush: 0, norotate: 0 };
     const CORNER = 4;
 
@@ -1123,11 +1207,13 @@
 
     function loadSettings() {
       try {
-        const saved = { lang: "en", volume: 0.7, theme: "light", touch: "auto", ...JSON.parse(localStorage.getItem("bridge-settings") || "{}") };
+        const saved = { lang: "en", volume: 0.7, theme: "light", touch: "auto", pace: "normal", paceSpeed: 1, ...JSON.parse(localStorage.getItem("bridge-settings") || "{}") };
         if (!saved.touch) saved.touch = "auto";
+        if (!saved.pace) saved.pace = "normal";
+        saved.paceSpeed = paceOf({ pace: saved.paceSpeed ?? 1 });
         return saved;
       } catch {
-        return { lang: "en", volume: 0.7, theme: "light", touch: "auto" };
+        return { lang: "en", volume: 0.7, theme: "light", touch: "auto", pace: "normal", paceSpeed: 1 };
       }
     }
 
@@ -1149,7 +1235,31 @@
       document.querySelector("#theme-light").setAttribute("aria-pressed", String(settings.theme === "light"));
       document.querySelector("#theme-dark").setAttribute("aria-pressed", String(settings.theme === "dark"));
       applyTouch();
+      syncPace();
       sound.setVolume();
+    }
+
+    function readStored(key) {
+      const value = Number(localStorage.getItem(key) || 0);
+      return Number.isFinite(value) ? value : 0;
+    }
+
+    function normalBest() {
+      return Math.max(readStored("bridge-best-marathon-normal"), readStored("bridge-best-marathon"));
+    }
+
+    function syncPace() {
+      const name = settings.pace || "normal";
+      for (const mode of ["normal", "hard", "custom"]) {
+        document.querySelector(`#pace-${mode}`).setAttribute("aria-pressed", String(name === mode));
+      }
+      const speed = paceOf({ pace: settings.paceSpeed });
+      settings.paceSpeed = speed;
+      document.querySelector("#pace-slider").hidden = name !== "custom";
+      document.querySelector("#pace-range").value = String(speed);
+      document.querySelector("#pace-value").textContent = `×${speed}`;
+      document.querySelector("#board-normal").textContent = String(normalBest());
+      document.querySelector("#board-hard").textContent = String(readStored("bridge-best-marathon-hard"));
     }
 
     function coarseDevice() {
@@ -1171,9 +1281,16 @@
       }
     }
 
-    function bestKey() { return game.mode === "sprint" ? "bridge-best-sprint" : "bridge-best-marathon"; }
+    function bestKey() {
+      if (game.mode === "sprint") return "bridge-best-sprint";
+      if (game.paceName === "hard") return "bridge-best-marathon-hard";
+      if (game.paceName === "custom") return `bridge-best-marathon-custom-${paceOf(game)}`;
+      return "bridge-best-marathon-normal";
+    }
 
     function readBest() {
+      if (game.mode !== "sprint" && game.paceName === "normal") return normalBest();
+      if (game.mode !== "sprint" && game.paceName === "hard") return readStored("bridge-best-marathon-hard");
       const raw = Number(localStorage.getItem(bestKey()) || 0);
       return Number.isFinite(raw) ? raw : 0;
     }
@@ -1185,13 +1302,21 @@
     }
 
     function showScreen(id) {
-      for (const name of ["menu", "settings", "game"]) document.querySelector(`#${name}`).hidden = name !== id;
+      for (const name of ["menu", "settings", "boards", "game"]) document.querySelector(`#${name}`).hidden = name !== id;
     }
 
     function resetTimers() { acc = 0; softAcc = 0; lockMs = 0; lockResets = 0; }
 
     function begin(mode) {
       startGame(game, mode);
+      if (mode === "marathon") {
+        const name = settings.pace || "normal";
+        game.paceName = name;
+        game.pace = name === "hard" ? 2 : name === "custom" ? paceOf({ pace: settings.paceSpeed }) : 1;
+      } else {
+        game.paceName = "normal";
+        game.pace = 1;
+      }
       paused = false;
       session = null;
       anim = null;
@@ -1215,6 +1340,7 @@
       game.phase = "ready";
       sound.stop();
       showScreen("menu");
+      syncPace();
     }
 
     function showVeil(title, copy, label) {
@@ -1227,7 +1353,7 @@
     function onManeuver() {
       if (!game.active) return;
       const { type, rot, x, y } = game.active;
-      if (!fits(game.grid, type, rot, x, y + 1) && lockResets < 12) {
+      if (!fits(game.grid, type, rot, x, y + 1, game) && lockResets < 12) {
         lockMs = 0;
         lockResets += 1;
       }
@@ -1273,9 +1399,24 @@
     }
 
     document.querySelector("#go-marathon").addEventListener("click", () => begin("marathon"));
+    for (const mode of ["normal", "hard", "custom"]) {
+      document.querySelector(`#pace-${mode}`).addEventListener("click", () => {
+        settings.pace = mode;
+        saveSettings();
+        syncPace();
+      });
+    }
+    document.querySelector("#pace-range").addEventListener("input", (event) => {
+      settings.pace = "custom";
+      settings.paceSpeed = paceOf({ pace: Number(event.target.value) });
+      saveSettings();
+      syncPace();
+    });
     document.querySelector("#go-sprint").addEventListener("click", () => begin("sprint"));
     document.querySelector("#go-settings").addEventListener("click", () => showScreen("settings"));
     document.querySelector("#settings-back").addEventListener("click", () => showScreen("menu"));
+    document.querySelector("#go-boards").addEventListener("click", () => { syncPace(); showScreen("boards"); });
+    document.querySelector("#boards-back").addEventListener("click", () => showScreen("menu"));
     document.querySelector("#game-menu").addEventListener("click", backToMenu);
     document.querySelector("#veil-menu").addEventListener("click", backToMenu);
     document.querySelector("#veil-btn").addEventListener("click", () => {
@@ -1369,7 +1510,8 @@
     const CURSE_COLOR = {
       seal: "#5e5ce6", reverse: "#ff9f0a", blind: "#1d1d1f", rush: "#ff375f", norotate: "#bf5af2",
     };
-    function pieceColor(type, curse) {
+    function pieceColor(type, curse, sand) {
+      if (sand != null) return SAND_HEX[sand] || SAND_HEX[0];
       if (type === "C") return CURSE_COLOR[curse] || "#3a3a3c";
       return COLORS[type] || ink();
     }
@@ -1419,7 +1561,51 @@
       context.roundRect(left, top, side, side, radius);
     }
 
-    function tile(context, x, y, size, ghost) {
+    function mixHex(hex, amount) {
+      const value = parseInt(hex.slice(1), 16);
+      const channel = (shift) => {
+        const part = (value >> shift) & 255;
+        const next = amount > 0 ? part + (255 - part) * amount : part * (1 + amount);
+        return Math.max(0, Math.min(255, Math.round(next)));
+      };
+      return `rgb(${channel(16)}, ${channel(8)}, ${channel(0)})`;
+    }
+
+    function drawSandMino(context, x, y, size, colorIndex, ghost) {
+      const grain = size / SAND_SCALE;
+      const base = SAND_HEX[colorIndex] ?? SAND_HEX[0];
+      context.save();
+      context.globalAlpha = ghost ? 0.4 : 1;
+      for (let dy = 0; dy < SAND_SCALE; dy += 1) {
+        for (let dx = 0; dx < SAND_SCALE; dx += 1) {
+          const speckle = (dx * 13 + dy * 7) % 11;
+          const shade = speckle === 0 ? mixHex(base, 0.3) : speckle === 1 ? mixHex(base, -0.24) : base;
+          context.fillStyle = shade;
+          context.fillRect(x * size + dx * grain, y * size + dy * grain, grain + 0.8, grain + 0.8);
+        }
+      }
+      context.restore();
+    }
+
+    function drawSandField(context) {
+      const grid = game.sandGrid;
+      if (!grid) return;
+      const grain = CELL / SAND_SCALE;
+      for (let y = 0; y < grid.length; y += 1) {
+        const row = grid[y];
+        for (let x = 0; x < row.length; x += 1) {
+          const color = row[x];
+          if (!color) continue;
+          const base = SAND_HEX[color - 1] ?? SAND_HEX[0];
+          const speckle = (x * 13 + y * 29) % 17;
+          const shade = speckle === 0 ? mixHex(base, 0.28) : speckle === 1 ? mixHex(base, -0.22) : base;
+          context.fillStyle = shade;
+          context.fillRect(x * grain, y * grain, grain + 0.8, grain + 0.8);
+        }
+      }
+    }
+
+    function tile(context, x, y, size, ghost, tint) {
       const pad = size > 24 ? 1.25 : 1;
       const radius = CORNER * (size / CELL);
       const left = x * size + pad;
@@ -1428,21 +1614,35 @@
       roundTile(context, left, top, side, radius);
       if (ghost) {
         const dark = document.body.dataset.theme === "dark";
-        context.fillStyle = dark ? "rgba(168,199,250,.08)" : "rgba(11,87,208,.06)";
+        context.save();
+        context.globalAlpha = tint ? 0.28 : 1;
+        context.fillStyle = tint ? tint : (dark ? "rgba(168,199,250,.08)" : "rgba(11,87,208,.06)");
         context.fill();
-        context.strokeStyle = dark ? "rgba(168,199,250,.8)" : "rgba(11,87,208,.55)";
+        context.globalAlpha = 1;
+        context.strokeStyle = tint || (dark ? "rgba(168,199,250,.8)" : "rgba(11,87,208,.55)");
         context.lineWidth = 1.25;
         context.stroke();
+        context.restore();
         return;
       }
       context.fill();
     }
 
-    function drawBlob(context, cells, type, size, ghost, markIndex = null, curse = null) {
+    function drawBlob(context, cells, type, size, ghost, markIndex = null, curse = null, sand = null) {
       cells.forEach(([x, y], index) => {
         if (y < 0 || y >= ROWS || x < 0 || x >= COLS) return;
-        context.fillStyle = pieceColor(type, curse);
-        tile(context, x, y, size, ghost);
+        if (sand != null) {
+          drawSandMino(context, x, y, size, sand, ghost);
+          return;
+        }
+        context.fillStyle = pieceColor(type, curse, sand);
+        tile(context, x, y, size, ghost, null);
+        if (!ghost && type === "A") {
+          context.fillStyle = "#fff6d8";
+          for (const [ox, oy] of [[-0.18, 0.02], [0.08, -0.14], [0.12, 0.12]]) {
+            context.fillRect(x * size + size / 2 + ox * size, y * size + size / 2 + oy * size, Math.max(2, size * 0.12), Math.max(2, size * 0.12));
+          }
+        }
         if (!ghost && curse) curseMark(context, x, y, size, curse);
         if (!ghost && index === markIndex && (type === "B" || type === "X")) {
           context.fillStyle = type === "B" ? "#1d1d1f" : "#ffffff";
@@ -1466,7 +1666,7 @@
               if (grid[gy][gx]?.g === cell.g) group.push([gx, gy]);
             }
           }
-          drawBlob(context, group, cell.type, size, false, null, cell.curse);
+          drawBlob(context, group, cell.type, size, false, null, cell.curse, cell.sand ?? null);
         }
       }
       context.fillStyle = "#dfff45";
@@ -1497,7 +1697,7 @@
         const oy = index * slot + (slot - (Math.max(...ys) - Math.min(...ys) + 1) * size) / 2 - Math.min(...ys) * size;
         context.save();
         context.translate(ox, oy);
-        drawBlob(context, cells, piece.type, size, false, piece.bombIndex, piece.curse);
+        drawBlob(context, cells, piece.type, size, false, piece.bombIndex, piece.curse, piece.sand ?? null);
         context.restore();
       });
     }
@@ -1514,6 +1714,55 @@
       }
       const scale = (cssW / (COLS * CELL)) * dpr;
       ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    }
+
+    function pushCallout(kind, text, life = 880) {
+      callouts.unshift({ kind, text, t: 0, life });
+    }
+
+    function spinBurst() {
+      fx.push({
+        kind: "tspin",
+        x: (COLS * CELL) / 2,
+        y: (ROWS * CELL) / 2,
+        t: 0,
+        life: 680,
+        sparks: Array.from({ length: 14 }, (_, i) => ({
+          a: (Math.PI * 2 * i) / 14,
+          sp: 90 + (i % 4) * 22,
+          color: i % 2 ? "#ffd60a" : "#bf5af2",
+        })),
+      });
+    }
+
+    function comboBurst(combo) {
+      fx.push({
+        kind: "combo",
+        combo,
+        x: (COLS * CELL) / 2,
+        y: (ROWS * CELL) * 0.32,
+        t: 0,
+        life: 720,
+        sparks: Array.from({ length: 8 + Math.min(combo, 6) }, (_, i) => ({
+          a: (Math.PI * 2 * i) / 8,
+          sp: 70 + combo * 8,
+          color: i % 2 ? "#7ee0ff" : "#ffffff",
+        })),
+      });
+    }
+
+    function sandBurst() {
+      SAND_HEX.forEach((color, index) => {
+        fx.push({
+          kind: "sand",
+          color,
+          x: (COLS * CELL) / 2,
+          y: (ROWS * CELL) / 2,
+          t: -index * 50,
+          life: 760,
+          sparks: [],
+        });
+      });
     }
 
     function burst(cell, big) {
@@ -1538,7 +1787,27 @@
 
     function drawFx() {
       for (const item of fx) {
-        const p = item.t / item.life;
+        const p = Math.max(0, item.t) / item.life;
+        if (item.t < 0) continue;
+        if (item.kind === "tspin" || item.kind === "combo" || item.kind === "sand") {
+          ctx.save();
+          ctx.translate(item.x, item.y);
+          ctx.globalAlpha = Math.max(0, 1 - p);
+          ctx.lineWidth = item.kind === "combo" ? 3 + Math.min(item.combo || 2, 6) : 4;
+          ctx.strokeStyle = item.kind === "sand" ? item.color : item.kind === "combo" ? "#7ee0ff" : "#ffd60a";
+          ctx.rotate(item.t / 140);
+          ctx.beginPath();
+          ctx.arc(0, 0, 28 + p * (item.kind === "combo" ? 70 : 56), item.kind === "sand" ? 0 : 0.2, Math.PI * (item.kind === "sand" ? 2 : 1.35));
+          ctx.stroke();
+          if (item.kind === "tspin") {
+            ctx.rotate(Math.PI);
+            ctx.beginPath();
+            ctx.arc(0, 0, 48 + p * 36, 0.4, Math.PI * 1.5);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+        if (!item.kind) {
         const radius = (item.big ? 10 : 6) + p * (item.big ? 54 : 26);
         ctx.save();
         ctx.globalAlpha = Math.max(0, 1 - p);
@@ -1557,8 +1826,12 @@
         ctx.beginPath();
         ctx.arc(item.x, item.y, Math.max(1, (1 - p) * (item.big ? 18 : 8)), 0, Math.PI * 2);
         ctx.fill();
-        for (const spark of item.sparks) {
-          const dist = spark.sp * (item.t / 1000);
+        ctx.restore();
+        }
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, 1 - p);
+        for (const spark of item.sparks || []) {
+          const dist = spark.sp * (Math.max(0, item.t) / 1000);
           ctx.fillStyle = spark.color;
           ctx.fillRect(item.x + Math.cos(spark.a) * dist - 2, item.y + Math.sin(spark.a) * dist - 2, 4, 4);
         }
@@ -1568,11 +1841,12 @@
 
     function drawBoard() {
       prepareBoard();
-      const shaking = fx.some((item) => item.big && item.t < 200);
+      const shaking = fx.some((item) => (item.big && item.t < 200) || ((item.kind === "tspin" || item.kind === "combo") && item.t < 160));
       if (shaking) ctx.translate((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
-      ctx.fillStyle = document.body.dataset.theme === "dark" ? "#0e1014" : "#ffffff";
+      ctx.fillStyle = game.sandGrid ? "#14110e" : (document.body.dataset.theme === "dark" ? "#0e1014" : "#ffffff");
       ctx.fillRect(0, 0, COLS * CELL, ROWS * CELL);
-      const flipping = anim?.step.type === "flip" || anim?.step.type === "reward";
+      drawSandField(ctx);
+      const flipping = anim?.step.type === "flip" || (anim?.step.type === "reward" && anim.step.reward !== "sand");
       if (flipping) {
         const turn = Math.min(1, anim.t / anim.dur);
         const angle = Math.PI * (1 - Math.cos(Math.PI * turn)) / 2;
@@ -1582,30 +1856,37 @@
         ctx.translate(-(COLS * CELL) / 2, -(ROWS * CELL) / 2);
       }
       const skip = new Set();
-      if (anim?.step.type === "drop") for (const move of anim.step.moves) skip.add(move.g);
+      if (anim?.step.moves?.length && (anim.step.type === "drop" || anim.step.type === "sand")) for (const move of anim.step.moves) skip.add(move.g);
       drawGridCells(ctx, game.grid, skip, CELL);
-      if (anim?.step.type === "drop") {
+      if (anim?.step.moves?.length && (anim.step.type === "drop" || anim.step.type === "sand")) {
         const turn = Math.min(1, anim.t / anim.dur);
         const eased = 1 - (1 - turn) ** 2;
         for (const move of anim.step.moves) {
+          const x = move.x0 == null ? move.x : move.x0 + (move.x1 - move.x0) * eased;
           const y = move.y0 + (move.y1 - move.y0) * eased;
-          ctx.fillStyle = pieceColor(move.type);
-          tile(ctx, move.x, y, CELL, false);
+          if (move.sand != null) drawSandMino(ctx, x, y, CELL, move.sand, false);
+          else {
+            ctx.fillStyle = pieceColor(move.type);
+            tile(ctx, x, y, CELL, false);
+          }
         }
       }
-      if (anim?.step.type === "clear") {
+      if (anim?.step.type === "clear" && !anim.step.sand) {
         ctx.globalAlpha = 1 - anim.t / anim.dur;
         for (const cell of anim.step.cells) {
-          ctx.fillStyle = pieceColor(cell.type);
-          tile(ctx, cell.x, cell.y, CELL, false);
+          if (cell.sand != null) drawSandMino(ctx, cell.x, cell.y, CELL, cell.sand, false);
+          else {
+            ctx.fillStyle = pieceColor(cell.type, cell.curse, cell.sand);
+            tile(ctx, cell.x, cell.y, CELL, false);
+          }
         }
         ctx.globalAlpha = 1;
       }
       drawFx();
       if (game.active && game.phase === "playing") {
         const gy = ghostY(game);
-        drawBlob(ctx, cellsOf(game.active.type, game.active.rot, game.active.x, gy), game.active.type, CELL, true);
-        drawBlob(ctx, cellsOf(game.active.type, game.active.rot, game.active.x, game.active.y), game.active.type, CELL, false, game.active.bombIndex, game.active.curse);
+        drawBlob(ctx, cellsOf(game.active.type, game.active.rot, game.active.x, gy), game.active.type, CELL, true, null, game.active.curse, game.active.sand ?? null);
+        drawBlob(ctx, cellsOf(game.active.type, game.active.rot, game.active.x, game.active.y), game.active.type, CELL, false, game.active.bombIndex, game.active.curse, game.active.sand ?? null);
       }
       if (session) drawSession(ctx, session, ink());
       if (performance.now() < curseUntil.blind) {
@@ -1646,7 +1927,10 @@
       drawBoard();
       holdCanvas.classList.toggle("used", game.holdLocked && game.phase === "playing");
       document.querySelector("#hold-state").textContent = game.holdLocked && game.phase === "playing" ? t("holdUsed") : t("holdReady");
-      document.querySelector("#curse-note").textContent = curseStatus();
+      const notes = [];
+      if (curseStatus()) notes.push(curseStatus());
+      if (game.sanding) notes.push(`${t("sand")} ${Math.max(0, game.sandLeft)}`);
+      document.querySelector("#curse-note").textContent = notes.join(" · ");
       paintPreview(holdCtx, holdCanvas, [game.hold]);
       paintPreview(nextCtx, nextCanvas, game.queue.slice(0, 3));
       document.querySelector("#score").textContent = String(game.score + (session?.score || 0));
@@ -1654,7 +1938,22 @@
       document.querySelector("#third-label").textContent = game.mode === "sprint" ? t("time") : t("stage");
       document.querySelector("#third").textContent = game.mode === "sprint" ? formatTime(elapsed()) : String(game.stage);
       const best = readBest();
+      const marathon = game.mode === "marathon";
+      const paceNote = document.querySelector("#pace-note");
+      if (marathon && game.paceName !== "normal") {
+        paceNote.hidden = false;
+        paceNote.textContent = `${t(game.paceName)} ×${paceOf(game)}`;
+      } else paceNote.hidden = true;
       document.querySelector("#best").textContent = game.mode === "sprint" ? (best ? formatTime(best) : "–") : String(Math.max(best, game.score));
+      const banner = callouts[0];
+      const callout = document.querySelector("#callout");
+      if (!banner) callout.hidden = true;
+      else {
+        callout.hidden = false;
+        callout.className = `callout ${banner.kind}`;
+        callout.style.opacity = String(Math.max(0, 1 - Math.max(0, banner.t) / banner.life));
+        document.querySelector("#callout-text").textContent = banner.text;
+      }
       const progress = game.mode === "sprint" ? game.lines / 40 : game.stageLines / game.stageGoal;
       document.querySelector("#meter-bar").style.transform = `scaleX(${Math.max(0, Math.min(1, progress))})`;
       const dropButton = document.querySelector("#btn-drop");
@@ -1675,8 +1974,8 @@
     }
 
     function finishSession() {
-      game.score += session.score;
-      if (session.full) game.score += 2000 * game.stage;
+      game.score += Math.round(session.score * paceOf(game));
+      if (session.full) game.score += Math.round(2000 * game.stage * paceOf(game));
       session = null;
       game.phase = "resolving";
     }
@@ -1697,7 +1996,7 @@
           softAcc += dt;
           while (softAcc >= 45) {
             softAcc -= 45;
-            if (tryMove(game, 0, 1)) game.score += 1;
+            if (tryMove(game, 0, 1)) game.score += Math.round(paceOf(game));
           }
         }
         acc += dt;
@@ -1708,7 +2007,7 @@
           if (!tryMove(game, 0, 1)) break;
           lockMs = 0;
         }
-        if (game.active && !fits(game.grid, game.active.type, game.active.rot, game.active.x, game.active.y + 1)) {
+        if (game.active && !fits(game.grid, game.active.type, game.active.rot, game.active.x, game.active.y + 1, game)) {
           lockMs += dt;
           if (lockMs >= 480) {
             lockActive(game);
@@ -1720,6 +2019,10 @@
 
       for (const item of fx) item.t += dt;
       for (let i = fx.length - 1; i >= 0; i -= 1) if (fx[i].t >= fx[i].life) fx.splice(i, 1);
+      if (callouts[0]) {
+        callouts[0].t += dt;
+        if (callouts[0].t >= callouts[0].life) callouts.shift();
+      }
 
       if (!paused && session) {
         const clearedBefore = session.cleared;
@@ -1738,8 +2041,17 @@
           if (anim.t >= anim.dur) {
             const step = anim.step;
             anim = null;
-            if (step.type === "flip" || step.type === "reward") flipGrid(game);
-            if (step.type === "reward") {
+            if (step.type === "flip" || (step.type === "reward" && step.reward !== "sand")) flipGrid(game);
+            if (step.type === "reward" && step.reward === "sand") {
+              beginSand(game);
+              const taughtKey = "bridge-taught-sand";
+              const teach = localStorage.getItem(taughtKey) !== "1";
+              if (teach) localStorage.setItem(taughtKey, "1");
+              pushCallout("sand", teach ? t("teachSand") : `${t("rewardSand")} ${SAND_DROPS}`, teach ? 2200 : 1100);
+              sandBurst();
+              sound.playSand();
+              game.phase = "resolving";
+            } else if (step.type === "reward") {
               session = createSession(step.reward, game.grid, game.stage, game.random);
               const taughtKey = `bridge-taught-${session.kind}`;
               session.teach = localStorage.getItem(taughtKey) !== "1";
@@ -1750,19 +2062,36 @@
         }
         if (!anim && game.phase === "resolving") {
           const step = pump(game);
-          if (step?.type === "clear" || step?.type === "drop" || step?.type === "flip" || step?.type === "reward") {
-            const distance = step.type === "drop" ? Math.max(0, ...step.moves.map((move) => move.y1 - move.y0)) : 0;
-            const dur = step.type === "clear" ? (step.blasts?.length ? 520 : 240) : step.type === "drop" ? 120 + distance * 18 : step.type === "reward" ? 720 : 460;
+          if (step?.type === "clear" || step?.type === "drop" || step?.type === "flip" || step?.type === "reward" || step?.type === "sand" || step?.type === "spin") {
+            const distance = step.moves?.length && (step.type === "drop" || step.type === "sand") ? Math.max(0, ...step.moves.map((move) => Math.abs(move.y1 - move.y0) + Math.abs((move.x1 ?? move.x) - (move.x0 ?? move.x)))) : 0;
+            const dur = step.type === "clear" ? (step.blasts?.length ? 520 : step.sand ? 180 : 240) : step.type === "sand" ? 16 : step.type === "drop" ? 120 + distance * 18 : step.type === "spin" ? 560 : step.type === "reward" && step.reward === "sand" ? 480 : step.type === "reward" ? 720 : 460;
             anim = { step, t: 0, dur };
             if (step.type === "clear") {
-              sound.playClear(step.rows.length);
-              for (const cell of step.cells) burst(cell, false);
+              if (step.tspin) {
+                sound.playTspin();
+                pushCallout("tspin", t("tspin"));
+                spinBurst();
+              }
+              sound.playClear(step.sand ? 2 : step.rows.length);
+              if (step.combo > 1) {
+                sound.playCombo(step.combo);
+                pushCallout("combo", `${t("combo")} ${step.combo}`);
+                comboBurst(step.combo);
+              }
+              if (step.sand) sandBurst();
+              else for (const cell of step.cells) burst(cell, !!step.tspin);
               for (const cell of step.blasts || []) burst(cell, true);
               if (step.blasts?.length) sound.playBoom();
               applyCurses(step.cells);
               applyCurses(step.blasts);
             }
-            if (step.type === "flip" || step.type === "reward") sound.blip(180, 0.08);
+            if (step.type === "spin") {
+              sound.playTspin();
+              pushCallout("tspin", t("tspin"));
+              spinBurst();
+            }
+            if (step.type === "flip" || (step.type === "reward" && step.reward !== "sand")) sound.blip(180, 0.08);
+            if (step.type === "reward" && step.reward === "sand") sound.playSand();
           } else if (step?.type === "done") {
             frozenTime = performance.now();
             const time = elapsed();
