@@ -74,15 +74,11 @@ export function sandColorOf(type) {
   return sandColorsOf(type)[0];
 }
 
-export const SAND_MIX_CHANCE = 1 / 3;
+export const SAND_MIX_CHANCE = 1 / 8;
+export const SAND_REPEAT_CHANCE = 1 / 2.2;
 
-export function sandMark(type, random = Math.random) {
-  return random() < SAND_MIX_CHANCE ? [...sandColorsOf(type)] : sandColorOf(type);
-}
-
-export function sandPaint(type, cells, mix = true) {
-  const [first, second] = sandColorsOf(type);
-  if (!mix || cells.length < 2) return cells.map(() => first);
+export function splitBySide(cells, first, second) {
+  if (cells.length < 2) return cells.map(() => first);
   const xs = cells.map(([x]) => x);
   const ys = cells.map(([, y]) => y);
   const splitX = Math.max(...xs) !== Math.min(...xs);
@@ -90,9 +86,77 @@ export function sandPaint(type, cells, mix = true) {
   return cells.map(([x, y]) => ((splitX ? x : y) <= mid ? first : second));
 }
 
-export function sandPaintsFor(type, cells, sand) {
-  if (Array.isArray(sand)) return sandPaint(type, cells, true);
+export function sandPaint(type, cells, mix = true) {
+  const [first, second] = sandColorsOf(type);
+  if (!mix || cells.length < 2) return cells.map(() => first);
+  return splitBySide(cells, first, second);
+}
+
+const SAND_TURN = {};
+
+function sandTurn(type) {
+  if (Object.prototype.hasOwnProperty.call(SAND_TURN, type)) return SAND_TURN[type];
+  const shapes = SHAPES[type] || [];
+  let turn = null;
+  if (shapes.length > 1) {
+    const from = shapes[0];
+    const onto = new Set(shapes[1].map(([x, y]) => `${x},${y}`));
+    for (const size of [3, 4, 5]) {
+      for (const fn of [(x, y) => [size - 1 - y, x], (x, y) => [y, size - 1 - x]]) {
+        if (from.every(([x, y]) => onto.has(fn(x, y).join(",")))) {
+          turn = fn;
+          break;
+        }
+      }
+      if (turn) break;
+    }
+  }
+  SAND_TURN[type] = turn;
+  return turn;
+}
+
+export function sandAtRotation(type, sand, rot = 0) {
+  const shapes = SHAPES[type] || [[]];
+  const count = shapes.length;
+  const turns = ((rot % count) + count) % count;
+  const base = Array.isArray(sand) ? sand : shapes[0].map(() => sand);
+  if (!Array.isArray(sand)) return shapes[turns].map(() => sand);
+  if (!turns) return base.slice();
+  const step = sandTurn(type);
+  const target = shapes[turns];
+  if (!step) return target.map((_, index) => base[index] ?? base[0]);
+  const colors = Array(target.length).fill(base[0]);
+  shapes[0].forEach(([x, y], index) => {
+    let cx = x;
+    let cy = y;
+    for (let i = 0; i < turns; i += 1) [cx, cy] = step(cx, cy);
+    const dest = target.findIndex(([tx, ty]) => tx === cx && ty === cy);
+    if (dest >= 0) colors[dest] = base[index] ?? base[0];
+  });
+  return colors;
+}
+
+export function chooseSandColor(previous, random = Math.random) {
+  if (previous != null && random() < SAND_REPEAT_CHANCE) return previous;
+  const pool = [0, 1, 2, 3].filter((color) => color !== previous);
+  return pool[Math.floor(random() * pool.length)] ?? 0;
+}
+
+export function sandMark(type, random = Math.random, previous = null) {
+  const color = chooseSandColor(previous, random);
+  const cells = SHAPES[type]?.[0] ?? [[0, 0]];
+  if (cells.length < 2 || random() >= SAND_MIX_CHANCE) return { sand: color, hue: color };
+  const others = [0, 1, 2, 3].filter((item) => item !== color);
+  const second = others[Math.floor(random() * others.length)] ?? color;
+  return { sand: splitBySide(cells, color, second), hue: color };
+}
+
+export function sandPaintsFor(type, cells, sand, rot = 0) {
   if (typeof sand === "number") return cells.map(() => sand);
+  if (Array.isArray(sand) && sand.length === 2 && (SHAPES[type]?.[0].length ?? 0) !== 2) {
+    return sandAtRotation(type, splitBySide(SHAPES[type][0], sand[0], sand[1]), rot);
+  }
+  if (Array.isArray(sand)) return sandAtRotation(type, sand, rot);
   return sandPaint(type, cells, true);
 }
 export const TSPIN_SCORE = [400, 800, 1200, 1600];
@@ -217,7 +281,11 @@ export function createGame(options = {}) {
       bombIndex: marked ? Math.floor(random() * SHAPES[type][0].length) : null,
       curse,
     };
-    if (game.sanding) piece.sand = sandMark(type, random);
+    if (game.sanding) {
+      const mark = sandMark(type, random, game.sandHue);
+      game.sandHue = mark.hue;
+      piece.sand = mark.sand;
+    }
     return piece;
   }
 
@@ -276,6 +344,7 @@ export function createGame(options = {}) {
     sandExit: false,
     spin: null,
     spinEligible: false,
+    sandHue: null,
     pace: 1,
     paceName: "normal",
     phase: "ready",
@@ -314,6 +383,7 @@ export function startGame(game, nextMode) {
   game.sandGrid = null;
   game.sandLeft = 0;
   game.sandExit = false;
+  game.sandHue = null;
   game.spin = null;
   game.spinEligible = false;
   game.phase = "playing";
@@ -535,8 +605,12 @@ export function beginSand(game, drops = SAND_DROPS) {
   game.sanding = true;
   game.sandLeft = drops;
   game.sandExit = false;
+  game.sandHue = null;
   const tint = (piece) => {
-    if (piece) piece.sand = sandMark(piece.type, game.random);
+    if (!piece) return;
+    const mark = sandMark(piece.type, game.random, game.sandHue);
+    game.sandHue = mark.hue;
+    piece.sand = mark.sand;
   };
   const grid = emptySandGrid();
   const groups = new Map();
@@ -552,7 +626,10 @@ export function beginSand(game, drops = SAND_DROPS) {
   }
   for (const group of groups.values()) {
     const coords = group.map((cell) => [cell.x, cell.y]);
-    const paints = sandPaintsFor(group[0].type, coords, sandMark(group[0].type, game.random));
+    const mark = sandMark(group[0].type, game.random, game.sandHue);
+    game.sandHue = mark.hue;
+    const marks = Array.isArray(mark.sand) ? [...new Set(mark.sand)] : [mark.sand];
+    const paints = marks.length > 1 ? splitBySide(coords, marks[0], marks[1]) : coords.map(() => marks[0]);
     group.forEach((cell, index) => stampSand(grid, cell.x, cell.y, paints[index] + 1));
   }
   for (const piece of game.queue) tint(piece);
@@ -658,7 +735,7 @@ export function lockActive(game) {
   const sanding = !!game.sanding && game.sandGrid;
   const cells = cellsOf(game.active.type, game.active.rot, game.active.x, game.active.y);
   if (sanding) {
-    const paints = sandPaintsFor(game.active.type, cells, game.active.sand);
+    const paints = sandPaintsFor(game.active.type, cells, game.active.sand, game.active.rot);
     cells.forEach(([x, y], index) => stampSand(game.sandGrid, x, y, paints[index] + 1));
     game.sandLeft -= 1;
     if (game.sandLeft <= 0) game.sandExit = true;
