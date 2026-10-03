@@ -65,19 +65,23 @@ test("pinball flippers rest on a shallow slope and the side rails stay sealed", 
   onFlipper.prep = 0;
   onFlipper.launched = true;
   const left = flipper("left", false);
-  onFlipper.balls = [{ x: (left.x1 + left.x2) / 2, y: left.y1 - 40, vx: 0, vy: 40, r: 7, gravity: true }];
-  let drained = false;
-  for (let i = 0; i < 240; i += 1) {
+  onFlipper.balls = [{ x: (left.x1 + left.x2) / 2, y: left.y1 - 30, vx: 0, vy: 360, r: 7, gravity: true }];
+  let bounced = false;
+  for (let i = 0; i < 40; i += 1) {
     updateSession(onFlipper, 16);
     const ball = onFlipper.balls[0];
-    if (ball) assert.ok(ball.x > 12 && ball.x < W - 12);
-    if (onFlipper.over && !onFlipper.full) {
-      drained = true;
-      break;
-    }
+    assert.ok(ball);
+    assert.ok(ball.x > 12 && ball.x < W - 12);
+    if (ball.vy < 0) bounced = true;
   }
-  assert.equal(drained, true);
-  assert.equal(onFlipper.balls.length, 0);
+  assert.equal(bounced, true);
+  assert.equal(onFlipper.over, false);
+  onFlipper.wasLeft = false;
+  onFlipper.left = true;
+  onFlipper.balls[0].y = left.y1 - 8;
+  onFlipper.balls[0].vy = 200;
+  updateSession(onFlipper, 16);
+  assert.ok(onFlipper.balls[0].vy < -400);
   const mouth = createSession("pinball", grid, 1, () => 0.5);
   mouth.prep = 0;
   mouth.launched = true;
