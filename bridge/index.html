@@ -262,7 +262,30 @@
 
     .hint { margin: 10px 0 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
 
-    .hero-actions { display: flex; gap: 14px; margin-top: 32px; flex-wrap: wrap; justify-content: center; }
+    .hero-actions { display: flex; gap: 14px; margin-top: 18px; flex-wrap: wrap; justify-content: center; }
+    .picker {
+      display: grid;
+      grid-template-columns: 56px minmax(0, 1fr) 56px;
+      align-items: center;
+      gap: 8px;
+      width: min(440px, 100%);
+      margin-top: 22px;
+    }
+    .picker > button {
+      width: 56px;
+      height: 56px;
+      padding: 0;
+      border-radius: 50%;
+      font-size: 34px;
+      line-height: 1;
+      color: var(--ink);
+      background: rgba(255, 255, 255, .38);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .5);
+    }
+    .picker-name { font-size: 32px; letter-spacing: .02em; }
+    .version { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+    #tetris-tools { display: grid; justify-items: center; width: min(440px, 100%); }
+    #tetris-tools[hidden] { display: none !important; }
     .pace-row, .boards {
       display: flex;
       gap: 8px;
@@ -846,8 +869,19 @@
 <rect class="logo-type" x="180.8" y="26.6" width="4.4" height="4.4" rx="1.3"/>
 <rect class="logo-type" x="186.2" y="26.6" width="4.4" height="4.4" rx="1.3"/>
       </svg>
+        <div class="picker">
+          <button id="game-prev" type="button" aria-label="Previous">‹</button>
+          <div>
+            <div class="picker-name" id="game-name">Tetris</div>
+            <p class="version" id="version-label">1.0</p>
+          </div>
+          <button id="game-next" type="button" aria-label="Next">›</button>
+        </div>
         <div class="hero-actions">
-          <button id="go-marathon" class="primary" type="button" data-i18n="marathon">Marathon</button>
+          <button id="go-start" class="primary" type="button" data-i18n="start">Start</button>
+        </div>
+        <div id="tetris-tools">
+        <div class="hero-actions">
           <button id="go-sprint" class="secondary" type="button" data-i18n="sprint">40-line sprint</button>
         </div>
         <div class="pace-row" id="pace-row">
@@ -860,6 +894,7 @@
           <input id="pace-range" type="range" min="0.5" max="10" step="0.5" value="1">
           <b id="pace-value">×1</b>
         </label>
+        </div>
         <div class="menu-links">
           <button id="go-boards" class="chip" type="button" data-i18n="boards">Ranks</button>
           <button id="go-settings" class="chip" type="button" data-i18n="settings">Settings</button>
@@ -987,9 +1022,14 @@
 
     <section id="boards" class="settings-wrap" hidden>
       <h1 data-i18n="boards">Ranks</h1>
-      <div class="board-card glass">
-        <div class="board-line"><span data-i18n="normal">Normal</span><b id="board-normal">0</b></div>
-        <div class="board-line"><span><span data-i18n="hard">Hard</span> ×2</span><b id="board-hard">0</b></div>
+      <div class="board-card glass" id="board-card">
+        <div id="board-tetris">
+          <div class="board-line"><span data-i18n="normal">Normal</span><b id="board-normal">0</b></div>
+          <div class="board-line"><span><span data-i18n="hard">Hard</span> ×2</span><b id="board-hard">0</b></div>
+        </div>
+        <div class="board-line" id="board-single" hidden>
+          <span id="board-single-name">Score</span><b id="board-single-score">0</b>
+        </div>
       </div>
       <button id="boards-back" class="text-btn" type="button" data-i18n="close">Back</button>
     </section>
@@ -1161,8 +1201,10 @@
   </div>
   <script type="module">
     import { createSound } from "./audio.mjs";
-    import { createSession, drawSession, updateSession } from "./arcade.mjs";
+    import { brickWall, createSession, drawSession, updateSession } from "./arcade.mjs";
     import { translate } from "./i18n.mjs";
+    import { createTen, createTwenty, tenCycle, tenMove, tenPlace, twentyBest, twentyMove } from "./puzzle.mjs";
+    import { VERSION } from "./version.mjs";
     import {
       COLS, ROWS, SAND_DROPS, SAND_SCALE, SHAPES, beginSand, cellsOf, createGame, fits, flipGrid, ghostY, gravityMs, sandPaint,
       hardDrop, hold, lockActive, paceOf, pump, startGame, tryMove, tryRotate,
@@ -1181,8 +1223,18 @@
     const holdCtx = holdCanvas.getContext("2d");
     const nextCtx = nextCanvas.getContext("2d");
     const veil = document.querySelector("#veil");
+    const GAMES = [
+      ["tetris", "gameTetris"],
+      ["breakout", "gameBreakout"],
+      ["bbtan", "gameBbtan"],
+      ["pinball", "gamePinball"],
+      ["sand", "gameSand"],
+      ["ten", "gameTen"],
+      ["twenty", "gameTwenty"],
+    ];
     const game = createGame();
     const settings = loadSettings();
+    let puzzle = null;
     let paused = false;
     let acc = 0;
     let softAcc = 0;
@@ -1207,13 +1259,13 @@
 
     function loadSettings() {
       try {
-        const saved = { lang: "en", volume: 0.7, theme: "light", touch: "auto", pace: "normal", paceSpeed: 1, ...JSON.parse(localStorage.getItem("bridge-settings") || "{}") };
+        const saved = { lang: "en", volume: 0.7, theme: "light", touch: "auto", pace: "normal", paceSpeed: 1, game: "tetris", ...JSON.parse(localStorage.getItem("bridge-settings") || "{}") };
         if (!saved.touch) saved.touch = "auto";
         if (!saved.pace) saved.pace = "normal";
         saved.paceSpeed = paceOf({ pace: saved.paceSpeed ?? 1 });
         return saved;
       } catch {
-        return { lang: "en", volume: 0.7, theme: "light", touch: "auto", pace: "normal", paceSpeed: 1 };
+        return { lang: "en", volume: 0.7, theme: "light", touch: "auto", pace: "normal", paceSpeed: 1, game: "tetris" };
       }
     }
 
@@ -1234,9 +1286,24 @@
       document.querySelector("#volume").value = String(Math.round(settings.volume * 100));
       document.querySelector("#theme-light").setAttribute("aria-pressed", String(settings.theme === "light"));
       document.querySelector("#theme-dark").setAttribute("aria-pressed", String(settings.theme === "dark"));
+      document.querySelector("#version-label").textContent = VERSION;
       applyTouch();
       syncPace();
+      syncPicker();
       sound.setVolume();
+    }
+
+    function currentGame() {
+      return GAMES.some(([id]) => id === settings.game) ? settings.game : "tetris";
+    }
+
+    function syncPicker() {
+      const id = currentGame();
+      settings.game = id;
+      const key = GAMES.find(([name]) => name === id)[1];
+      document.querySelector("#game-name").textContent = t(key);
+      document.querySelector("#tetris-tools").hidden = id !== "tetris";
+      document.querySelector("#version-label").textContent = VERSION;
     }
 
     function readStored(key) {
@@ -1283,14 +1350,16 @@
 
     function bestKey() {
       if (game.mode === "sprint") return "bridge-best-sprint";
-      if (game.paceName === "hard") return "bridge-best-marathon-hard";
-      if (game.paceName === "custom") return `bridge-best-marathon-custom-${paceOf(game)}`;
-      return "bridge-best-marathon-normal";
+      if (game.mode === "marathon" && game.paceName === "hard") return "bridge-best-marathon-hard";
+      if (game.mode === "marathon" && game.paceName === "custom") return `bridge-best-marathon-custom-${paceOf(game)}`;
+      if (game.mode === "marathon") return "bridge-best-marathon-normal";
+      return `bridge-best-${game.mode}`;
     }
 
     function readBest() {
-      if (game.mode !== "sprint" && game.paceName === "normal") return normalBest();
-      if (game.mode !== "sprint" && game.paceName === "hard") return readStored("bridge-best-marathon-hard");
+      if (game.mode === "marathon" && game.paceName === "hard") return readStored("bridge-best-marathon-hard");
+      if (game.mode === "marathon" && game.paceName === "custom") return readStored(bestKey());
+      if (game.mode === "marathon") return normalBest();
       const raw = Number(localStorage.getItem(bestKey()) || 0);
       return Number.isFinite(raw) ? raw : 0;
     }
@@ -1308,6 +1377,7 @@
     function resetTimers() { acc = 0; softAcc = 0; lockMs = 0; lockResets = 0; }
 
     function begin(mode) {
+      puzzle = null;
       startGame(game, mode);
       if (mode === "marathon") {
         const name = settings.pace || "normal";
@@ -1332,6 +1402,67 @@
       showScreen("game");
       fitBoard();
       sound.restart();
+      if (mode === "sand") beginSand(game, Number.POSITIVE_INFINITY);
+    }
+
+    function beginArcade(kind) {
+      puzzle = null;
+      anim = null;
+      paused = false;
+      resetTimers();
+      heldKeys.clear();
+      game.setMode(kind);
+      game.grid = brickWall(Math.random);
+      game.active = null;
+      game.hold = null;
+      game.score = 0;
+      game.phase = kind;
+      game.paceName = "normal";
+      game.pace = 1;
+      session = createSession(kind, game.grid, 1, Math.random);
+      const taughtKey = `bridge-taught-${kind}`;
+      session.teach = localStorage.getItem(taughtKey) !== "1";
+      if (session.teach) localStorage.setItem(taughtKey, "1");
+      veil.hidden = true;
+      showScreen("game");
+      fitBoard();
+      sound.restart();
+    }
+
+    function beginPuzzle(kind) {
+      session = null;
+      anim = null;
+      paused = false;
+      resetTimers();
+      heldKeys.clear();
+      puzzle = kind === "ten" ? createTen(Math.random) : createTwenty(Math.random);
+      game.setMode(kind);
+      game.phase = "playing";
+      game.active = null;
+      game.hold = null;
+      game.score = 0;
+      game.paceName = "normal";
+      game.pace = 1;
+      veil.hidden = true;
+      showScreen("game");
+      fitBoard();
+      sound.restart();
+    }
+
+    function beginSelected() {
+      const id = currentGame();
+      if (id === "tetris") begin("marathon");
+      else if (id === "sand") begin("sand");
+      else if (id === "ten" || id === "twenty") beginPuzzle(id);
+      else beginArcade(id);
+    }
+
+    function shiftCatalog(dir) {
+      const id = currentGame();
+      const index = Math.max(0, GAMES.findIndex(([name]) => name === id));
+      settings.game = GAMES[(index + dir + GAMES.length) % GAMES.length][0];
+      saveSettings();
+      syncPicker();
     }
 
     function backToMenu() {
@@ -1398,7 +1529,9 @@
       sound.blip(160, 0.05);
     }
 
-    document.querySelector("#go-marathon").addEventListener("click", () => begin("marathon"));
+    document.querySelector("#go-start").addEventListener("click", beginSelected);
+    document.querySelector("#game-prev").addEventListener("click", () => shiftCatalog(-1));
+    document.querySelector("#game-next").addEventListener("click", () => shiftCatalog(1));
     for (const mode of ["normal", "hard", "custom"]) {
       document.querySelector(`#pace-${mode}`).addEventListener("click", () => {
         settings.pace = mode;
@@ -1415,12 +1548,28 @@
     document.querySelector("#go-sprint").addEventListener("click", () => begin("sprint"));
     document.querySelector("#go-settings").addEventListener("click", () => showScreen("settings"));
     document.querySelector("#settings-back").addEventListener("click", () => showScreen("menu"));
-    document.querySelector("#go-boards").addEventListener("click", () => { syncPace(); showScreen("boards"); });
+    document.querySelector("#go-boards").addEventListener("click", () => {
+      syncPace();
+      const id = currentGame();
+      const tetrisBoard = id === "tetris";
+      document.querySelector("#board-tetris").hidden = !tetrisBoard;
+      document.querySelector("#board-single").hidden = tetrisBoard;
+      if (!tetrisBoard) {
+        const key = GAMES.find(([name]) => name === id)[1];
+        document.querySelector("#board-single-name").textContent = t(key);
+        document.querySelector("#board-single-score").textContent = String(readStored(`bridge-best-${id}`));
+      }
+      showScreen("boards");
+    });
     document.querySelector("#boards-back").addEventListener("click", () => showScreen("menu"));
     document.querySelector("#game-menu").addEventListener("click", backToMenu);
     document.querySelector("#veil-menu").addEventListener("click", backToMenu);
     document.querySelector("#veil-btn").addEventListener("click", () => {
-      if (game.phase === "over" || game.phase === "done") begin(game.mode);
+      if (game.phase === "over" || game.phase === "done") {
+        if (game.mode === "ten" || game.mode === "twenty") beginPuzzle(game.mode);
+        else if (game.mode === "breakout" || game.mode === "bbtan" || game.mode === "pinball") beginArcade(game.mode);
+        else begin(game.mode);
+      }
       else paused = false;
     });
     document.querySelector("#lang").addEventListener("change", (event) => {
@@ -1448,7 +1597,25 @@
       const key = event.key;
       if (["ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp", " "].includes(key)) event.preventDefault();
       if (key === "p" || key === "P" || key === "Escape") {
-        if (["playing", "resolving", "breakout", "bbtan", "pinball"].includes(game.phase)) paused = !paused;
+        if (puzzle || ["playing", "resolving", "breakout", "bbtan", "pinball", "sand"].includes(game.phase)) paused = !paused;
+        return;
+      }
+      if (puzzle && !paused) {
+        if (puzzle.kind === "twenty") {
+          const dir = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" }[key];
+          if (dir && twentyMove(puzzle, dir)) sound.blip(520, 0.03);
+        } else if (puzzle.kind === "ten") {
+          if (key === "ArrowLeft") tenMove(puzzle, -1, 0);
+          else if (key === "ArrowRight") tenMove(puzzle, 1, 0);
+          else if (key === "ArrowUp") tenMove(puzzle, 0, -1);
+          else if (key === "ArrowDown") tenMove(puzzle, 0, 1);
+          else if (key === "x" || key === "X" || key === "c" || key === "C") tenCycle(puzzle, 1);
+          else if (key === " " || key === "Enter") {
+            const cleared = tenPlace(puzzle);
+            if (cleared) sound.playClear(Math.min(4, cleared));
+            else sound.blip(180, 0.03);
+          }
+        }
         return;
       }
       if (paused) return;
@@ -1491,20 +1658,55 @@
 
     let leftTimer = 0;
     let rightTimer = 0;
+    function playPuzzlePad(action) {
+      if (!puzzle || paused || puzzle.over) return false;
+      if (puzzle.kind === "twenty") {
+        const dir = { left: "left", right: "right", up: "up", down: "down" }[action];
+        if (dir && twentyMove(puzzle, dir)) sound.blip(520, 0.03);
+        return true;
+      }
+      if (action === "left") tenMove(puzzle, -1, 0);
+      else if (action === "right") tenMove(puzzle, 1, 0);
+      else if (action === "up") tenMove(puzzle, 0, -1);
+      else if (action === "down") tenMove(puzzle, 0, 1);
+      else if (action === "cycle") tenCycle(puzzle, 1);
+      else if (action === "place") {
+        const cleared = tenPlace(puzzle);
+        if (cleared) sound.playClear(Math.min(4, cleared));
+        else sound.blip(180, 0.03);
+      }
+      return true;
+    }
+
     bindPress("#btn-left", () => {
+      if (playPuzzlePad("left")) return;
       if (session) { steer(-1, true); return; }
       shift(-1);
       leftTimer = window.setInterval(() => shift(-1), 70);
     }, () => { steer(-1, false); window.clearInterval(leftTimer); });
     bindPress("#btn-right", () => {
+      if (playPuzzlePad("right")) return;
       if (session) { steer(1, true); return; }
       shift(1);
       rightTimer = window.setInterval(() => shift(1), 70);
     }, () => { steer(1, false); window.clearInterval(rightTimer); });
-    bindPress("#btn-soft", () => heldKeys.add("down"), () => heldKeys.delete("down"));
-    bindPress("#btn-rot", () => doRotate(1));
-    bindPress("#btn-hold", doHold);
-    bindPress("#btn-drop", doHard);
+    bindPress("#btn-soft", () => {
+      if (playPuzzlePad("down")) return;
+      heldKeys.add("down");
+    }, () => heldKeys.delete("down"));
+    bindPress("#btn-rot", () => {
+      if (playPuzzlePad("up")) return;
+      doRotate(1);
+    });
+    bindPress("#btn-hold", () => {
+      if (playPuzzlePad("cycle")) return;
+      doHold();
+    });
+    bindPress("#btn-drop", () => {
+      if (puzzle?.kind === "twenty") { playPuzzlePad("down"); return; }
+      if (puzzle?.kind === "ten") { playPuzzlePad("place"); return; }
+      doHard();
+    });
 
     function ink() { return document.body.dataset.theme === "dark" ? "#f5f5f7" : "#1d1d1f"; }
     const CURSE_COLOR = {
@@ -1923,21 +2125,81 @@
       return performance.now() - startedAt;
     }
 
+    function drawTenBoard() {
+      const cell = 26;
+      const ox = (COLS * CELL - 10 * cell) / 2;
+      for (let y = 0; y < 10; y += 1) {
+        for (let x = 0; x < 10; x += 1) {
+          ctx.fillStyle = puzzle.grid[y][x] ? "#0b57d0" : "rgba(11,87,208,.12)";
+          ctx.fillRect(ox + x * cell + 1, 12 + y * cell + 1, cell - 2, cell - 2);
+        }
+      }
+      const shape = puzzle.offer[puzzle.selected];
+      if (shape && !puzzle.over) {
+        ctx.globalAlpha = 0.45;
+        ctx.fillStyle = "#64d2ff";
+        for (const [dx, dy] of shape) {
+          const x = puzzle.cursor.x + dx;
+          const y = puzzle.cursor.y + dy;
+          if (x >= 0 && y >= 0 && x < 10 && y < 10) ctx.fillRect(ox + x * cell + 1, 12 + y * cell + 1, cell - 2, cell - 2);
+        }
+        ctx.globalAlpha = 1;
+      }
+      puzzle.offer.forEach((piece, index) => {
+        if (!piece) return;
+        const selected = index === puzzle.selected;
+        piece.forEach(([dx, dy]) => {
+          ctx.fillStyle = selected ? "#ffd84a" : "#8e8e93";
+          ctx.fillRect(18 + index * 92 + dx * 16, 300 + dy * 16, 14, 14);
+        });
+      });
+    }
+
+    function drawTwentyBoard() {
+      const size = 62;
+      const gap = 8;
+      const ox = (COLS * CELL - (size * 4 + gap * 3)) / 2;
+      const oy = 48;
+      const ink = document.body.dataset.theme === "dark" ? "#f5f5f7" : "#1d1d1f";
+      const colors = { 2: "#eee4da", 4: "#ede0c8", 8: "#f2b179", 16: "#f59563", 32: "#f67c5f", 64: "#f65e3b", 128: "#edcf72", 256: "#edcc61", 512: "#edc850", 1024: "#edc53f", 2048: "#edc22e" };
+      for (let y = 0; y < 4; y += 1) {
+        for (let x = 0; x < 4; x += 1) {
+          const value = puzzle.grid[y][x];
+          ctx.fillStyle = colors[value] || "rgba(238,228,218,.35)";
+          ctx.beginPath();
+          ctx.roundRect(ox + x * (size + gap), oy + y * (size + gap), size, size, 12);
+          ctx.fill();
+          if (!value) continue;
+          ctx.fillStyle = value < 8 ? ink : "#fff";
+          ctx.font = `${value >= 1024 ? 18 : 24}px sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(String(value), ox + x * (size + gap) + size / 2, oy + y * (size + gap) + size / 2);
+        }
+      }
+    }
+
     function draw() {
       if (document.querySelector("#game").hidden) return;
-      drawBoard();
+      if (puzzle) {
+        prepareBoard();
+        ctx.fillStyle = document.body.dataset.theme === "dark" ? "#0e1014" : "#ffffff";
+        ctx.fillRect(0, 0, COLS * CELL, ROWS * CELL);
+        if (puzzle.kind === "ten") drawTenBoard();
+        else drawTwentyBoard();
+      } else drawBoard();
       holdCanvas.classList.toggle("used", game.holdLocked && game.phase === "playing");
       document.querySelector("#hold-state").textContent = game.holdLocked && game.phase === "playing" ? t("holdUsed") : t("holdReady");
       const notes = [];
       if (curseStatus()) notes.push(curseStatus());
-      if (game.sanding) notes.push(`${t("sand")} ${Math.max(0, game.sandLeft)}`);
+      if (game.sanding) notes.push(Number.isFinite(game.sandLeft) ? `${t("sand")} ${Math.max(0, game.sandLeft)}` : t("gameSand"));
       document.querySelector("#curse-note").textContent = notes.join(" · ");
       paintPreview(holdCtx, holdCanvas, [game.hold]);
       paintPreview(nextCtx, nextCanvas, game.queue.slice(0, 3));
-      document.querySelector("#score").textContent = String(game.score + (session?.score || 0));
-      document.querySelector("#lines").textContent = game.mode === "sprint" ? `${game.lines}/40` : String(game.lines);
-      document.querySelector("#third-label").textContent = game.mode === "sprint" ? t("time") : t("stage");
-      document.querySelector("#third").textContent = game.mode === "sprint" ? formatTime(elapsed()) : String(game.stage);
+      document.querySelector("#score").textContent = String(puzzle ? puzzle.score : game.score + (session?.score || 0));
+      document.querySelector("#lines").textContent = puzzle?.kind === "ten" ? String(puzzle.lines) : game.mode === "sprint" ? `${game.lines}/40` : String(game.lines);
+      document.querySelector("#third-label").textContent = puzzle?.kind === "twenty" ? "2048" : game.mode === "sprint" ? t("time") : t("stage");
+      document.querySelector("#third").textContent = puzzle?.kind === "twenty" ? String(twentyBest(puzzle)) : game.mode === "sprint" ? formatTime(elapsed()) : String(game.stage);
       const best = readBest();
       const marathon = game.mode === "marathon";
       const paceNote = document.querySelector("#pace-note");
@@ -1945,7 +2207,8 @@
         paceNote.hidden = false;
         paceNote.textContent = `${t(game.paceName)} ×${paceOf(game)}`;
       } else paceNote.hidden = true;
-      document.querySelector("#best").textContent = game.mode === "sprint" ? (best ? formatTime(best) : "–") : String(Math.max(best, game.score));
+      const shownScore = puzzle ? puzzle.score : game.score + (session?.score || 0);
+      document.querySelector("#best").textContent = game.mode === "sprint" ? (best ? formatTime(best) : "–") : String(Math.max(best, shownScore));
       const banner = callouts[0];
       const callout = document.querySelector("#callout");
       if (!banner) callout.hidden = true;
@@ -1975,6 +2238,15 @@
     }
 
     function finishSession() {
+      if (game.mode === session.kind) {
+        const total = session.score + (session.full ? 2000 : 0);
+        game.score = total;
+        session = null;
+        game.phase = "over";
+        if (total > readBest()) localStorage.setItem(bestKey(), String(total));
+        showVeil(t("topped"), String(total), t("again"));
+        return;
+      }
       game.score += Math.round(session.score * paceOf(game));
       if (session.full) game.score += Math.round(2000 * game.stage * paceOf(game));
       session = null;
@@ -1984,7 +2256,13 @@
     function frame(now) {
       const dt = Math.min(34, now - last);
       last = now;
-      if (!document.querySelector("#game").hidden && !paused && game.phase === "playing" && game.active) {
+      if (puzzle?.over && game.phase !== "over") {
+        game.phase = "over";
+        if (puzzle.score > readBest()) localStorage.setItem(bestKey(), String(puzzle.score));
+        showVeil(t("topped"), String(puzzle.score), t("again"));
+      }
+
+      if (!puzzle && !document.querySelector("#game").hidden && !paused && game.phase === "playing" && game.active) {
         if (dasDir && ((dasDir < 0 && heldKeys.has("left")) || (dasDir > 0 && heldKeys.has("right")))) {
           dasTime += dt;
           if (dasTime >= (dasOn ? 35 : 150)) {

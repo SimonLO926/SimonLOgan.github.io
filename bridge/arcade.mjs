@@ -1,8 +1,27 @@
-import { COLS, ROWS, brickCount, hitBrick } from "./logic.mjs";
+import { COLS, ROWS, brickCount, emptyGrid, hitBrick } from "./logic.mjs";
 
 export const CELL = 28;
 export const W = COLS * CELL;
 export const H = ROWS * CELL;
+
+export function brickWall(random = Math.random) {
+  const grid = emptyGrid();
+  const types = ["I", "O", "T", "S", "Z", "J", "L"];
+  for (let y = 1; y <= 8; y += 1) {
+    for (let x = 0; x < COLS; x += 1) {
+      if (random() < 0.14) continue;
+      grid[y][x] = {
+        type: types[Math.floor(random() * types.length)],
+        g: y * COLS + x + 1,
+        bomb: random() < 0.08,
+        reward: null,
+        curse: null,
+        sand: null,
+      };
+    }
+  }
+  return grid;
+}
 
 export function createSession(kind, grid, stage, random) {
   const speed = Math.min(460, 220 + (Math.max(1, stage) - 1) * 16);

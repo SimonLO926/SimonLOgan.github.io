@@ -193,11 +193,11 @@ export function createGame(options = {}) {
       if (!sequence.length) throw new Error("piece sequence exhausted");
       return describe(sequence.shift());
     }
+    if (mode === "sand" || (mode === "marathon" && game.sanding)) {
+      if (!bag.length) bag.push(...shuffle(TYPES, random));
+      return describe(bag.pop());
+    }
     if (mode === "marathon") {
-      if (game.sanding) {
-        if (!bag.length) bag.push(...shuffle(TYPES, random));
-        return describe(bag.pop());
-      }
       if (random() < CURSE_CHANCE) {
         return describe("C", CURSES[Math.floor(random() * CURSES.length)]);
       }
@@ -470,9 +470,9 @@ function stampSand(grid, cx, cy, value) {
   }
 }
 
-export function beginSand(game) {
+export function beginSand(game, drops = SAND_DROPS) {
   game.sanding = true;
-  game.sandLeft = SAND_DROPS;
+  game.sandLeft = drops;
   game.sandExit = false;
   const tint = (piece) => {
     if (piece) piece.sand = sandColorOf(piece.type);
