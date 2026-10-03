@@ -206,7 +206,7 @@ export function createGame(options = {}) {
       if (!sequence.length) throw new Error("piece sequence exhausted");
       return describe(sequence.shift());
     }
-    if (mode === "sand" || (mode === "marathon" && game.sanding)) {
+    if (mode === "tetris" || mode === "sand" || (mode === "marathon" && game.sanding)) {
       if (!bag.length) bag.push(...shuffle(TYPES, random));
       return describe(bag.pop());
     }
@@ -420,7 +420,7 @@ function rewardOn(piece, index) {
 }
 
 function scoreMult(game) {
-  if (game.mode === "sprint") return 1 + Math.floor(game.lines / 10);
+  if (game.mode === "sprint" || game.mode === "tetris") return 1 + Math.floor(game.lines / 10);
   return game.stage * paceOf(game);
 }
 
@@ -836,6 +836,7 @@ export function pump(game) {
     const lineScore = kind ? tSpinScore(kind, rows.length) : LINE_SCORE[rows.length];
     game.score += lineScore * mult + bonus;
     noteLines(game, rows.length);
+    if (game.mode === "tetris") collapseRows(game.grid, rows);
     if (game.mode === "marathon") {
       const reward = pickReward(rewards);
       if (reward) game.pendingReward = reward;
@@ -862,10 +863,12 @@ export function pump(game) {
     }
   }
 
-  const comps = unsupportedComponents(game.grid);
-  if (comps.length) {
-    const moves = dropComponents(game.grid, comps, () => takeGid(game));
-    return { type: "drop", moves };
+  if (game.mode !== "tetris") {
+    const comps = unsupportedComponents(game.grid);
+    if (comps.length) {
+      const moves = dropComponents(game.grid, comps, () => takeGid(game));
+      return { type: "drop", moves };
+    }
   }
 
   if (game.mode === "marathon" && game.pendingFlips > 0) {
@@ -941,10 +944,21 @@ export function chainBlast(grid, x, y, random) {
   return removed;
 }
 
+function collapseRows(grid, rows) {
+  const gone = new Set(rows);
+  const kept = [];
+  for (let y = 0; y < ROWS; y += 1) {
+    if (!gone.has(y)) kept.push(grid[y]);
+  }
+  while (kept.length < ROWS) kept.unshift(Array(COLS).fill(null));
+  for (let y = 0; y < ROWS; y += 1) grid[y] = kept[y];
+}
+
 export function gravityMs(game) {
-  const base = game.mode === "sprint"
+  const classic = game.mode === "sprint" || game.mode === "tetris";
+  const base = classic
     ? Math.max(80, 820 - Math.floor(game.lines / 10) * 140)
     : Math.max(80, 980 - (game.stage - 1) * 110);
-  if (game.mode === "sprint") return base;
+  if (classic) return base;
   return Math.max(40, Math.round(base / paceOf(game)));
 }

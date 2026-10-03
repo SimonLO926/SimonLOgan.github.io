@@ -415,6 +415,35 @@ test("a sealed row stays until a bomb is cleared with it", () => {
   assert.equal(game.grid[19][3], null);
 });
 
+test("plain tetris is a bag of seven pieces and a full row drops without filling holes", () => {
+  const game = createGame({ mode: "tetris", random: () => 0 });
+  const seen = new Set();
+  for (let i = 0; i < 21; i += 1) seen.add(game.pull().type);
+  assert.deepEqual([...seen].sort(), ["I", "J", "L", "O", "S", "T", "Z"]);
+  const sprint = createGame({ mode: "sprint" });
+  sprint.lines = 0;
+  const classic = createGame({ mode: "tetris" });
+  classic.lines = 0;
+  assert.equal(gravityMs(classic), gravityMs(sprint));
+  startGame(game, "tetris");
+  game.active = null;
+  game.phase = "resolving";
+  game.grid[17][0] = { type: "O", g: 1, bomb: false, reward: null, curse: null, sand: null };
+  for (let x = 1; x < COLS; x += 1) {
+    game.grid[18][x] = { type: "I", g: 2, bomb: false, reward: null, curse: null, sand: null };
+  }
+  for (let x = 0; x < COLS; x += 1) {
+    game.grid[19][x] = { type: "O", g: 3, bomb: false, reward: null, curse: null, sand: null };
+  }
+  assert.equal(pump(game).type, "clear");
+  assert.equal(game.grid[18][0].type, "O");
+  assert.equal(game.grid[19][0], null);
+  assert.equal(game.grid[19][1].type, "I");
+  assert.equal(pump(game).type, "spawn");
+  assert.equal(game.grid[18][0].type, "O");
+  assert.equal(game.grid[19][0], null);
+});
+
 test("flipping the board turns it upside down", () => {
   const game = createGame();
   game.grid[19][0] = { type: "I", g: 4 };

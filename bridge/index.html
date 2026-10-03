@@ -28,6 +28,9 @@
       --md-on-primary-container: #041e49;
       --md-outline: #c4c6d0;
       --md-well: #ffffff;
+      --stage: var(--paper);
+      --glow-a: rgba(90, 180, 255, .55);
+      --glow-b: rgba(186, 140, 255, .42);
     }
 
     body[data-theme="dark"] {
@@ -69,9 +72,64 @@
       margin: 0;
       min-height: 100vh;
       color: var(--ink);
-      background: var(--paper);
+      background: var(--stage);
       font-family: "Pixel Latin", "WenQuanYi Micro Hei", sans-serif;
       -webkit-font-smoothing: none;
+    }
+
+    body[data-game="bridge"] {
+      --stage: var(--paper);
+      --glow-a: rgba(90, 180, 255, .55);
+      --glow-b: rgba(186, 140, 255, .42);
+    }
+    body[data-game="tetris"] {
+      --stage: #10182e;
+      --ink: #f4f7ff;
+      --muted: #b7c4e0;
+      --glow-a: rgba(90, 160, 255, .62);
+      --glow-b: rgba(50, 90, 220, .42);
+    }
+    body[data-game="breakout"] {
+      --stage: #07182e;
+      --ink: #e8f4ff;
+      --muted: #9eb8d6;
+      --glow-a: rgba(40, 180, 255, .5);
+      --glow-b: rgba(0, 80, 160, .4);
+    }
+    body[data-game="bbtan"] {
+      --stage: #1a0d28;
+      --ink: #f8ecff;
+      --muted: #d2b6e4;
+      --glow-a: rgba(190, 90, 255, .5);
+      --glow-b: rgba(90, 20, 140, .4);
+    }
+    body[data-game="pinball"] {
+      --stage: #24160c;
+      --ink: #fff1dc;
+      --muted: #e2c39a;
+      --glow-a: rgba(255, 170, 70, .48);
+      --glow-b: rgba(140, 60, 20, .4);
+    }
+    body[data-game="sand"] {
+      --stage: #2a2116;
+      --ink: #fff6e4;
+      --muted: #e4d0b0;
+      --glow-a: rgba(230, 180, 80, .42);
+      --glow-b: rgba(160, 110, 40, .32);
+    }
+    body[data-game="ten"] {
+      --stage: #e7eef8;
+      --ink: #1c2430;
+      --muted: #5c6b82;
+      --glow-a: rgba(80, 140, 230, .4);
+      --glow-b: rgba(180, 210, 255, .55);
+    }
+    body[data-game="twenty"] {
+      --stage: #faf8ef;
+      --ink: #776e65;
+      --muted: #a39489;
+      --glow-a: rgba(237, 194, 46, .38);
+      --glow-b: rgba(236, 196, 160, .45);
     }
 
     body::before, body::after {
@@ -88,19 +146,21 @@
     body::before {
       top: -16vw;
       left: -10vw;
-      background: radial-gradient(circle, rgba(90, 180, 255, .55), rgba(90, 180, 255, 0) 68%);
+      background: radial-gradient(circle, var(--glow-a), transparent 68%);
       animation: float-a 18s ease-in-out infinite;
     }
 
     body::after {
       right: -12vw;
       bottom: -18vw;
-      background: radial-gradient(circle, rgba(186, 140, 255, .42), rgba(186, 140, 255, 0) 68%);
+      background: radial-gradient(circle, var(--glow-b), transparent 68%);
       animation: float-b 22s ease-in-out infinite;
     }
 
-    body[data-theme="dark"]::before { background: radial-gradient(circle, rgba(10, 132, 255, .35), transparent 68%); }
-    body[data-theme="dark"]::after { background: radial-gradient(circle, rgba(175, 82, 222, .28), transparent 68%); }
+    body[data-theme="dark"][data-game="bridge"]::before,
+    body[data-theme="dark"]:not([data-game])::before { background: radial-gradient(circle, rgba(10, 132, 255, .35), transparent 68%); }
+    body[data-theme="dark"][data-game="bridge"]::after,
+    body[data-theme="dark"]:not([data-game])::after { background: radial-gradient(circle, rgba(175, 82, 222, .28), transparent 68%); }
 
     .page { position: relative; z-index: 1; }
 
@@ -194,8 +254,8 @@
 
     .hero {
       background:
-        radial-gradient(32% 28% at 36% 42%, rgba(80, 170, 255, .42), transparent 70%),
-        radial-gradient(28% 26% at 66% 58%, rgba(190, 130, 255, .32), transparent 72%),
+        radial-gradient(32% 28% at 36% 42%, var(--glow-a), transparent 70%),
+        radial-gradient(28% 26% at 66% 58%, var(--glow-b), transparent 72%),
         transparent;
     }
 
@@ -391,8 +451,8 @@
       padding: 8px 24px 20px;
       display: flex;
       flex-direction: column;
-      background: var(--md-surface);
-      color: var(--md-on-surface);
+      background: transparent;
+      color: var(--ink);
       letter-spacing: 0;
     }
 
@@ -403,7 +463,7 @@
 
     #game .hint {
       margin: 8px 0 0;
-      color: var(--md-on-variant);
+      color: var(--muted);
       font-size: 16px;
       font-weight: 400;
       line-height: 1.4;
@@ -872,7 +932,7 @@
         <div class="picker">
           <button id="game-prev" type="button" aria-label="Previous">‹</button>
           <div>
-            <div class="picker-name" id="game-name">Tetris</div>
+            <div class="picker-name" id="game-name">Bridge</div>
             <p class="version" id="version-label">1.0</p>
           </div>
           <button id="game-next" type="button" aria-label="Next">›</button>
@@ -1224,6 +1284,7 @@
     const nextCtx = nextCanvas.getContext("2d");
     const veil = document.querySelector("#veil");
     const GAMES = [
+      ["bridge", "gameBridge"],
       ["tetris", "gameTetris"],
       ["breakout", "gameBreakout"],
       ["bbtan", "gameBbtan"],
@@ -1259,13 +1320,13 @@
 
     function loadSettings() {
       try {
-        const saved = { lang: "en", volume: 0.7, theme: "light", touch: "auto", pace: "normal", paceSpeed: 1, game: "tetris", ...JSON.parse(localStorage.getItem("bridge-settings") || "{}") };
+        const saved = { lang: "en", volume: 0.7, theme: "light", touch: "auto", pace: "normal", paceSpeed: 1, game: "bridge", ...JSON.parse(localStorage.getItem("bridge-settings") || "{}") };
         if (!saved.touch) saved.touch = "auto";
         if (!saved.pace) saved.pace = "normal";
         saved.paceSpeed = paceOf({ pace: saved.paceSpeed ?? 1 });
         return saved;
       } catch {
-        return { lang: "en", volume: 0.7, theme: "light", touch: "auto", pace: "normal", paceSpeed: 1, game: "tetris" };
+        return { lang: "en", volume: 0.7, theme: "light", touch: "auto", pace: "normal", paceSpeed: 1, game: "bridge" };
       }
     }
 
@@ -1294,7 +1355,7 @@
     }
 
     function currentGame() {
-      return GAMES.some(([id]) => id === settings.game) ? settings.game : "tetris";
+      return GAMES.some(([id]) => id === settings.game) ? settings.game : "bridge";
     }
 
     function syncPicker() {
@@ -1302,7 +1363,8 @@
       settings.game = id;
       const key = GAMES.find(([name]) => name === id)[1];
       document.querySelector("#game-name").textContent = t(key);
-      document.querySelector("#tetris-tools").hidden = id !== "tetris";
+      document.querySelector("#tetris-tools").hidden = id !== "bridge";
+      document.body.dataset.game = id;
       document.querySelector("#version-label").textContent = VERSION;
     }
 
@@ -1378,6 +1440,7 @@
 
     function begin(mode) {
       puzzle = null;
+      document.body.dataset.game = mode === "marathon" || mode === "sprint" ? "bridge" : mode;
       startGame(game, mode);
       if (mode === "marathon") {
         const name = settings.pace || "normal";
@@ -1406,6 +1469,7 @@
     }
 
     function beginArcade(kind) {
+      document.body.dataset.game = kind;
       puzzle = null;
       anim = null;
       paused = false;
@@ -1430,6 +1494,7 @@
     }
 
     function beginPuzzle(kind) {
+      document.body.dataset.game = kind;
       session = null;
       anim = null;
       paused = false;
@@ -1451,7 +1516,8 @@
 
     function beginSelected() {
       const id = currentGame();
-      if (id === "tetris") begin("marathon");
+      if (id === "bridge") begin("marathon");
+      else if (id === "tetris") begin("tetris");
       else if (id === "sand") begin("sand");
       else if (id === "ten" || id === "twenty") beginPuzzle(id);
       else beginArcade(id);
@@ -1551,7 +1617,7 @@
     document.querySelector("#go-boards").addEventListener("click", () => {
       syncPace();
       const id = currentGame();
-      const tetrisBoard = id === "tetris";
+      const tetrisBoard = id === "bridge";
       document.querySelector("#board-tetris").hidden = !tetrisBoard;
       document.querySelector("#board-single").hidden = tetrisBoard;
       if (!tetrisBoard) {
@@ -2053,11 +2119,23 @@
       }
     }
 
+    function wellColor() {
+      const id = document.body.dataset.game;
+      if (game.sandGrid || id === "sand") return "#14110e";
+      if (id === "tetris") return "#10182e";
+      if (id === "breakout") return "#07141f";
+      if (id === "bbtan") return "#140818";
+      if (id === "pinball") return "#1a120c";
+      if (id === "ten") return "#e7eef8";
+      if (id === "twenty") return "#faf8ef";
+      return document.body.dataset.theme === "dark" ? "#0e1014" : "#ffffff";
+    }
+
     function drawBoard() {
       prepareBoard();
       const shaking = fx.some((item) => (item.big && item.t < 200) || ((item.kind === "tspin" || item.kind === "combo") && item.t < 160));
       if (shaking) ctx.translate((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
-      ctx.fillStyle = game.sandGrid ? "#14110e" : (document.body.dataset.theme === "dark" ? "#0e1014" : "#ffffff");
+      ctx.fillStyle = wellColor();
       ctx.fillRect(0, 0, COLS * CELL, ROWS * CELL);
       drawSandField(ctx);
       const flipping = anim?.step.type === "flip" || (anim?.step.type === "reward" && anim.step.reward !== "sand");
@@ -2194,7 +2272,7 @@
       if (document.querySelector("#game").hidden) return;
       if (puzzle) {
         prepareBoard();
-        ctx.fillStyle = document.body.dataset.theme === "dark" ? "#0e1014" : "#ffffff";
+        ctx.fillStyle = wellColor();
         ctx.fillRect(0, 0, COLS * CELL, ROWS * CELL);
         if (puzzle.kind === "ten") drawTenBoard();
         else drawTwentyBoard();

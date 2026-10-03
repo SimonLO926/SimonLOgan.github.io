@@ -145,34 +145,41 @@ function collidePaddle(session, ball) {
   ball.y = top - ball.r - 1;
 }
 
+const PIN_SIDE = 14;
+const PIN_FLOOR = H - 6;
+const PIN_PIVOT_Y = H - 86;
+const FLIP_LEN = 72;
+const FLIP_REST = 0.95;
+const FLIP_UP = -0.22;
+
 function tableWalls() {
+  const leftTip = flipper("left", false).x2;
+  const rightTip = flipper("right", false).x2;
   return [
-    [22, H - 190, 22, H - 52],
-    [22, H - 52, 78, H - 26],
-    [W - 22, H - 190, W - 22, H - 52],
-    [W - 22, H - 52, W - 78, H - 26],
+    [PIN_SIDE, 36, PIN_SIDE, PIN_FLOOR],
+    [PIN_SIDE, PIN_FLOOR, leftTip, PIN_FLOOR],
+    [W - PIN_SIDE, 36, W - PIN_SIDE, PIN_FLOOR],
+    [W - PIN_SIDE, PIN_FLOOR, rightTip, PIN_FLOOR],
   ];
 }
 
-function flipper(side, raised) {
+export function flipper(side, raised) {
   const left = side === "left";
   const pivotX = left ? 78 : W - 78;
-  const pivotY = H - 26;
-  const angle = left ? (raised ? -1.2 : -0.42) : (raised ? Math.PI + 1.2 : Math.PI + 0.42);
-  const len = 62;
+  const angle = left ? (raised ? FLIP_UP : FLIP_REST) : (raised ? Math.PI - FLIP_UP : Math.PI - FLIP_REST);
   return {
     x1: pivotX,
-    y1: pivotY,
-    x2: pivotX + Math.cos(angle) * len,
-    y2: pivotY + Math.sin(angle) * len,
+    y1: PIN_PIVOT_Y,
+    x2: pivotX + Math.cos(angle) * FLIP_LEN,
+    y2: PIN_PIVOT_Y + Math.sin(angle) * FLIP_LEN,
   };
 }
 
 function restBall() {
   const seat = flipper("left", false);
   return {
-    x: W / 2,
-    y: Math.min(seat.y1, seat.y2) - 16,
+    x: (seat.x1 + seat.x2) / 2,
+    y: (seat.y1 + seat.y2) / 2 - 12,
     vx: 0,
     vy: 0,
     r: 7,
@@ -215,13 +222,24 @@ function stepBall(session, ball, dt) {
     if (ball.gravity) ball.vy += 520 * step;
     ball.x += ball.vx * step;
     ball.y += ball.vy * step;
-    if (ball.x < ball.r) {
-      ball.x = ball.r;
+    const inset = session.kind === "pinball" ? PIN_SIDE + ball.r : ball.r;
+    if (ball.x < inset) {
+      ball.x = inset;
       ball.vx = Math.abs(ball.vx);
     }
-    if (ball.x > W - ball.r) {
-      ball.x = W - ball.r;
+    if (ball.x > W - inset) {
+      ball.x = W - inset;
       ball.vx = -Math.abs(ball.vx);
+    }
+    if (session.kind === "pinball") {
+      const leftTip = flipper("left", false).x2;
+      const rightTip = flipper("right", false).x2;
+      const inGutter = ball.x <= leftTip || ball.x >= rightTip;
+      const floorY = PIN_FLOOR - ball.r;
+      if (inGutter && ball.y > floorY) {
+        ball.y = floorY;
+        if (ball.vy > 0) ball.vy = -Math.abs(ball.vy) * 0.25;
+      }
     }
     if (ball.y < ball.r) {
       ball.y = ball.r;
@@ -243,6 +261,14 @@ function stepBall(session, ball, dt) {
     ball.vx = (ball.vx / mag) * limit;
     ball.vy = (ball.vy / mag) * limit;
   }
+}
+
+function keepBall(session, ball) {
+  if (session.kind !== "pinball") return ball.y < H + 12;
+  const leftTip = flipper("left", false).x2;
+  const rightTip = flipper("right", false).x2;
+  const inMouth = ball.x > leftTip && ball.x < rightTip;
+  return !(inMouth && ball.y > H - 2);
 }
 
 export function updateSession(session, dtMs) {
@@ -300,7 +326,7 @@ export function updateSession(session, dtMs) {
     }
   }
   for (const ball of session.balls) stepBall(session, ball, dt);
-  session.balls = session.balls.filter((ball) => ball.y < H + 12);
+  session.balls = session.balls.filter((ball) => keepBall(session, ball));
   if (brickCount(session.grid) === 0) {
     session.full = true;
     session.over = true;
